@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Essentials">
+      <UniqueIdentifier>{1beb716c-5063-4d1f-b4d3-eb4e7a051407}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Helpers">
+      <UniqueIdentifier>{50d316a2-6805-4f68-8ae5-c9494d2bda4b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="PSNWhere">
+      <UniqueIdentifier>{938a00e2-5274-4292-83fe-36bcff2367c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="PSNWhere\Calibration">
+      <UniqueIdentifier>{10f6dfc4-909f-469d-a291-f19bf029fe8d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graph Solvers">
+      <UniqueIdentifier>{565c98fe-1ce8-41c1-8d88-4c4705f95342}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="targetver.h">
+      <Filter>Essentials</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Essentials</Filter>
+    </ClInclude>
+    <ClInclude Include="PSNWhere.h">
+      <Filter>PSNWhere</Filter>
+    </ClInclude>
+    <ClInclude Include="PSNWhere_Tracker2D.h">
+      <Filter>PSNWhere</Filter>
+    </ClInclude>
+    <ClInclude Include="PSNWhere_Associator3D.h">
+      <Filter>PSNWhere</Filter>
+    </ClInclude>
+    <ClInclude Include="PSNWhere_defines.h">
+      <Filter>PSNWhere</Filter>
+    </ClInclude>
+    <ClInclude Include="calibration\cameraModel.h">
+      <Filter>PSNWhere\Calibration</Filter>
+    </ClInclude>
+    <ClInclude Include="Helpers\PSNWhere_Hungarian.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="PSNWhere_Manager.h">
+      <Filter>PSNWhere</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphSolver.h">
+      <Filter>Graph Solvers</Filter>
+    </ClInclude>
+    <ClInclude Include="Evaluator.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Essentials</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="PSNWhere.cpp">
+      <Filter>PSNWhere</Filter>
+    </ClCompile>
+    <ClCompile Include="PSNWhere_Tracker2D.cpp">
+      <Filter>PSNWhere</Filter>
+    </ClCompile>
+    <ClCompile Include="PSNWhere_Associator3D.cpp">
+      <Filter>PSNWhere</Filter>
+    </ClCompile>
+    <ClCompile Include="calibration\cameraModel.cpp">
+      <Filter>PSNWhere\Calibration</Filter>
+    </ClCompile>
+    <ClCompile Include="Helpers\PSNWhere_Hungarian.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="PSNWhere_Manager.cpp">
+      <Filter>PSNWhere</Filter>
+    </ClCompile>
+    <ClCompile Include="GraphSolver.cpp">
+      <Filter>Graph Solvers</Filter>
+    </ClCompile>
+    <ClCompile Include="Evaluator.cpp" />
+  </ItemGroup>
+</Project>
