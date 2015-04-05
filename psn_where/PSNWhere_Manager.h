@@ -12,7 +12,7 @@
 
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
-#define DO_RECORD
+//#define DO_RECORD
 //#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
@@ -218,9 +218,6 @@ public:
 	cv::Rect cv(){ return cv::Rect((int)x, (int)y, (int)w, (int)h); }
 };
 
-
-
-
 typedef struct _stDetection
 {
 	PSN_Rect box;
@@ -353,6 +350,14 @@ struct stTrackIndexElement;
 class Track3D
 {
 public:
+	Track3D();
+	~Track3D();
+
+	void Initialize(unsigned int id, Track3D *parentTrack, unsigned int timeGeneration, CTrackletCombination &trackletCombination);
+	void RemoveFromTree();
+	static std::deque<Track3D*> GatherValidChildrenTracks(Track3D* validParentTrack, std::deque<Track3D*> &targetChildrenTracks);
+	//void SetKalmanFilter(PSN_Point3D &initialPoint);
+
 	unsigned int id;
 	CTrackletCombination curTracklet2Ds;
 	std::deque<unsigned int> tracklet2DIDs[NUM_CAM];
@@ -394,16 +399,7 @@ public:
 	bool bCurrentBestSolution;
 
 	// HO-HMT
-	bool bNewTrack;
-
-public:
-	Track3D();
-	~Track3D();
-
-	void Initialize(unsigned int id, Track3D *parentTrack, unsigned int timeGeneration, CTrackletCombination &trackletCombination);
-	void RemoveFromTree();
-	static std::deque<Track3D*> GatherValidChildrenTracks(Track3D* validParentTrack, std::deque<Track3D*> &targetChildrenTracks);
-	//void SetKalmanFilter(PSN_Point3D &initialPoint);
+	bool bNewTrack;	
 };
 
 typedef std::deque<Track3D*> PSN_TrackSet;
@@ -448,6 +444,7 @@ public:
 	static double MaxGTProbOfBrach(Track3D *rootOfBranch);
 	static void InvalidateBranchWithMinGTProb(Track3D *rootOfBranch, double minGTProb);
 	static Track3D* FindMaxGTProbBranch(Track3D* branchSeedTrack, size_t timeIndex);
+	static Track3D* FindOldestTrackInBranch(Track3D *trackInBranch, unsigned int nMostPreviousFrameIdx);
 	static bool CheckConnectivityOfTrees(TrackTree *tree1, TrackTree *tree2);
 	
 

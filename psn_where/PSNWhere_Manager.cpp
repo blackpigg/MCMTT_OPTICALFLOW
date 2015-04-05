@@ -1150,6 +1150,26 @@ Track3D* TrackTree::FindMaxGTProbBranch(Track3D* branchSeedTrack, size_t timeInd
 	return NULL == maxGTProbChild? branchSeedTrack : maxGTProbChild;
 }
 
+/************************************************************************
+ Method Name: FindOldestTrackInBranch
+ Description: 
+	- 
+ Input Arguments:
+	- 
+ Return Values:
+	- Track3D*: 
+************************************************************************/
+Track3D* TrackTree::FindOldestTrackInBranch(Track3D *trackInBranch, unsigned int nMostPreviousFrameIdx)
+{
+	Track3D *oldestTrack = trackInBranch;
+	while (true) 
+	{
+		if (NULL == oldestTrack->parentTrack) { break; }
+		if (nMostPreviousFrameIdx >= oldestTrack->parentTrack->timeGeneration) { break; }
+		oldestTrack = oldestTrack->parentTrack;
+	}
+	return oldestTrack;
+}
 
 /************************************************************************
  Method Name: CheckConnectivityOfTrees

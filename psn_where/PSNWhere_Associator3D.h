@@ -89,20 +89,24 @@
 // DEFINES
 /////////////////////////////////////////////////////////////////////////
 
-struct stGraphSolution
-{
-	PSN_TrackSet tracks;
-	double logLikelihood; // = weight sum
-	double probability;
-	//double weightSum;
-	bool bValid;
-};
+//struct stGraphSolution
+//{
+//	PSN_TrackSet tracks;
+//	double logLikelihood; // = weight sum
+//	double probability;
+//	//double weightSum;
+//	bool bValid;
+//};
 
 struct stGlobalHypothesis
 {
+	PSN_TrackSet selectedTracks;
 	PSN_TrackSet relatedTracks;
-	PSN_TrackSet previousSolution;
+	double logLikelihood; // = weight sum
+	double probability;
+	bool bValid;
 };
+typedef std::deque<stGlobalHypothesis> PSN_HypothesisSet;
 
 typedef std::pair<unsigned int, unsigned int> PAIR_UINT;
 
@@ -114,86 +118,6 @@ class CPSNWhere_Associator3D
 public:
 	CPSNWhere_Associator3D(void);
 	~CPSNWhere_Associator3D(void);
-
-	//////////////////////////////////////////////////////////////////////////
-	// VARIABLES
-	//////////////////////////////////////////////////////////////////////////
-public:
-
-private:
-	bool m_bInit;
-	Etiseo::CameraModel m_cCamModel[NUM_CAM];
-	cv::Mat m_matProjectionSensitivity[NUM_CAM];
-	cv::Mat m_matDistanceFromBoundary[NUM_CAM];
-
-	char m_strDatasetPath[128];
-
-	// frame related
-	cv::Mat *m_matCurrentFrames[NUM_CAM];
-	unsigned int m_nCurrentFrameIdx;
-	unsigned int m_nNumFramesForProc;
-	unsigned int m_nCountForPenalty;
-	unsigned int m_nLastDeferredResultPrintFrameIdx;
-	unsigned int m_nLastInstantResultPrintFrameIdx;
-	double m_fCurrentProcessingTime;
-	double m_fCurrentSolvingTime;
-
-	// logging related
-	char m_strLogFileName[128];
-	char m_strTrackLogFileName[128];
-	char m_strResultLogFileName[128];
-	char m_strDefferedResultFileName[128];
-	char m_strInstantResultFileName[128];
-	
-	//----------------------------------------------------------------
-	// 2D tracklet related
-	//----------------------------------------------------------------
-	stTracklet2DSet m_vecTracklet2DSet[NUM_CAM];
-	unsigned int m_nNumTotalActive2DTracklet;
-
-	//----------------------------------------------------------------
-	// 3D track related
-	//----------------------------------------------------------------
-	bool m_bHasNewMeasurements;
-	bool m_bPenaltyFree;
-	unsigned int m_nNextTrackID;
-	unsigned int m_nNextTreeID;
-	unsigned int m_nNextCFamilyID;
-	unsigned int m_nNextHypothesisID;
-	std::list<TrackTree> m_listTrackTree;
-	std::list<Track3D> m_listTrack3D;
-
-	PSN_TrackSet m_queueActiveTrack;
-	PSN_TrackSet m_queueDeactivatedTrack;
-	PSN_TrackSet m_queueTracksInWindow;
-	PSN_TrackSet m_queueTracksInBestSolution;
-
-	std::deque<TrackTree*> m_queueActiveTrees;
-	std::deque<TrackTree*> m_queueUnconfirmedTrees;
-	std::list<Track3D> m_listResultTrack3D;
-
-	// for debug
-	std::deque<Track3D> m_queueForDebugTracksInBestSolution;
-	std::deque<stTrack3DResult> m_queueTrackingResult;
-	std::deque<stTrack3DResult> m_queueDeferredTrackingResult;
-	
-	// optimization related
-	CGraphSolver m_cGraphSolver;
-	std::deque<stGraphSolution> m_stGraphSolutions;
-	std::deque<stGlobalHypothesis> m_queueGlobalHypotheses;
-
-	// for visualization
-	unsigned int m_nNextVisualizationID;
-	std::deque<PAIR_UINT> m_pairTreeIDVisualizationID;	
-
-	//// evaluation
-	//CEvaluator m_cEvaluator;
-	//CEvaluator m_cEvaluator_Instance;
-
-	//////////////////////////////////////////////////////////////////////////
-	// METHODS
-	//////////////////////////////////////////////////////////////////////////
-public:
 	void Initialize(std::string datasetPath, std::vector<stCalibrationInfo*> &vecStCalibInfo);
 	void Finalize(void);
 	stTrack3DResult Run(std::vector<stTrack2DResult> &curTrack2DResult, cv::Mat *curFrame, int frameIdx);
@@ -202,6 +126,10 @@ public:
 	std::vector<PSN_Point2D> GetHuman3DBox(PSN_Point3D ptHeadCenter, double bodyWidth, unsigned int camIdx);
 
 private:
+	//////////////////////////////////////////////////////////////////////////
+	// METHODS
+	//////////////////////////////////////////////////////////////////////////
+
 	//----------------------------------------------------------------
 	// 3D geometry related
 	//----------------------------------------------------------------
@@ -222,26 +150,24 @@ private:
 	// 2D tracklet related
 	//----------------------------------------------------------------
 	void Tracklet2D_UpdateTracklets(std::vector<stTrack2DResult> &curTrack2DResult, unsigned int frameIdx);	
+	void GenerateTrackletCombinations(std::vector<bool> *vecBAssociationMap, CTrackletCombination combination, std::deque<CTrackletCombination> &combinationQueue, unsigned int camIdx);
 
 	//----------------------------------------------------------------
 	// 3D track related
-	//----------------------------------------------------------------		
+	//----------------------------------------------------------------	
+	void Track3D_Management(PSN_TrackSet &outputSeedTracks);
 	void Track3D_UpdateTracks(void);
 	void Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeedTracks);
-	void Track3D_BranchTracks(PSN_TrackSet &seedTracks);
-	void Track3D_UpdateHypotheses(void);
-	void Track3D_SolveMHT(void);
-	void Track3D_SolveHOMHT(void);
-	void Track3D_Pruning_GTP(void);
-	void Track3D_Pruning_KBest(void);
-	void Track3D_Pruning_Classical(void);
-	void Track3D_Pruning_Classical_GTP(void);
-	void Track3D_RepairDataStructure(void);
+	void Track3D_BranchTracks(PSN_TrackSet *seedTracks);
+	PSN_TrackSet Track3D_GetWholeCandidateTracks(void);
+
+	//void Track3D_SolveHOMHT(void);
+
+	//void Track3D_Pruning_GTP(void);
+	//void Track3D_Pruning_KBest(void);
+	//void Track3D_RepairDataStructure(void);
 
 	// cost calculation
-	static double ComputeHeadProbability(double distance);
-	static double ComputeBodyProbability(double distance, double maxDistance);
-	static double ComputeMoveProbability(double distance);
 	double ComputeEnterProbability(std::vector<PSN_Point2D_CamIdx> &vecPointInfos);
 	double ComputeExitProbability(std::vector<PSN_Point2D_CamIdx> &vecPointInfos);
 	static double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, unsigned int timeGap);
@@ -249,19 +175,20 @@ private:
 	// miscellaneous
 	static bool CheckIncompatibility(Track3D *track1, Track3D *track2);
 	static bool CheckIncompatibility(CTrackletCombination &combi1, CTrackletCombination &combi2);
-	void GenerateCombinations(std::vector<bool> *vecBAssociationMap, CTrackletCombination combination, std::deque<CTrackletCombination> &combinationQueue, unsigned int camIdx);
+	
 	
 	//----------------------------------------------------------------
 	// Hypothesis related
 	//----------------------------------------------------------------	
-	PSN_TrackSet Hypothesis_FullGraphCandidateTracks(void);
-	void Hypothesis_SolveHOMHT(PSN_TrackSet &tracks, PSN_TrackSet *initialSolutionTracks = NULL);
+	void Hypothesis_UpdateHypotheses(PSN_HypothesisSet &inoutUpdatedHypotheses, PSN_TrackSet *newSeedTracks);
+	void Hypothesis_Formation(PSN_HypothesisSet &outBranchHypotheses, PSN_HypothesisSet *existingHypotheses);
+	void Hypothesis_BranchHypotheses(PSN_HypothesisSet &outBranchHypotheses, PSN_TrackSet *tracks, PSN_TrackSet *initialSolutionTracks = NULL);
+	void Hypothesis_PruningNScanBack(unsigned int nCurrentFrameIdx, unsigned int N, PSN_TrackSet *tracksInWindow, std::deque<stGlobalHypothesis> *ptQueueHypothesis = NULL);
 
 	//----------------------------------------------------------------
 	// interface
 	//----------------------------------------------------------------
-	stTrack3DResult ResultWithCandidateTracks(void);
-	stTrack3DResult ResultWithCurrentBestSolution(void);
+	stTrack3DResult ResultWithTracks(PSN_TrackSet *trackSet, unsigned int nFrameIdx, double fProcessingTime = 0);
 	void PrintTracks(std::deque<Track3D*> &queueTracks, char *strFilePathAndName, bool bAppend);
 	void FilePrintCurrentTrackTrees(const char *strFilePath);
 	void FilePrintDefferedResult(void);
@@ -273,6 +200,78 @@ private:
 	// ETC
 	//----------------------------------------------------------------
 	static std::deque<std::vector<unsigned int>> IndexCombination(std::deque<std::deque<unsigned int>> &inputIndexDoubleArray, size_t curLevel, std::deque<std::vector<unsigned int>> curCombination);
+
+	//////////////////////////////////////////////////////////////////////////
+	// VARIABLES
+	//////////////////////////////////////////////////////////////////////////
+	bool bInit_;
+	Etiseo::CameraModel cCamModel_[NUM_CAM];
+	cv::Mat matProjectionSensitivity_[NUM_CAM];
+	cv::Mat matDistanceFromBoundary_[NUM_CAM];
+
+	char strDatasetPath_[128];
+
+	// frame related
+	cv::Mat *ptMatCurrentFrames_[NUM_CAM];
+	unsigned int nCurrentFrameIdx_;
+	unsigned int nNumFramesForProc_;
+	unsigned int nCountForPenalty_;
+	unsigned int nLastPrintedDeferredResultFrameIdx_;
+	unsigned int nLastPrintedInstantResultFrameIdx_;
+	double fCurrentProcessingTime_;
+	double fCurrentSolvingTime_;
+
+	// logging related
+	char strLogFileName_[128];
+	char strTrackLogFileName_[128];
+	char strResultLogFileName_[128];
+	char strDefferedResultFileName_[128];
+	char strInstantResultFileName_[128];
+	
+	//----------------------------------------------------------------
+	// 2D tracklet related
+	//----------------------------------------------------------------
+	stTracklet2DSet vecTracklet2DSet_[NUM_CAM];
+	unsigned int nNumTotalActive2DTracklet_;
+
+	//----------------------------------------------------------------
+	// 3D track related
+	//----------------------------------------------------------------
+	bool bReceiveNewMeasurement_;
+	bool bInitiationPenaltyFree_;
+	unsigned int nNewTrackID_;
+	unsigned int nNewTreeID_;
+	unsigned int nNewHypothesisID;
+	std::list<TrackTree> listTrackTree_;
+	std::list<Track3D> listTrack3D_;
+
+	PSN_TrackSet queueNewSeedTracks_;
+	PSN_TrackSet queueActiveTrack_;
+	PSN_TrackSet queuePausedTrack_;
+	PSN_TrackSet queueTracksInWindow_;
+	PSN_TrackSet queueTracksInBestSolution_;
+
+	std::deque<TrackTree*> queuePtActiveTrees_;
+	std::deque<TrackTree*> queuePtUnconfirmedTrees_;
+	std::list<Track3D> listResultTrack3D_;
+
+	// for debug
+	std::deque<stTrack3DResult> queueTrackingResult_;
+	std::deque<stTrack3DResult> queueDeferredTrackingResult_;
+	
+	// optimization related
+	CGraphSolver cGraphSolver_;
+	//std::deque<stGraphSolution> queueStGraphSolutions_;
+	PSN_HypothesisSet queuePrevGlobalHypotheses_;
+	PSN_HypothesisSet queueCurrGlobalHypotheses_;
+
+	// for visualization
+	unsigned int nNewVisualizationID_;
+	std::deque<PAIR_UINT> queuePairTreeIDToVisualizationID_;	
+
+	//// evaluation
+	//CEvaluator m_cEvaluator;
+	//CEvaluator m_cEvaluator_Instance;
 };
 
 //()()

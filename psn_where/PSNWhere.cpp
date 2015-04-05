@@ -377,7 +377,7 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 	cv::putText(displayMat, strFrameInfo, cv::Point(6, 42), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 255, 255));
 	// show image
 	cv::imshow("result", displayMat);
-	cv::waitKey(1);	// for showing, no delay, no display
+	cv::waitKey(5);	// for showing, no delay, no display
 
 	//---------------------------------------------------
 	// RECORD
