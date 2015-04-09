@@ -21,7 +21,7 @@
 #define PSN_2D_BOX_MAX_DISTANCE (1.0)
 #define PSN_2D_MAX_DETECTION_DISTANCE (600)
 #define PSN_2D_MAX_HEIGHT_DIFFERENCE (400)
-#define PSN_2D_MIN_CONFIDENCE (0.5)
+#define PSN_2D_MIN_CONFIDENCE (0.01)
 
 #define PSN_2D_COST_COEF_FEATURE (1.0f)
 #define PSN_2D_COST_COEF_NSSD (1.0f)
@@ -100,6 +100,7 @@ void CPSNWhere_Tracker2D::Initialize(unsigned int nCamID, stCalibrationInfo *stC
 		return;
 	}
 	
+	this->m_bSnapshotLoaded = false;
 	this->m_nCamID = nCamID;	
 	this->m_nCurrentFrameIdx = 0;
 	this->m_stTrack2DResult.camID = m_nCamID;
@@ -175,6 +176,11 @@ void CPSNWhere_Tracker2D::Finalize(void)
 		printf("[WARNING] class \"CPSNWhere_Tracker2D\" is already finalized\n");
 		return;
 	}
+
+#ifdef SAVE_SNAPSHOT_
+	this->SaveSnapshot(SNAPSHOT_PATH);
+#endif
+
 	this->m_stTrack2DResult.object2DInfos.clear();
 
 	// calibration related
@@ -239,6 +245,8 @@ void CPSNWhere_Tracker2D::Finalize(void)
 ************************************************************************/
 stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionResult, cv::Mat *curFrame, unsigned int frameIdx)
 {
+	assert(this->m_bInit);
+
 #ifdef PSN_DEBUG_MODE_
 	printf("[CPSNWhere_Tracker2D](Run) start with frame number %d\n", frameIdx);
 
@@ -246,17 +254,7 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 	// SPEED TEST
 	clock_t timer_start = clock();
 	//-----------------------------------------------
-
 #endif
-	this->m_nCurrentFrameIdx = frameIdx;
-	this->m_stTrack2DResult.frameIdx = frameIdx;
-
-	if(!this->m_bInit)
-	{
-		printf("[WARNING] class \"CPSNWhere_Tracker2D\" is not initialized\n");		
-		this->m_stTrack2DResult.object2DInfos.clear();
-		return this->m_stTrack2DResult;
-	}
 
 	// insert to buffer
 	cv::Mat grayImage;
@@ -268,6 +266,21 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 	cv::resize(grayImage, *this->m_vecPtGrayFrameBuffer.back(), cv::Size((int)((double)curFrame->cols * PSN_2D_OPTICALFLOW_SCALE), (int)((double)curFrame->rows * PSN_2D_OPTICALFLOW_SCALE)));	
 	grayImage.release();
 
+#ifdef LOAD_SNAPSHOT_
+	if (!this->m_bSnapshotLoaded) { this->m_bSnapshotLoaded = this->LoadSnapshot(SNAPSHOT_PATH); }
+	if (this->m_bSnapshotLoaded && frameIdx <= this->m_nCurrentFrameIdx)
+	{
+		// buffer circulation
+		std::vector<cv::Mat*> vecNewPtGrayFrameBuffer;	
+		vecNewPtGrayFrameBuffer.reserve(PSN_2D_BACKTRACKING_INTERVAL);
+		vecNewPtGrayFrameBuffer.assign(this->m_vecPtGrayFrameBuffer.begin() + 1, this->m_vecPtGrayFrameBuffer.end());
+		vecNewPtGrayFrameBuffer.push_back(*this->m_vecPtGrayFrameBuffer.begin());
+		this->m_vecPtGrayFrameBuffer = vecNewPtGrayFrameBuffer;
+		vecNewPtGrayFrameBuffer.clear();
+
+		return this->m_stTrack2DResult;
+	}
+#endif
 #ifdef PSN_2D_DEBUG_DISPLAY_
 	//-----------------------
 	// DEBUG
@@ -276,12 +289,14 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 	//cv::resize(testMat, testMat, cv::Size(testMat.size().width * PSN_2D_DEBUG_DISPLAY_SCALE, testMat.size().height * PSN_2D_DEBUG_DISPLAY_SCALE));
 #endif
 
+	this->m_nCurrentFrameIdx = frameIdx;
+	this->m_stTrack2DResult.frameIdx = frameIdx;
+
 	/////////////////////////////////////////////////////////////////////////////
 	// BACKWARD FEATURE TRACKING
 	/////////////////////////////////////////////////////////////////////////////	
 	size_t numDetection = this->Track2D_BackwardFeatureTracking(curDetectionResult);
-
-
+	
 	/////////////////////////////////////////////////////////////////////////////
 	// FORWARD FEATURE TRACKING
 	/////////////////////////////////////////////////////////////////////////////
@@ -291,8 +306,7 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 	// BIPARTITE MATHCING & TRACKER UPDATE
 	/////////////////////////////////////////////////////////////////////////////
 	this->Track2D_MatchingAndUpdating(matchingCostArray);
-
-
+	
 	/////////////////////////////////////////////////////////////////////////////
 	// WRAP-UP
 	/////////////////////////////////////////////////////////////////////////////
@@ -933,6 +947,7 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 		curDetection.id = (unsigned int)detectionID++;
 		curDetection.detection = curDetectionResult[detectionIdx];
 		curDetection.bMatchedWithTracker = false;
+		curDetection.bOverlapWithOtherDetection = false;
 		curDetection.vecvecTrackedFeatures.reserve(PSN_2D_BACKTRACKING_INTERVAL);
 		curDetection.boxes.reserve(PSN_2D_BACKTRACKING_INTERVAL);
 		curDetection.boxes.push_back(curDetection.detection.box);
@@ -1032,6 +1047,22 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 		// keep instance
 		this->m_vecDetection2D.push_back(curDetection);
 	}
+
+	// check overlap
+	for (int detect1Idx = 0; detect1Idx < this->m_vecDetection2D.size(); detect1Idx++)
+	{
+		if (this->m_vecDetection2D[detect1Idx].bOverlapWithOtherDetection) { continue; }
+		for (int detect2Idx = detect1Idx + 1; detect2Idx < this->m_vecDetection2D.size(); detect2Idx++)
+		{
+			if (this->m_vecDetection2D[detect1Idx].detection.box.overlap(this->m_vecDetection2D[detect2Idx].detection.box))
+			{
+				this->m_vecDetection2D[detect1Idx].bOverlapWithOtherDetection = true;
+				break;
+			}
+		}
+	}
+
+
 	return this->m_vecDetection2D.size();
 #endif
 }
@@ -1228,6 +1259,8 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		//---------------------------------------------------
 		// MATCHING VALIDATION
 		//---------------------------------------------------
+		//if (PSN_2D_MIN_CONFIDENCE > curTracker->confidence) { continue; }
+		//if (curDetection->bOverlapWithOtherDetection) { continue; }
 		double curConfidence = 1.0;
 
 		//---------------------------------------------------
@@ -1278,6 +1311,7 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		newTracker.boxes.push_back((*detectionIter).detection.box);
 		newTracker.featurePoints = (*detectionIter).vecvecTrackedFeatures.front();
 		newTracker.trackedPoints.clear();
+		//newTracker.confidence = (*detectionIter).bOverlapWithOtherDetection ? 0.0 : 1.0;
 		newTracker.confidence = 1.0;
 		newTracker.lastPosition = (*detectionIter).location;
 		newTracker.height = (*detectionIter).height;
@@ -1427,6 +1461,227 @@ void CPSNWhere_Tracker2D::FilePrintTracklet(void)
 		printf("[ERROR](FilePrintTracklet) cannot open file! error code %d\n", dwError);
 		return;
 	}
+}
+
+/************************************************************************
+ Method Name: SaveSnapshot
+ Description: 
+	- 
+ Input Arguments:
+	- none
+ Return Values:
+	- none
+************************************************************************/
+void CPSNWhere_Tracker2D::SaveSnapshot(const char *strFilepath)
+{
+	FILE *fp;
+	char strFilename[128] = "";
+	try
+	{	
+		sprintf_s(strFilename, "%ssnapshot_2D_cam%d.txt", strFilepath, m_nCamID);
+		fopen_s(&fp, strFilename, "w");
+		fprintf_s(fp, "camID:%d\n", m_nCamID);
+		fprintf_s(fp, "frameIndex:%d\n\n", (int)m_nCurrentFrameIdx);
+		
+		// tracker list
+		fprintf_s(fp, "listTracker2D:%d,\n{\n", m_listTracker2D.size());
+		for (std::list<stTracker2D>::iterator trackerIter = m_listTracker2D.begin();
+			trackerIter != m_listTracker2D.end();
+			trackerIter++)
+		{
+			fprintf_s(fp, "\t{\n");
+			fprintf_s(fp, "\t\tid:%d\n", (int)(*trackerIter).id);
+			fprintf_s(fp, "\t\ttimeStart:%d\n", (int)(*trackerIter).timeStart);
+			fprintf_s(fp, "\t\ttimeEnd:%d\n", (int)(*trackerIter).timeEnd);
+			fprintf_s(fp, "\t\ttimeLastUpdate:%d\n", (int)(*trackerIter).timeLastUpdate);
+			fprintf_s(fp, "\t\tduration:%d\n", (int)(*trackerIter).duration);
+			fprintf_s(fp, "\t\tnumStatic:%d\n", (int)(*trackerIter).numStatic);
+			fprintf_s(fp, "\t\tconfidence:%e\n", (*trackerIter).confidence);
+
+			// box
+			fprintf_s(fp, "\t\tboxes:%d,{", (int)(*trackerIter).boxes.size());
+			for (int boxIdx = 0; boxIdx < (*trackerIter).boxes.size(); boxIdx++)
+			{
+				PSN_Rect curBox = (*trackerIter).boxes[boxIdx];
+				fprintf_s(fp, "(%f,%f,%f,%f)", curBox.x, curBox.y, curBox.w, curBox.h);
+				if (boxIdx < (*trackerIter).boxes.size() - 1) { fprintf_s(fp, ","); }
+			}
+			fprintf_s(fp, "}\n");
+
+			// featurePoints
+			fprintf_s(fp, "\t\tfeaturePoints:%d,{", (int)(*trackerIter).featurePoints.size());
+			for (int pointIdx = 0; pointIdx < (*trackerIter).featurePoints.size(); pointIdx++)
+			{
+				cv::Point2f curPoint = (*trackerIter).featurePoints[pointIdx];
+				fprintf_s(fp, "(%f,%f)", curPoint.x, curPoint.y);
+				if (pointIdx < (*trackerIter).featurePoints.size() - 1) { fprintf_s(fp, ","); }
+			}
+			fprintf_s(fp, "}\n");
+
+			// trackedPoints
+			fprintf_s(fp, "\t\ttrackedPoints:%d,{", (int)(*trackerIter).trackedPoints.size());
+			for (int pointIdx = 0; pointIdx < (*trackerIter).trackedPoints.size(); pointIdx++)
+			{
+				cv::Point2f curPoint = (*trackerIter).trackedPoints[pointIdx];
+				fprintf_s(fp, "(%f,%f,%f,%f)", curPoint.x, curPoint.y);
+				if (pointIdx < (*trackerIter).trackedPoints.size() - 1) { fprintf_s(fp, ","); }
+			}
+			fprintf_s(fp, "}\n");
+
+			// last point
+			fprintf_s(fp, "\t\tlastPosition:(%f,%f,%f)\n", (*trackerIter).lastPosition.x, (*trackerIter).lastPosition.y, (*trackerIter).lastPosition.z);
+
+			// height
+			fprintf_s(fp, "\t\theight:%e\n\t}\n", (*trackerIter).height);
+		}
+		fprintf_s(fp, "}\n");
+
+		// active tracker queue
+		fprintf_s(fp, "queueActiveTracker2D:%d,{", m_queueActiveTracker2D.size());
+		for (int trackerIdx = 0; trackerIdx < m_queueActiveTracker2D.size(); trackerIdx++)
+		{
+			fprintf_s(fp, "%d", m_queueActiveTracker2D[trackerIdx]->id);
+			if (trackerIdx < m_queueActiveTracker2D.size() - 1) { fprintf_s(fp, ","); }
+		}
+		fprintf_s(fp, "}\n");
+
+		fprintf_s(fp, "NewTrackerID:%d\n", (int)m_nNewTrackerID);
+
+		fprintf_s(fp, "()()\n");
+		fprintf_s(fp, "('')\n");
+
+		fclose(fp);
+	}
+	catch(DWORD dwError)
+	{
+		printf("[ERROR](PrintTracks) cannot open file! error code %d\n", dwError);
+		return;
+	}
+}
+
+/************************************************************************
+ Method Name: LoadSnapshot
+ Description: 
+	- 
+ Input Arguments:
+	- none
+ Return Values:
+	- none
+************************************************************************/
+bool CPSNWhere_Tracker2D::LoadSnapshot(const char *strFilepath)
+{
+	FILE *fp;
+	char strFilename[128] = "";
+	int readingInt = 0;
+	float readingFloat = 0.0;
+	try
+	{	
+		sprintf_s(strFilename, "%ssnapshot_2D_cam%d.txt", strFilepath, m_nCamID);
+		fopen_s(&fp, strFilename, "r");
+		if (NULL == fp) { return false; }
+
+		fscanf_s(fp, "camID:%d\n", &readingInt);
+		fscanf_s(fp, "frameIndex:%d\n\n", &readingInt);
+		m_nCurrentFrameIdx = (unsigned int)readingInt;
+		
+		// tracker list
+		m_listTracker2D.clear();
+		int numTracker = 0;
+		fscanf_s(fp, "listTracker2D:%d,\n{\n", &numTracker);
+		for (int trackerIdx = 0; trackerIdx < numTracker; trackerIdx++)
+		{
+			stTracker2D newTracker;
+			fscanf_s(fp, "\t{\n\t\tid:%d\n", &readingInt); 
+			newTracker.id = (unsigned int)readingInt;
+			fscanf_s(fp, "\t\ttimeStart:%d\n", &readingInt); 
+			newTracker.timeStart = (unsigned int)readingInt;
+			fscanf_s(fp, "\t\ttimeEnd:%d\n", &readingInt); 
+			newTracker.timeEnd = (unsigned int)readingInt;
+			fscanf_s(fp, "\t\ttimeLastUpdate:%d\n", &readingInt); 
+			newTracker.timeLastUpdate = (unsigned int)readingInt;
+			fscanf_s(fp, "\t\tduration:%d\n", &readingInt); 
+			newTracker.duration = (unsigned int)readingInt;
+			fscanf_s(fp, "\t\tnumStatic:%d\n", &readingInt); 
+			newTracker.numStatic = (unsigned int)readingInt;
+			fscanf_s(fp, "\t\tconfidence:%e\n", &readingFloat);
+			newTracker.confidence = (double)readingFloat;
+
+			// box
+			int numBox = 0;
+			fscanf_s(fp, "\t\tboxes:%d,{", &numBox);
+			for (int boxIdx = 0; boxIdx < numBox; boxIdx++)
+			{				
+				float x = 0.0, y = 0.0, w = 0.0, h = 0.0;
+				fscanf_s(fp, "(%f,%f,%f,%f)", &x, &y, &w, &h);
+				PSN_Rect curBox((double)x, (double)y, (double)w, (double)h);
+				newTracker.boxes.push_back(curBox);
+				if (boxIdx < numBox - 1) { fscanf_s(fp, ","); }
+			}
+
+			// featurePoints
+			int numPoint = 0;
+			fscanf_s(fp, "}\n\t\tfeaturePoints:%d,{", &numPoint);
+			for (int pointIdx = 0; pointIdx < numPoint; pointIdx++)
+			{
+				cv::Point2f curPoint;
+				fscanf_s(fp, "(%f,%f)", &curPoint.x, &curPoint.y);
+				newTracker.featurePoints.push_back(curPoint);
+				if (pointIdx < numPoint - 1) { fscanf_s(fp, ","); }
+			}
+
+			// trackedPoints
+			fscanf_s(fp, "}\n\t\ttrackedPoints:%d,{", &numPoint);
+			for (int pointIdx = 0; pointIdx < numPoint; pointIdx++)
+			{
+				cv::Point2f curPoint;
+				fscanf_s(fp, "(%f,%f)", &curPoint.x, &curPoint.y);
+				newTracker.trackedPoints.push_back(curPoint);
+				if (pointIdx < numPoint - 1) { fscanf_s(fp, ","); }
+			}
+
+			// last point
+			float x = 0.0, y = 0.0, z = 0.0;
+			fscanf_s(fp, "}\n\t\tlastPosition:(%f,%f,%f)\n", &x, &y, &z);
+			newTracker.lastPosition = PSN_Point3D((double)x, (double)y, (double)z);
+
+			// height
+			fscanf_s(fp, "\t\theight:%e\n\t}\n", &readingFloat);
+			newTracker.height = (double)readingFloat;
+
+			m_listTracker2D.push_back(newTracker);
+		}
+
+		// active tracker queue
+		int numActiveTracker = 0;
+		fscanf_s(fp, "}\nqueueActiveTracker2D:%d,{", &numActiveTracker);
+		for (int trackerIdx = 0; trackerIdx < numActiveTracker; trackerIdx++)
+		{
+			fscanf_s(fp, "%d", &readingInt);
+
+			// find target tracker
+			for (std::list<stTracker2D>::iterator trackerIter = m_listTracker2D.begin();
+				trackerIter != m_listTracker2D.end();
+				trackerIter++)
+			{
+				if ((*trackerIter).id != (unsigned int)readingInt) { continue; }
+				m_queueActiveTracker2D.push_back(&(*trackerIter));
+				break;
+			}
+			if (trackerIdx < numActiveTracker - 1) { fprintf_s(fp, ","); }
+		}
+
+		fscanf_s(fp, "}\nNewTrackerID:%d\n", &readingInt);
+		m_nNewTrackerID = (unsigned int)readingInt;
+
+		fclose(fp);
+	}
+	catch(DWORD dwError)
+	{
+		printf("[ERROR](PrintTracks) cannot open file! error code %d\n", dwError);
+		return false;
+	}
+
+	return true;
 }
 
 //()()

@@ -97,6 +97,7 @@ struct stDetectedObject
 	unsigned int id;	
 	stDetection detection;
 	bool bMatchedWithTracker;
+	bool bOverlapWithOtherDetection;
 	std::vector<std::vector<cv::Point2f>> vecvecTrackedFeatures; // current -> past order
 	std::vector<PSN_Rect> boxes; // current -> past order
 	cv::Mat patchGray;
@@ -133,13 +134,43 @@ public:
 	CPSNWhere_Tracker2D(void);
 	~CPSNWhere_Tracker2D(void);
 
+	void Initialize(unsigned int nCamID, stCalibrationInfo *stCalibInfo = NULL);
+	void Finalize(void);
+	stTrack2DResult& Run(std::vector<stDetection> curDetectionResult, cv::Mat *curFrame, unsigned int frameIdx);
+
+private:
+	//----------------------------------------------------------------
+	// tracking related
+	//----------------------------------------------------------------
+	std::vector<cv::Point2f> FindInlierFeatures(std::vector<cv::Point2f> *vecInputFeatures, std::vector<cv::Point2f> *vecOutputFeatures, std::vector<unsigned char> *vecPointStatus);
+	static PSN_Rect LocalSearchKLT(PSN_Rect preBox, cv::vector<cv::Point2f> &preFeatures, cv::vector<cv::Point2f> &curFeatures, cv::vector<size_t> &inlierFeatureIndex);
+
+	//double NSSD(cv::Mat *matPatch1, cv::Mat *matPatch2);
+	static double BoxMatchingCost(PSN_Rect &box1, PSN_Rect &box2);
+	static double GetTrackingConfidence(PSN_Rect &box, std::vector<cv::Point2f> &vecTrackedFeatures);
+	PSN_Point2D MotionEstimation(stTracker2D &tracker);
+
+	size_t Track2D_BackwardFeatureTracking(std::vector<stDetection> &curDetectionResult);
+	std::vector<float> Track2D_ForwardTrackingAndGetMatchingScore(void);
+	void Track2D_MatchingAndUpdating(std::vector<float> &matchingCostArray);
+
+	//----------------------------------------------------------------
+	// 3D related
+	//----------------------------------------------------------------
+	double EstimateDetectionHeight(PSN_Point2D bottomCenter, PSN_Point2D topCenter, PSN_Point3D *location3D = NULL);
+
+	//----------------------------------------------------------------
+	// ETC
+	//----------------------------------------------------------------
+	void FilePrintTracklet(void);
+	void SaveSnapshot(const char *strFilepath);
+	bool LoadSnapshot(const char *strFilepath);
+
 	/////////////////////////////////////////////////////////////////////
 	// VARIABLES
 	/////////////////////////////////////////////////////////////////////
-public:
-
-private:
 	bool m_bInit;
+	bool m_bSnapshotLoaded;
 	unsigned int m_nCamID;
 	unsigned int m_nCurrentFrameIdx;
 
@@ -172,41 +203,6 @@ private:
 	std::deque<double> m_queueOpticalFlowTime;
 	std::deque<int> m_queueNumFeatures;
 	std::deque<int> m_queueNumOpticalFlow;
-
-	/////////////////////////////////////////////////////////////////////
-	// METHODS
-	/////////////////////////////////////////////////////////////////////
-public:
-	void Initialize(unsigned int nCamID, stCalibrationInfo *stCalibInfo = NULL);
-	void Finalize(void);
-	stTrack2DResult& Run(std::vector<stDetection> curDetectionResult, cv::Mat *curFrame, unsigned int frameIdx);
-
-private:
-	//----------------------------------------------------------------
-	// tracking related
-	//----------------------------------------------------------------
-	std::vector<cv::Point2f> FindInlierFeatures(std::vector<cv::Point2f> *vecInputFeatures, std::vector<cv::Point2f> *vecOutputFeatures, std::vector<unsigned char> *vecPointStatus);
-	static PSN_Rect LocalSearchKLT(PSN_Rect preBox, cv::vector<cv::Point2f> &preFeatures, cv::vector<cv::Point2f> &curFeatures, cv::vector<size_t> &inlierFeatureIndex);
-
-	//double NSSD(cv::Mat *matPatch1, cv::Mat *matPatch2);
-	static double BoxMatchingCost(PSN_Rect &box1, PSN_Rect &box2);
-	static double GetTrackingConfidence(PSN_Rect &box, std::vector<cv::Point2f> &vecTrackedFeatures);
-	PSN_Point2D MotionEstimation(stTracker2D &tracker);
-
-	size_t Track2D_BackwardFeatureTracking(std::vector<stDetection> &curDetectionResult);
-	std::vector<float> Track2D_ForwardTrackingAndGetMatchingScore(void);
-	void Track2D_MatchingAndUpdating(std::vector<float> &matchingCostArray);
-
-	//----------------------------------------------------------------
-	// 3D related
-	//----------------------------------------------------------------
-	double EstimateDetectionHeight(PSN_Point2D bottomCenter, PSN_Point2D topCenter, PSN_Point3D *location3D = NULL);
-
-	//----------------------------------------------------------------
-	// ETC
-	//----------------------------------------------------------------
-	void FilePrintTracklet(void);
-	
 
 #ifdef PSN_2D_DEBUG_DISPLAY_
 	//------------

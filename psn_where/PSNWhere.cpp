@@ -169,7 +169,8 @@ bool CPSNWhere::Initialize(std::string datasetPath)
 
 #ifdef SHOW_TOPVIEW
 	char strTopViewPath[256];
-	sprintf_s(strTopViewPath, "%s/topView/topview_gray.png", datasetPath.c_str());
+	//sprintf_s(strTopViewPath, "%s/topView/topview_gray.png", datasetPath.c_str());
+	sprintf_s(strTopViewPath, "%s/topView/topview_gray_zoom.png", datasetPath.c_str());
 	this->m_matTopViewBase = cv::imread(strTopViewPath, cv::IMREAD_COLOR);
 	cv::namedWindow("topView", cv::WINDOW_AUTOSIZE);
 #endif
@@ -221,8 +222,8 @@ void CPSNWhere::Finalize()
 	this->m_vecColors.clear();
 
 #ifdef SHOW_TOPVIEW
-	cv::destroyWindow("topView");
-	this->m_matTopViewBase.release();
+	//cv::destroyWindow("topView");
+	//this->m_matTopViewBase.release();
 #endif
 
 #ifdef DO_RECORD
@@ -377,6 +378,38 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 	cv::putText(displayMat, strFrameInfo, cv::Point(6, 42), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 255, 255));
 	// show image
 	cv::imshow("result", displayMat);
+
+#ifdef SHOW_TOPVIEW
+	//---------------------------------------------------
+	// DISPLAY ON TOPVIEW
+	//---------------------------------------------------
+	cv::Mat topViewResult = this->m_matTopViewBase.clone();
+
+	// writing frame info
+	sprintf_s(strFrameInfo, "Frame: %04d", frameIdx);
+	cv::rectangle(topViewResult, cv::Rect(5, 2, 145, 22), cv::Scalar(0, 0, 0), CV_FILLED);
+	cv::putText(topViewResult, strFrameInfo, cv::Point(6, 20), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255));
+
+	// draw 3D track
+	for(unsigned int trajectoryIdx = 0; trajectoryIdx < result3D.object3DInfo.size(); trajectoryIdx++)
+	{
+		stObject3DInfo *curTrajectory = &result3D.object3DInfo[trajectoryIdx];
+
+		// trajectory
+		std::vector<PSN_Point2D> topViewRecentPoint2Ds(curTrajectory->recentPoints.size());
+		for (int pointIdx = 0; pointIdx < curTrajectory->recentPoints.size(); pointIdx++)
+		{
+			topViewRecentPoint2Ds[pointIdx] = psn::GetLocationOnTopView_PETS2009(curTrajectory->recentPoints[pointIdx], true);
+		}
+		psn::DrawLine(topViewResult, topViewRecentPoint2Ds, curTrajectory->id, this->m_vecColors, 1);
+
+		// draw ID and triangle
+		psn::DrawTriangleWithID(topViewResult, psn::GetLocationOnTopView_PETS2009(curTrajectory->recentPoints.front(), true), curTrajectory->id, this->m_vecColors);
+	}
+	cv::imshow("topView", topViewResult);
+
+#endif
+
 	cv::waitKey(5);	// for showing, no delay, no display
 
 	//---------------------------------------------------
@@ -384,6 +417,9 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 	//---------------------------------------------------
 #ifdef DO_RECORD	
 	IplImage *currentFrame = new IplImage(displayMat);
+#ifdef SHOW_TOPVIEW
+	IplImage *currentTopFrame = new IplImage(topViewResult);
+#endif
 	if (!this->m_bOutputVideoInit) {
 		// logging related
 		time_t curTimer = time(NULL);
@@ -402,10 +438,19 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 
 		sprintf_s(resultOutputFileName, "%s.avi", resultFileDate);
 		this->m_vwOutputVideo = cvCreateVideoWriter(resultOutputFileName, CV_FOURCC('M','J','P','G'), 15, cvGetSize(currentFrame), 1);
+#ifdef SHOW_TOPVIEW
+		sprintf_s(resultOutputFileName, "%s_topView.avi", resultFileDate);
+		this->m_vwOutputVideo_topView = cvCreateVideoWriter(resultOutputFileName, CV_FOURCC('M','J','P','G'), 15, cvGetSize(currentTopFrame), 1);
+#endif
 		this->m_bOutputVideoInit = true;
 	}	
 	cvWriteFrame(this->m_vwOutputVideo, currentFrame);
 	delete currentFrame;
+#ifdef SHOW_TOPVIEW
+	cvWriteFrame(this->m_vwOutputVideo_topView, currentTopFrame);
+	delete currentTopFrame;
+	topViewResult.release();
+#endif
 #endif
 
 	displayMat.release();

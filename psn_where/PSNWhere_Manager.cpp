@@ -591,18 +591,18 @@ void psn::DrawTriangleWithID(cv::Mat &imageFrame, PSN_Point2D &point, unsigned i
 	cv::putText(imageFrame, std::to_string(nID), cv::Point((int)point.x, (int)point.y-2), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 255));
 }
 
-void psn::DrawLine(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, unsigned int nID, std::vector<cv::Scalar> &vecColors)
+void psn::DrawLine(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, unsigned int nID, std::vector<cv::Scalar> &vecColors, int lineThickness)
 {
 	// get color
 	cv::Scalar curColor = psn::getColorByID(vecColors, nID);
 
 	for(size_t pointIdx = 0; pointIdx < pointArray.size() - 1; pointIdx++)
 	{
-		cv::line(imageFrame, pointArray[pointIdx].cv(), pointArray[pointIdx+1].cv(), curColor, 2);
+		cv::line(imageFrame, pointArray[pointIdx].cv(), pointArray[pointIdx+1].cv(), curColor, lineThickness);
 	}
 }
 
-PSN_Point2D psn::GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint)
+PSN_Point2D psn::GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint, bool bZoom)
 {
 	// more detail, refer MATLAB code, LocationOnTopView
 	cv::Mat AffineMat(2, 3, CV_64FC1);
@@ -619,6 +619,17 @@ PSN_Point2D psn::GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint)
 	homogeniousPoint.at<double>(2, 0) = 1.0;
 
 	cv::Mat resultVec = AffineMat * homogeniousPoint;
+
+	if (bZoom)
+	{
+		// zoom
+		resultVec.at<double>(0, 0) = 1.5 * (resultVec.at<double>(0, 0) - 150.0);
+		resultVec.at<double>(1, 0) = 1.5 * (resultVec.at<double>(1, 0) - 150.0);
+
+		//// zoom2
+		//resultVec.at<double>(0, 0) = 1.5 * (1.5 * (resultVec.at<double>(0, 0) - 150.0) - 100.0);
+		//resultVec.at<double>(1, 0) = 1.5 * (1.5 * (resultVec.at<double>(1, 0) - 150.0) - 100.0);
+	}
 
 	return PSN_Point2D(resultVec.at<double>(0, 0), resultVec.at<double>(1, 0));
 }
@@ -650,6 +661,31 @@ void psn::printLog(const char *filename, const char *strLog)
 		printf("[ERROR] cannot open logging file! error code %d\n", dwError);
 		return;
 	}
+}
+
+/************************************************************************
+ Method Name: MakeTrackIDList
+ Description: 
+	- 
+ Input Arguments:
+	- 
+	- 
+ Return Values:
+	- none
+************************************************************************/
+std::string psn::MakeTrackIDList(PSN_TrackSet *tracks)
+{
+	std::string strResult("{");
+	for (PSN_TrackSet::iterator trackIter = tracks->begin();
+		trackIter != tracks->end();
+		trackIter++)
+	{
+		strResult = strResult + std::to_string((*trackIter)->id);
+		if (trackIter < tracks->end() - 1) { strResult += ","; }
+	}
+	strResult += "}";
+
+	return strResult;
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -884,9 +920,8 @@ TrackTree::TrackTree()
 	: id(0)
 	, timeGeneration(0)
 	, bValid(true)
-	, bSelected(true)
 	, numMeasurements(0)
-	, maxGTProb(0.0)
+//	, maxGTProb(0.0)
 {
 }
 
@@ -1159,13 +1194,13 @@ Track3D* TrackTree::FindMaxGTProbBranch(Track3D* branchSeedTrack, size_t timeInd
  Return Values:
 	- Track3D*: 
 ************************************************************************/
-Track3D* TrackTree::FindOldestTrackInBranch(Track3D *trackInBranch, unsigned int nMostPreviousFrameIdx)
+Track3D* TrackTree::FindOldestTrackInBranch(Track3D *trackInBranch, int nMostPreviousFrameIdx)
 {
 	Track3D *oldestTrack = trackInBranch;
 	while (true) 
 	{
 		if (NULL == oldestTrack->parentTrack) { break; }
-		if (nMostPreviousFrameIdx >= oldestTrack->parentTrack->timeGeneration) { break; }
+		if (nMostPreviousFrameIdx >= (int)oldestTrack->parentTrack->timeGeneration) { break; }
 		oldestTrack = oldestTrack->parentTrack;
 	}
 	return oldestTrack;

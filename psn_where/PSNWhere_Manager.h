@@ -12,8 +12,10 @@
 
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
-//#define DO_RECORD
-//#define SHOW_TOPVIEW
+//#define SAVE_SNAPSHOT_
+//#define LOAD_SNAPSHOT_
+#define DO_RECORD
+#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -23,6 +25,7 @@
 #define DETECTION_PATH ("/detectionResult/")
 #define TRACKLET_PATH ("/trackletInput/")
 #define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/150124_[C++]_PETS_Result_ICIP/")
+#define SNAPSHOT_PATH ("data/")
 
 /////////////////////////////////////////////////////////////////////////
 // EXPERIMENTAL PRESETS
@@ -416,17 +419,13 @@ public:
 	unsigned int id;
 	unsigned int timeGeneration;
 	bool bValid;
-	bool bSelected;
 	std::deque<Track3D*> tracks; // seed at the first
 
 	unsigned int numMeasurements;
 	std::deque<stTracklet2DInfo> tracklet2Ds[NUM_CAM];
 
-	// clustering related
-	unsigned int clusterNumber;
-
 	// pruning related
-	double maxGTProb;
+	//double maxGTProb;
 
 public:
 	TrackTree();
@@ -444,7 +443,7 @@ public:
 	static double MaxGTProbOfBrach(Track3D *rootOfBranch);
 	static void InvalidateBranchWithMinGTProb(Track3D *rootOfBranch, double minGTProb);
 	static Track3D* FindMaxGTProbBranch(Track3D* branchSeedTrack, size_t timeIndex);
-	static Track3D* FindOldestTrackInBranch(Track3D *trackInBranch, unsigned int nMostPreviousFrameIdx);
+	static Track3D* FindOldestTrackInBranch(Track3D *trackInBranch, int nMostPreviousFrameIdx);
 	static bool CheckConnectivityOfTrees(TrackTree *tree1, TrackTree *tree2);
 	
 
@@ -541,12 +540,14 @@ void DrawBoxWithID(cv::Mat &imageFrame, PSN_Rect curRect, unsigned int nID, std:
 void DrawBoxWithLargeID(cv::Mat &imageFrame, PSN_Rect curRect, unsigned int nID, std::vector<cv::Scalar> &vecColors, bool bDashed = false);
 void Draw3DBoxWithID(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, unsigned int nID, std::vector<cv::Scalar> &vecColors);
 void DrawTriangleWithID(cv::Mat &imageFrame, PSN_Point2D &point, unsigned int nID, std::vector<cv::Scalar> &vecColors);
-void DrawLine(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, unsigned int nID, std::vector<cv::Scalar> &vecColors);
+void DrawLine(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, unsigned int nID, std::vector<cv::Scalar> &vecColors, int lineThickness = 2);
 
 // database related coordinate transformation
-PSN_Point2D GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint);
+PSN_Point2D GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint, bool bZoom = false);
 
+// file interface related
 void printLog(const char *filename, const char *strLog);
+std::string MakeTrackIDList(PSN_TrackSet *tracks);
 }
 
 class CPSNWhere_Manager
@@ -578,3 +579,5 @@ public:
 	static void printLog(const char *filename, const char *strLog);
 	static double Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoint3D);
 };
+
+

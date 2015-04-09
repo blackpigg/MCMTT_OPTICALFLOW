@@ -83,7 +83,7 @@
 
 #include "PSNWhere_Manager.h"
 #include "GraphSolver.h"
-//#include "Evaluator.h"
+#include "Evaluator.h"
 
 /////////////////////////////////////////////////////////////////////////
 // DEFINES
@@ -184,6 +184,8 @@ private:
 	void Hypothesis_Formation(PSN_HypothesisSet &outBranchHypotheses, PSN_HypothesisSet *existingHypotheses);
 	void Hypothesis_BranchHypotheses(PSN_HypothesisSet &outBranchHypotheses, PSN_TrackSet *tracks, PSN_TrackSet *initialSolutionTracks = NULL);
 	void Hypothesis_PruningNScanBack(unsigned int nCurrentFrameIdx, unsigned int N, PSN_TrackSet *tracksInWindow, std::deque<stGlobalHypothesis> *ptQueueHypothesis = NULL);
+	void Hypothesis_PruningTrackWithGTP(unsigned int nCurrentFrameIdx, unsigned int nNumMaximumTrack, PSN_TrackSet *tracksInWindow);
+	void Hypothesis_RefreshHypotheses(PSN_HypothesisSet &inoutUpdatedHypotheses);
 
 	//----------------------------------------------------------------
 	// interface
@@ -191,20 +193,23 @@ private:
 	stTrack3DResult ResultWithTracks(PSN_TrackSet *trackSet, unsigned int nFrameIdx, double fProcessingTime = 0);
 	void PrintTracks(std::deque<Track3D*> &queueTracks, char *strFilePathAndName, bool bAppend);
 	void FilePrintCurrentTrackTrees(const char *strFilePath);
-	void FilePrintDefferedResult(void);
-	void FilePrintInstantResult(void);
-	void SaveDefferedResult(unsigned int deferredLength);
-	void SaveInstantResult(void);
+	void FilePrintResult(std::deque<stTrack3DResult> *queueResults);
+//	void FilePrintInstantResult(void);
+//	void SaveDefferedResult(unsigned int deferredLength);
+//	void SaveInstantResult(void);
 
 	//----------------------------------------------------------------
 	// ETC
 	//----------------------------------------------------------------
 	static std::deque<std::vector<unsigned int>> IndexCombination(std::deque<std::deque<unsigned int>> &inputIndexDoubleArray, size_t curLevel, std::deque<std::vector<unsigned int>> curCombination);
+	void SaveSnapshot(const char *strFilepath);
+	bool LoadSnapshot(const char *strFilepath);
 
 	//////////////////////////////////////////////////////////////////////////
 	// VARIABLES
 	//////////////////////////////////////////////////////////////////////////
 	bool bInit_;
+	bool bSnapshotReaded_;
 	Etiseo::CameraModel cCamModel_[NUM_CAM];
 	cv::Mat matProjectionSensitivity_[NUM_CAM];
 	cv::Mat matDistanceFromBoundary_[NUM_CAM];
@@ -241,7 +246,6 @@ private:
 	bool bInitiationPenaltyFree_;
 	unsigned int nNewTrackID_;
 	unsigned int nNewTreeID_;
-	unsigned int nNewHypothesisID;
 	std::list<TrackTree> listTrackTree_;
 	std::list<Track3D> listTrack3D_;
 
@@ -255,7 +259,7 @@ private:
 	std::deque<TrackTree*> queuePtUnconfirmedTrees_;
 	std::list<Track3D> listResultTrack3D_;
 
-	// for debug
+	// for result saving
 	std::deque<stTrack3DResult> queueTrackingResult_;
 	std::deque<stTrack3DResult> queueDeferredTrackingResult_;
 	
@@ -269,9 +273,9 @@ private:
 	unsigned int nNewVisualizationID_;
 	std::deque<PAIR_UINT> queuePairTreeIDToVisualizationID_;	
 
-	//// evaluation
-	//CEvaluator m_cEvaluator;
-	//CEvaluator m_cEvaluator_Instance;
+	// evaluation
+	CEvaluator m_cEvaluator;
+	CEvaluator m_cEvaluator_Instance;
 };
 
 //()()
