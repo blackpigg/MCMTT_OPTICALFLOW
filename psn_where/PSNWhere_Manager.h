@@ -13,8 +13,8 @@
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
 //#define SAVE_SNAPSHOT_
-//#define LOAD_SNAPSHOT_
-#define DO_RECORD
+#define LOAD_SNAPSHOT_
+//#define DO_RECORD
 #define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////

@@ -422,8 +422,8 @@ void CPSNWhere_Associator3D::Finalize(void)
 #endif
 	// print results
 	//this->SaveDefferedResult(0);
-	this->FilePrintResult(&queueTrackingResult_);
-	this->FilePrintResult(&queueDeferredTrackingResult_);
+	this->FilePrintResult(strInstantResultFileName_, &queueTrackingResult_);
+	this->FilePrintResult(strDefferedResultFileName_, &queueDeferredTrackingResult_);
 
 	/////////////////////////////////////////////////////////////////////////////
 	// EVALUATION
@@ -3132,24 +3132,24 @@ stTrack3DResult CPSNWhere_Associator3D::ResultWithTracks(PSN_TrackSet *trackSet,
 		stObject3DInfo newObject;
 
 		// DEBUG
-//		newObject.id = curTrack->id;
+		newObject.id = curTrack->id;
 
-		// ID for visualization
-		bool bIDNotFound = true;
-		for (size_t pairIdx = 0; pairIdx < queuePairTreeIDToVisualizationID_.size(); pairIdx++)
-		{
-			if (queuePairTreeIDToVisualizationID_[pairIdx].first == curTrack->tree->id)
-			{
-				newObject.id = queuePairTreeIDToVisualizationID_[pairIdx].second;
-				bIDNotFound = false;
-				break;
-			}
-		}
-		if (bIDNotFound)
-		{
-			newObject.id = nNewVisualizationID_++;			
-			queuePairTreeIDToVisualizationID_.push_back(std::make_pair(curTrack->tree->id, newObject.id));
-		}
+		//// ID for visualization
+		//bool bIDNotFound = true;
+		//for (size_t pairIdx = 0; pairIdx < queuePairTreeIDToVisualizationID_.size(); pairIdx++)
+		//{
+		//	if (queuePairTreeIDToVisualizationID_[pairIdx].first == curTrack->tree->id)
+		//	{
+		//		newObject.id = queuePairTreeIDToVisualizationID_[pairIdx].second;
+		//		bIDNotFound = false;
+		//		break;
+		//	}
+		//}
+		//if (bIDNotFound)
+		//{
+		//	newObject.id = nNewVisualizationID_++;			
+		//	queuePairTreeIDToVisualizationID_.push_back(std::make_pair(curTrack->tree->id, newObject.id));
+		//}
 		
 		unsigned numPoint = 0;
 		int deferredLength = curTrack->timeEnd - nFrameIdx; 
@@ -3375,12 +3375,12 @@ void CPSNWhere_Associator3D::FilePrintCurrentTrackTrees(const char *strFilePath)
  Return Values:
 	- none
 ************************************************************************/
-void CPSNWhere_Associator3D::FilePrintResult(std::deque<stTrack3DResult> *queueResults)
+void CPSNWhere_Associator3D::FilePrintResult(const char *strFilepath, std::deque<stTrack3DResult> *queueResults)
 {
 	FILE *fp;
 	try
 	{		
-		fopen_s(&fp, strDefferedResultFileName_, "w");
+		fopen_s(&fp, strFilepath, "w");
 
 		for(std::deque<stTrack3DResult>::iterator resultIter = queueResults->begin();
 			resultIter != queueResults->end();
@@ -3714,7 +3714,7 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 				pointIter != curTrack->reconstructions.end();
 				pointIter++)
 			{
-				fprintf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%f,costLink:%f,", (int)(*pointIter).bIsMeasurement, 
+				fprintf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", (int)(*pointIter).bIsMeasurement, 
 					(*pointIter).point.x, (*pointIter).point.y, (*pointIter).point.z, 
 					(*pointIter).velocity.x, (*pointIter).velocity.y, (*pointIter).velocity.z,
 					(*pointIter).costReconstruction, (*pointIter).costLink);
@@ -3947,7 +3947,7 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 				pointIter != curTrack->reconstructions.end();
 				pointIter++)
 			{
-				fprintf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%f,costLink:%f,", (int)(*pointIter).bIsMeasurement, 
+				fprintf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", (int)(*pointIter).bIsMeasurement, 
 					(*pointIter).point.x, (*pointIter).point.y, (*pointIter).point.z, 
 					(*pointIter).velocity.x, (*pointIter).velocity.y, (*pointIter).velocity.z,
 					(*pointIter).costReconstruction, (*pointIter).costLink);
@@ -4469,7 +4469,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			{
 				stReconstruction newReconstruction;
 				float x, y, z, vx, vy, vz, costReconstruction, costLink;
-				fscanf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%f,costLink:%f,", 
+				fscanf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", 
 					&readingInt, &x, &y, &z, &vx, &vy, &vz, &costReconstruction, &costLink);
 				newReconstruction.bIsMeasurement = 0 < readingInt ? true : false;
 				newReconstruction.point = PSN_Point3D((double)x, (double)y, (double)z);
@@ -4912,7 +4912,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			{
 				stReconstruction newReconstruction;
 				float x, y, z, vx, vy, vz, costReconstruction, costLink;
-				fscanf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%f,costLink:%f,", 
+				fscanf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", 
 					&readingInt, &x, &y, &z, &vx, &vy, &vz, &costReconstruction, &costLink);
 				newReconstruction.bIsMeasurement = 0 < readingInt ? true : false;
 				newReconstruction.point = PSN_Point3D((double)x, (double)y, (double)z);

@@ -193,7 +193,7 @@ private:
 	stTrack3DResult ResultWithTracks(PSN_TrackSet *trackSet, unsigned int nFrameIdx, double fProcessingTime = 0);
 	void PrintTracks(std::deque<Track3D*> &queueTracks, char *strFilePathAndName, bool bAppend);
 	void FilePrintCurrentTrackTrees(const char *strFilePath);
-	void FilePrintResult(std::deque<stTrack3DResult> *queueResults);
+	void FilePrintResult(const char *strFilepath, std::deque<stTrack3DResult> *queueResults);
 //	void FilePrintInstantResult(void);
 //	void SaveDefferedResult(unsigned int deferredLength);
 //	void SaveInstantResult(void);
