@@ -292,6 +292,12 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 	this->m_nCurrentFrameIdx = frameIdx;
 	this->m_stTrack2DResult.frameIdx = frameIdx;
 
+	// DEBUG
+	if (2 == m_nCamID)
+	{
+		int a = 0;
+	}
+
 	/////////////////////////////////////////////////////////////////////////////
 	// BACKWARD FEATURE TRACKING
 	/////////////////////////////////////////////////////////////////////////////	
@@ -1196,7 +1202,7 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 			double backwardConfidence = GetTrackingConfidence(curTracker->boxes[trackerBoxIdx].scale(PSN_2D_OPTICALFLOW_SCALE), (*detectionIter).vecvecTrackedFeatures.back());
 			
 			if(PSN_2D_MIN_CONFIDENCE > forwardConfidence || PSN_2D_MIN_CONFIDENCE > backwardConfidence) { continue;	}
-			//boxCost = - std::log(forwardConfidence) - std::log(backwardConfidence);
+			boxCost = - std::log(forwardConfidence) - std::log(backwardConfidence);
 			//printf("ID: %d, length: %d, back: %lf, forward: %lf\n", curTracker->id, lengthForCompare, backwardConfidence, forwardConfidence);
 
 			//double appearanceCost = 0.0;

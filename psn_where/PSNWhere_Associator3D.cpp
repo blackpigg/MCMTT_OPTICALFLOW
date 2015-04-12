@@ -43,7 +43,7 @@ NOTES:
 #define MAX_BODY_WIDHT (MAX_TRACKLET_DISTANCE)
 #define BODY_WIDTH_MEAN (700)
 #define BODY_WIDTH_STD (100)
-#define MIN_TARGET_PROXIMITY (70)
+#define MIN_TARGET_PROXIMITY (200)
 
 #define DEFAULT_HEIGHT (1700.00)
 #define WIDTH_DIFF_RATIO_THRESHOLD (0.5)
@@ -87,6 +87,7 @@ NOTES:
 #define IMG_PATCH_WIDTH (20)
 
 // ETC
+#define DISPLAY_ID_MODE (1) // 0: raw track id, 1: id for visualization
 //const unsigned int arrayCamCombination[8] = {0, 2, 2, 1, 1, 3, 3, 0};
 
 
@@ -3131,25 +3132,27 @@ stTrack3DResult CPSNWhere_Associator3D::ResultWithTracks(PSN_TrackSet *trackSet,
 		Track3D *curTrack = *trackIter;
 		stObject3DInfo newObject;
 
-		// DEBUG
+		// ID
 		newObject.id = curTrack->id;
-
-		//// ID for visualization
-		//bool bIDNotFound = true;
-		//for (size_t pairIdx = 0; pairIdx < queuePairTreeIDToVisualizationID_.size(); pairIdx++)
-		//{
-		//	if (queuePairTreeIDToVisualizationID_[pairIdx].first == curTrack->tree->id)
-		//	{
-		//		newObject.id = queuePairTreeIDToVisualizationID_[pairIdx].second;
-		//		bIDNotFound = false;
-		//		break;
-		//	}
-		//}
-		//if (bIDNotFound)
-		//{
-		//	newObject.id = nNewVisualizationID_++;			
-		//	queuePairTreeIDToVisualizationID_.push_back(std::make_pair(curTrack->tree->id, newObject.id));
-		//}
+		if (1 == DISPLAY_ID_MODE)
+		{
+			// ID for visualization
+			bool bIDNotFound = true;
+			for (size_t pairIdx = 0; pairIdx < queuePairTreeIDToVisualizationID_.size(); pairIdx++)
+			{
+				if (queuePairTreeIDToVisualizationID_[pairIdx].first == curTrack->tree->id)
+				{
+					newObject.id = queuePairTreeIDToVisualizationID_[pairIdx].second;
+					bIDNotFound = false;
+					break;
+				}
+			}
+			if (bIDNotFound)
+			{
+				newObject.id = nNewVisualizationID_++;			
+				queuePairTreeIDToVisualizationID_.push_back(std::make_pair(curTrack->tree->id, newObject.id));
+			}
+		}
 		
 		unsigned numPoint = 0;
 		int deferredLength = curTrack->timeEnd - nFrameIdx; 
