@@ -171,11 +171,12 @@ private:
 	double ComputeEnterProbability(std::vector<PSN_Point2D_CamIdx> &vecPointInfos);
 	double ComputeExitProbability(std::vector<PSN_Point2D_CamIdx> &vecPointInfos);
 	static double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, unsigned int timeGap);
+	double ComputeRGBCost(const cv::Mat *feature1, const cv::Mat *feature2, unsigned int timeGap);
 
 	// miscellaneous
 	static bool CheckIncompatibility(Track3D *track1, Track3D *track2);
 	static bool CheckIncompatibility(CTrackletCombination &combi1, CTrackletCombination &combi2);
-	
+	cv::Mat GetRGBFeature(const cv::Mat *patch, int numBins);
 	
 	//----------------------------------------------------------------
 	// Hypothesis related
@@ -192,8 +193,9 @@ private:
 	//----------------------------------------------------------------
 	stTrack3DResult ResultWithTracks(PSN_TrackSet *trackSet, unsigned int nFrameIdx, double fProcessingTime = 0);
 	void PrintTracks(std::deque<Track3D*> &queueTracks, char *strFilePathAndName, bool bAppend);
-	void FilePrintCurrentTrackTrees(const char *strFilePath);
-	void FilePrintResult(const char *strFilepath, std::deque<stTrack3DResult> *queueResults);
+	void PrintHypotheses(PSN_HypothesisSet &queueHypotheses, char *strFilePathAndName, unsigned int frameIdx);
+	void PrintCurrentTrackTrees(const char *strFilePath);
+	void PrintResult(const char *strFilepath, std::deque<stTrack3DResult> *queueResults);
 //	void FilePrintInstantResult(void);
 //	void SaveDefferedResult(unsigned int deferredLength);
 //	void SaveInstantResult(void);
@@ -257,7 +259,7 @@ private:
 
 	std::deque<TrackTree*> queuePtActiveTrees_;
 	std::deque<TrackTree*> queuePtUnconfirmedTrees_;
-	std::list<Track3D> listResultTrack3D_;
+	//std::list<Track3D> listResultTrack3D_;
 
 	// for result saving
 	std::deque<stTrack3DResult> queueTrackingResult_;

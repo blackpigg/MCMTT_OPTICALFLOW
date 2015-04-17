@@ -402,6 +402,23 @@ double psn::erfc(double x)
 	}
 }
 
+cv::Mat psn::histogram(cv::Mat singleChannelImage, int numBin)
+{
+	assert(1 == singleChannelImage.channels() && numBin > 0);
+	cv::Mat vecHistogram = cv::Mat::zeros(numBin, 1, CV_64FC1);
+	double binSize = 256.0 / numBin;
+	
+	uchar *pData = singleChannelImage.data;
+	int curHistogramBinIdx = 0;
+	for (int idx = 0; idx < singleChannelImage.rows * singleChannelImage.cols; idx++, pData++)
+	{
+		curHistogramBinIdx = (int)std::floor((double)(*pData) / binSize);
+		vecHistogram.at<double>(curHistogramBinIdx, 0)++;
+	}
+
+	return vecHistogram;
+}
+
 std::vector<cv::Scalar> psn::GenerateColors(unsigned int numColor)
 {
 	// refer: http://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
@@ -492,7 +509,8 @@ void psn::DrawBoxWithID(cv::Mat &imageFrame, PSN_Rect curRect, unsigned int nID,
 	cv::rectangle(imageFrame, curRect.cv(), curColor, 1);
 	cv::rectangle(imageFrame, cv::Rect((int)curRect.x, (int)curRect.y - 10, 7 * labelLength, 14), curColor, CV_FILLED);
 	//cv::putText(imageFrame, std::to_string(nID), cv::Point((int)curRect.x, (int)curRect.y-1), cv::FONT_HERSHEY_TRIPLEX, 0.5, psn::getColorByID(vecColors, nID));
-	cv::putText(imageFrame, std::to_string(nID), cv::Point((int)curRect.x, (int)curRect.y-1), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 255));
+	//cv::putText(imageFrame, std::to_string(nID), cv::Point((int)curRect.x, (int)curRect.y-1), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 255));
+	cv::putText(imageFrame, std::to_string(nID), cv::Point((int)curRect.x, (int)curRect.y-1), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 0, 0));
 }
 
 void psn::DrawBoxWithLargeID(cv::Mat &imageFrame, PSN_Rect curRect, unsigned int nID, std::vector<cv::Scalar> &vecColors, bool bDashed)
@@ -519,7 +537,7 @@ void psn::DrawBoxWithLargeID(cv::Mat &imageFrame, PSN_Rect curRect, unsigned int
 	}
 	//cv::rectangle(imageFrame, cv::Rect((int)curRect.x, (int)curRect.y - 10, 7 * labelLength, 14), curColor, CV_FILLED);
 	//cv::putText(imageFrame, std::to_string(nID), cv::Point((int)curRect.x, (int)curRect.y-1), cv::FONT_HERSHEY_TRIPLEX, 0.5, psn::getColorByID(vecColors, nID));
-	cv::putText(imageFrame, std::to_string(nID), cv::Point((int)curRect.x, (int)curRect.y+40), cv::FONT_HERSHEY_SIMPLEX, 1.0, curColor);
+	cv::putText(imageFrame, std::to_string(nID), cv::Point((int)curRect.x, (int)curRect.y+40), cv::FONT_HERSHEY_SIMPLEX, 0.5, curColor);
 }
 
 void psn::Draw3DBoxWithID(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, unsigned int nID, std::vector<cv::Scalar> &vecColors)
@@ -825,6 +843,10 @@ void Track3D::Initialize(unsigned int id, Track3D *parentTrack, unsigned int tim
 	this->duration = this->timeEnd - this->timeStart + 1;
 	this->costEnter = parentTrack->costEnter;
 	this->loglikelihood = parentTrack->loglikelihood;
+	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+	{
+		this->timeTrackletEnded[camIdx] = 0;
+	}
 }
 
 void Track3D::RemoveFromTree()

@@ -292,12 +292,6 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 	this->m_nCurrentFrameIdx = frameIdx;
 	this->m_stTrack2DResult.frameIdx = frameIdx;
 
-	// DEBUG
-	if (2 == m_nCamID)
-	{
-		int a = 0;
-	}
-
 	/////////////////////////////////////////////////////////////////////////////
 	// BACKWARD FEATURE TRACKING
 	/////////////////////////////////////////////////////////////////////////////	
@@ -638,14 +632,16 @@ double CPSNWhere_Tracker2D::BoxMatchingCost(PSN_Rect &box1, PSN_Rect &box2)
 	double nominator = (box1.center() - box2.center()).norm_L2();
 	double denominator = (box1.w + box2.w)/2.0;
 	double boxDistance = (nominator * nominator) / (denominator * denominator);
-	double probability = std::exp(-boxDistance);
 
-	double cost = -std::numeric_limits<double>::infinity();
-	if(1.0 > probability)
-	{
-		cost = boxDistance + std::log(1.0 - probability); 
-	}
-	return cost;
+	return boxDistance;
+
+	//double probability = std::exp(-boxDistance);
+	//double cost = -std::numeric_limits<double>::infinity();
+	//if(1.0 > probability)
+	//{
+	//	cost = boxDistance + std::log(1.0 - probability); 
+	//}
+	//return cost;
 }
 
 
@@ -1193,7 +1189,7 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 					boxCost = std::numeric_limits<double>::infinity();
 					break;
 				}
-				//boxCost += BoxMatchingCost(curTracker->boxes[trackerBoxIdx], (*detectionIter).boxes[boxIdx]);
+				boxCost += BoxMatchingCost(curTracker->boxes[trackerBoxIdx], (*detectionIter).boxes[boxIdx]);
 			}
 			if (std::numeric_limits<double>::infinity() == boxCost)	{ continue;	}
 

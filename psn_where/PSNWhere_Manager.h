@@ -12,9 +12,10 @@
 
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
+//#define LOAD_SNAPSHOT_
+
 //#define SAVE_SNAPSHOT_
-#define LOAD_SNAPSHOT_
-//#define DO_RECORD
+#define DO_RECORD
 #define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
@@ -308,6 +309,10 @@ struct stTracklet2D
 
 	// matching related
 	std::vector<bool> bAssociableNewMeasurement[NUM_CAM];
+
+	// appearance 
+	cv::Mat RGBFeatureHead;
+	cv::Mat RGBFeatureTail;
 };
 
 struct stTracklet2DSet
@@ -391,6 +396,7 @@ public:
 	double costLink;
 	double costEnter;
 	double costExit;
+	double costRGB;
 
 	// loglikelihood
 	double loglikelihood;
@@ -403,6 +409,10 @@ public:
 
 	// HO-HMT
 	bool bNewTrack;	
+
+	// appearance
+	cv::Mat lastRGBFeature[NUM_CAM];
+	unsigned int timeTrackletEnded[NUM_CAM];
 };
 
 typedef std::deque<Track3D*> PSN_TrackSet;
@@ -531,6 +541,7 @@ void appendCol(cv::Mat &dstMat, cv::Mat &col);
 void nchoosek(int n, int k, std::deque<std::vector<unsigned int>> &outputCombinations);
 double erf(double x);
 double erfc(double x);
+cv::Mat histogram(cv::Mat singleChannelImage, int numBin);
 
 // display related
 std::vector<cv::Scalar> GenerateColors(unsigned int numColor);
