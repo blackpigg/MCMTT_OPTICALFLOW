@@ -15,8 +15,8 @@
 //#define LOAD_SNAPSHOT_
 
 #define SAVE_SNAPSHOT_
-#define DO_RECORD
-#define SHOW_TOPVIEW
+//#define DO_RECORD
+//#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH

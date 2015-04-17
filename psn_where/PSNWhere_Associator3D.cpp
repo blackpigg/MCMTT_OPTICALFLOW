@@ -1758,25 +1758,21 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		/* do in the loop */)
 	{		
 		// delete invalid instance
-		if (!trackIter->bValid)
+		if (trackIter->bValid)
 		{	
-			// delete the instance only when the tree is invalidated because of preserving the data structure
-			if (!trackIter->tree->bValid)
-			{
-				trackIter = listTrack3D_.erase(trackIter);
-			}
-			else
-			{
-				trackIter++;
-			}
+			// clear new flag
+			trackIter->bNewTrack = false;
+			trackIter++;
 			continue;
+		}		
+		
+		// delete the instance only when the tree is invalidated because of preserving the data structure
+		if (trackIter->tree->bValid)
+		{
+			trackIter++;
+			continue;				
 		}
-
-		// clear new flag
-		trackIter->bNewTrack = false;
-		// update the list of children tracks
-		//trackIter->childrenTrack = Track3D::GatherValidChildrenTracks(&(*trackIter), trackIter->childrenTrack);
-		trackIter++;
+		trackIter = listTrack3D_.erase(trackIter);
 	}
 
 #ifdef PSN_DEBUG_MODE_
@@ -3327,99 +3323,70 @@ stTrack3DResult CPSNWhere_Associator3D::ResultWithTracks(PSN_TrackSet *trackSet,
 ************************************************************************/
 void CPSNWhere_Associator3D::PrintTracks(std::deque<Track3D*> &queueTracks, char *strFilePathAndName, bool bAppend)
 {
-	if(0 == queueTracks.size())
-	{
-		return;
-	}
-
-	char strPrint[256];
+	if (0 == queueTracks.size()) { return; }
 	try
 	{
 		FILE *fp;
-		if(bAppend)
+		if (bAppend)
 		{
 			fopen_s(&fp, strFilePathAndName, "a");
 		}
 		else
 		{
 			fopen_s(&fp, strFilePathAndName, "w");
-			sprintf_s(strPrint, "numCamera:%d\n", (int)NUM_CAM);
-			fprintf(fp, strPrint);
-			sprintf_s(strPrint, "numTracks:%d\n", (int)queueTracks.size());
-			fprintf(fp, strPrint);
+			fprintf_s(fp, "numCamera:%d\n", (int)NUM_CAM);			
+			fprintf_s(fp, "numTracks:%d\n", (int)queueTracks.size());			
 		}
 
-		for(std::deque<Track3D*>::iterator trackIter = queueTracks.begin();
+		for (std::deque<Track3D*>::iterator trackIter = queueTracks.begin();
 			trackIter != queueTracks.end();
 			trackIter++)
 		{
 			Track3D *curTrack = *trackIter;
-
-			sprintf_s(strPrint, "{\n\tid:%d\n\ttreeID:%d\n", (int)curTrack->id, (int)curTrack->tree->id);
-			fprintf(fp, strPrint);
-
-			sprintf_s(strPrint, "\tnumReconstructions:%d\n\ttimeStart:%d\n\ttimeEnd:%d\n\ttimeGeneration:%d\n", (int)curTrack->reconstructions.size(), (int)curTrack->timeStart, (int)curTrack->timeEnd, (int)curTrack->timeGeneration);
-			fprintf(fp, strPrint);
-
-			sprintf_s(strPrint, "\ttrackleIDs:\n\t{\n");
-			fprintf(fp, strPrint);
-			for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+			fprintf_s(fp, "{\n\tid:%d\n\ttreeID:%d\n", (int)curTrack->id, (int)curTrack->tree->id);
+			fprintf_s(fp, "\tnumReconstructions:%d\n\ttimeStart:%d\n\ttimeEnd:%d\n\ttimeGeneration:%d\n", (int)curTrack->reconstructions.size(), (int)curTrack->timeStart, (int)curTrack->timeEnd, (int)curTrack->timeGeneration);
+			fprintf_s(fp, "\ttrackleIDs:\n\t{\n");
+			for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
-				if(0 == curTrack->tracklet2DIDs[camIdx].size())
+				if (0 == curTrack->tracklet2DIDs[camIdx].size())
 				{
 					fprintf(fp, "\t\tnumTracklet:0,[]\n");
 					continue;
 				}
-
-				sprintf_s(strPrint, "\t\tnumTracklet:%d,[", (int)curTrack->tracklet2DIDs[camIdx].size());
-				fprintf(fp, strPrint);
-				for(unsigned int trackletIDIdx = 0; trackletIDIdx < curTrack->tracklet2DIDs[camIdx].size(); trackletIDIdx++)
+				fprintf_s(fp, "\t\tnumTracklet:%d,[", (int)curTrack->tracklet2DIDs[camIdx].size());				
+				for (unsigned int trackletIDIdx = 0; trackletIDIdx < curTrack->tracklet2DIDs[camIdx].size(); trackletIDIdx++)
 				{
-					sprintf_s(strPrint, "%d", (int)curTrack->tracklet2DIDs[camIdx][trackletIDIdx]);
-					fprintf(fp, strPrint);
-					if(curTrack->tracklet2DIDs[camIdx].size() - 1 != trackletIDIdx)
+					fprintf_s(fp, "%d", (int)curTrack->tracklet2DIDs[camIdx][trackletIDIdx]);					
+					if (curTrack->tracklet2DIDs[camIdx].size() - 1 != trackletIDIdx)
 					{
-						fprintf(fp, ",");
+						fprintf_s(fp, ",");
 					}
 					else
 					{
-						fprintf(fp, "]\n");
+						fprintf_s(fp, "]\n");
 					}
 				}
 			}
 			fprintf(fp, "\t}\n");
-
-			sprintf_s(strPrint, "\ttotalCost:%e\n", curTrack->costTotal);
-			fprintf(fp, strPrint);
-
-			sprintf_s(strPrint, "\treconstructionCost:%e\n", curTrack->costReconstruction);
-			fprintf(fp, strPrint);
-
-			sprintf_s(strPrint, "\tlinkCost:%e\n", curTrack->costLink);
-			fprintf(fp, strPrint);
-
-			sprintf_s(strPrint, "\tinitCost:%e\n", curTrack->costEnter);
-			fprintf(fp, strPrint);
-
-			sprintf_s(strPrint, "\ttermCost:%e\n", curTrack->costExit);
-			fprintf(fp, strPrint);
-
-			fprintf(fp, "\treconstructions:\n\t{\n");
-			for(std::deque<stReconstruction>::iterator pointIter = curTrack->reconstructions.begin();
+			fprintf_s(fp, "\ttotalCost:%e\n", curTrack->costTotal);
+			fprintf_s(fp, "\treconstructionCost:%e\n", curTrack->costReconstruction);
+			fprintf_s(fp, "\tlinkCost:%e\n", curTrack->costLink);
+			fprintf_s(fp, "\tinitCost:%e\n", curTrack->costEnter);
+			fprintf_s(fp, "\ttermCost:%e\n", curTrack->costExit);
+			fprintf_s(fp, "\tRGBCost:%e\n", curTrack->costRGB);
+			fprintf_s(fp, "\treconstructions:\n\t{\n");
+			for (std::deque<stReconstruction>::iterator pointIter = curTrack->reconstructions.begin();
 				pointIter != curTrack->reconstructions.end();
 				pointIter++)
 			{
-				sprintf_s(strPrint, "\t\t%d:(%f,%f,%f)\n", (int)(*pointIter).bIsMeasurement, (*pointIter).point.x, (*pointIter).point.y, (*pointIter).point.z);
-				fprintf(fp, strPrint);
+				fprintf_s(fp, "\t\t%d:(%f,%f,%f)\n", (int)(*pointIter).bIsMeasurement, (*pointIter).point.x, (*pointIter).point.y, (*pointIter).point.z);				
 			}
-
-			sprintf_s(strPrint, "\t}\n}\n");
-			fprintf(fp, strPrint);
+			fprintf_s(fp, "\t}\n}\n");			
 		}
 		
 		fclose(fp);
 	}
-	catch(DWORD dwError)
+	catch (DWORD dwError)
 	{
 		printf("[ERROR](PrintTracks) cannot open file! error code %d\n", dwError);
 		return;
@@ -3706,187 +3673,190 @@ void CPSNWhere_Associator3D::PrintResult(const char *strFilepath, std::deque<stT
 ************************************************************************/
 void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 {
-	FILE *fp;
+	FILE *fpTracklet2D, *fpTrack3D, *fpHypothesis, *fpResult, *fpInfo;
 	char strFilename[128] = "";
 	std::string trackIDList;
 	try
 	{	
-		sprintf_s(strFilename, "%ssnapshot_3D.txt", strFilepath);
-		fopen_s(&fp, strFilename, "w");
-		fprintf_s(fp, "numCamera:%d\n", NUM_CAM);
-		fprintf_s(fp, "frameIndex:%d\n\n", (int)nCurrentFrameIdx_);
+		sprintf_s(strFilename, "%ssnapshot_3D_tracklet.txt", strFilepath);
+		fopen_s(&fpTracklet2D, strFilename, "w");
+		fprintf_s(fpTracklet2D, "numCamera:%d\n", NUM_CAM);
+		fprintf_s(fpTracklet2D, "frameIndex:%d\n\n", (int)nCurrentFrameIdx_);
 		
 		//---------------------------------------------------------
 		// 2D TRACKLET RELATED
 		//---------------------------------------------------------
-		fprintf_s(fp, ">> 2D tracklet\n");
-		fprintf_s(fp, "vecTracklet2DSet:\n{\n");
+		fprintf_s(fpTracklet2D, "vecTracklet2DSet:\n{\n");
 		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 		{
-			fprintf_s(fp, "\t{\n");
-			fprintf_s(fp, "\t\ttracklets:%d,\n\t\t{\n", (int)vecTracklet2DSet_[camIdx].tracklets.size());
+			fprintf_s(fpTracklet2D, "\t{\n");
+			fprintf_s(fpTracklet2D, "\t\ttracklets:%d,\n\t\t{\n", (int)vecTracklet2DSet_[camIdx].tracklets.size());
 			for (std::list<stTracklet2D>::iterator trackletIter = vecTracklet2DSet_[camIdx].tracklets.begin();
 				trackletIter != vecTracklet2DSet_[camIdx].tracklets.end();
 				trackletIter++)
 			{
 				stTracklet2D *curTracklet = &(*trackletIter);
-				fprintf_s(fp, "\t\t\t{\n");
-				fprintf_s(fp, "\t\t\t\tid:%d\n", (int)curTracklet->id);
-				fprintf_s(fp, "\t\t\t\tcamIdx:%d\n", (int)curTracklet->camIdx);
-				fprintf_s(fp, "\t\t\t\tbActivated:%d\n", (int)curTracklet->bActivated);
-				fprintf_s(fp, "\t\t\t\ttimeStart:%d\n", (int)curTracklet->timeStart);
-				fprintf_s(fp, "\t\t\t\ttimeEnd:%d\n", (int)curTracklet->timeEnd);
-				fprintf_s(fp, "\t\t\t\tduration:%d\n", (int)curTracklet->duration);
+				fprintf_s(fpTracklet2D, "\t\t\t{\n");
+				fprintf_s(fpTracklet2D, "\t\t\t\tid:%d\n", (int)curTracklet->id);
+				fprintf_s(fpTracklet2D, "\t\t\t\tcamIdx:%d\n", (int)curTracklet->camIdx);
+				fprintf_s(fpTracklet2D, "\t\t\t\tbActivated:%d\n", (int)curTracklet->bActivated);
+				fprintf_s(fpTracklet2D, "\t\t\t\ttimeStart:%d\n", (int)curTracklet->timeStart);
+				fprintf_s(fpTracklet2D, "\t\t\t\ttimeEnd:%d\n", (int)curTracklet->timeEnd);
+				fprintf_s(fpTracklet2D, "\t\t\t\tduration:%d\n", (int)curTracklet->duration);
 
 				// rects
-				fprintf_s(fp, "\t\t\t\trects:%d,\n\t\t\t\t{\n", (int)curTracklet->rects.size());
+				fprintf_s(fpTracklet2D, "\t\t\t\trects:%d,\n\t\t\t\t{\n", (int)curTracklet->rects.size());
 				for (int rectIdx = 0; rectIdx < curTracklet->rects.size(); rectIdx++)
 				{
 					PSN_Rect curRect = curTracklet->rects[rectIdx];
-					fprintf_s(fp, "\t\t\t\t\t(%f,%f,%f,%f)\n", (float)curRect.x, (float)curRect.y, (float)curRect.w, (float)curRect.h);
+					fprintf_s(fpTracklet2D, "\t\t\t\t\t(%f,%f,%f,%f)\n", (float)curRect.x, (float)curRect.y, (float)curRect.w, (float)curRect.h);
 				}
-				fprintf_s(fp, "\t\t\t\t}\n");
+				fprintf_s(fpTracklet2D, "\t\t\t\t}\n");
 
 				// backprojectionLines
-				fprintf_s(fp, "\t\t\t\tbackprojectionLines:%d,\n\t\t\t\t{\n", (int)curTracklet->backprojectionLines.size());
+				fprintf_s(fpTracklet2D, "\t\t\t\tbackprojectionLines:%d,\n\t\t\t\t{\n", (int)curTracklet->backprojectionLines.size());
 				for (int lineIdx = 0; lineIdx < curTracklet->backprojectionLines.size(); lineIdx++)
 				{
 					PSN_Point3D pt1 = curTracklet->backprojectionLines[lineIdx].first;
 					PSN_Point3D pt2 = curTracklet->backprojectionLines[lineIdx].second;
-					fprintf_s(fp, "\t\t\t\t\t(%f,%f,%f,%f,%f,%f)\n", (float)pt1.x, (float)pt1.y, (float)pt1.z, (float)pt2.x, (float)pt2.y, (float)pt2.z);
+					fprintf_s(fpTracklet2D, "\t\t\t\t\t(%f,%f,%f,%f,%f,%f)\n", (float)pt1.x, (float)pt1.y, (float)pt1.z, (float)pt2.x, (float)pt2.y, (float)pt2.z);
 				}
-				fprintf_s(fp, "\t\t\t\t}\n");
+				fprintf_s(fpTracklet2D, "\t\t\t\t}\n");
 
 				// appearance
-				fprintf_s(fp, "\t\t\t\tRGBFeatureHead:%d,(", curTracklet->RGBFeatureHead.rows);
+				fprintf_s(fpTracklet2D, "\t\t\t\tRGBFeatureHead:%d,(", curTracklet->RGBFeatureHead.rows);
 				for (int idx = 0; idx < curTracklet->RGBFeatureHead.rows; idx++)
 				{
-					fprintf_s(fp, "%f", curTracklet->RGBFeatureHead.at<double>(idx, 0));
-					if (idx < curTracklet->RGBFeatureHead.rows - 1) { fprintf_s(fp, ","); }
+					fprintf_s(fpTracklet2D, "%f", curTracklet->RGBFeatureHead.at<double>(idx, 0));
+					if (idx < curTracklet->RGBFeatureHead.rows - 1) { fprintf_s(fpTracklet2D, ","); }
 				}
-				fprintf_s(fp, ")\n");
-				fprintf_s(fp, "\t\t\t\tRGBFeatureTail:%d,(", curTracklet->RGBFeatureTail.rows);
+				fprintf_s(fpTracklet2D, ")\n");
+				fprintf_s(fpTracklet2D, "\t\t\t\tRGBFeatureTail:%d,(", curTracklet->RGBFeatureTail.rows);
 				for (int idx = 0; idx < curTracklet->RGBFeatureTail.rows; idx++)
 				{
-					fprintf_s(fp, "%f", curTracklet->RGBFeatureTail.at<double>(idx, 0));
-					if (idx < curTracklet->RGBFeatureTail.rows - 1) { fprintf_s(fp, ","); }
+					fprintf_s(fpTracklet2D, "%f", curTracklet->RGBFeatureTail.at<double>(idx, 0));
+					if (idx < curTracklet->RGBFeatureTail.rows - 1) { fprintf_s(fpTracklet2D, ","); }
 				}
-				fprintf_s(fp, ")\n");
+				fprintf_s(fpTracklet2D, ")\n");
 
 				// bAssociableNewMeasurement
 				for (int compCamIdx = 0; compCamIdx < NUM_CAM; compCamIdx++)
 				{
-					fprintf_s(fp, "\t\t\t\tbAssociableNewMeasurement[%d]:%d,{", compCamIdx, (int)curTracklet->bAssociableNewMeasurement[compCamIdx].size());
+					fprintf_s(fpTracklet2D, "\t\t\t\tbAssociableNewMeasurement[%d]:%d,{", compCamIdx, (int)curTracklet->bAssociableNewMeasurement[compCamIdx].size());
 					for (int flagIdx = 0; flagIdx < curTracklet->bAssociableNewMeasurement[compCamIdx].size(); flagIdx++)
 					{
-						fprintf_s(fp, "%d", (int)curTracklet->bAssociableNewMeasurement[compCamIdx][flagIdx]);
-						if (flagIdx < curTracklet->bAssociableNewMeasurement[compCamIdx].size() - 1) { fprintf_s(fp, ","); }
+						fprintf_s(fpTracklet2D, "%d", (int)curTracklet->bAssociableNewMeasurement[compCamIdx][flagIdx]);
+						if (flagIdx < curTracklet->bAssociableNewMeasurement[compCamIdx].size() - 1) { fprintf_s(fpTracklet2D, ","); }
 					}
-					fprintf_s(fp, "}\n");
+					fprintf_s(fpTracklet2D, "}\n");
 				}
-				fprintf_s(fp, "\t\t\t}\n");
+				fprintf_s(fpTracklet2D, "\t\t\t}\n");
 			}
 
-			fprintf_s(fp, "\t\tactiveTracklets:%d,{", (int)vecTracklet2DSet_[camIdx].activeTracklets.size());
+			fprintf_s(fpTracklet2D, "\t\tactiveTracklets:%d,{", (int)vecTracklet2DSet_[camIdx].activeTracklets.size());
 			for (std::deque<stTracklet2D*>::iterator trackletIter = vecTracklet2DSet_[camIdx].activeTracklets.begin();
 				trackletIter != vecTracklet2DSet_[camIdx].activeTracklets.end();
 				trackletIter++)
 			{
-				fprintf_s(fp, "%d", (int)(*trackletIter)->id);
-				if (trackletIter != vecTracklet2DSet_[camIdx].activeTracklets.end() - 1) { fprintf_s(fp, ","); }
+				fprintf_s(fpTracklet2D, "%d", (int)(*trackletIter)->id);
+				if (trackletIter != vecTracklet2DSet_[camIdx].activeTracklets.end() - 1) { fprintf_s(fpTracklet2D, ","); }
 			}
-			fprintf_s(fp, "}\n\t\tnewMeasurements:%d,{", (int)vecTracklet2DSet_[camIdx].newMeasurements.size());
+			fprintf_s(fpTracklet2D, "}\n\t\tnewMeasurements:%d,{", (int)vecTracklet2DSet_[camIdx].newMeasurements.size());
 			for (std::deque<stTracklet2D*>::iterator trackletIter = vecTracklet2DSet_[camIdx].newMeasurements.begin();
 				trackletIter != vecTracklet2DSet_[camIdx].newMeasurements.end();
 				trackletIter++)
 			{
-				fprintf_s(fp, "%d", (int)(*trackletIter)->id);
-				if (trackletIter != vecTracklet2DSet_[camIdx].newMeasurements.end() - 1) { fprintf_s(fp, ","); }
+				fprintf_s(fpTracklet2D, "%d", (int)(*trackletIter)->id);
+				if (trackletIter != vecTracklet2DSet_[camIdx].newMeasurements.end() - 1) { fprintf_s(fpTracklet2D, ","); }
 			}
-			fprintf_s(fp, "}\n\t}\n");
+			fprintf_s(fpTracklet2D, "}\n\t}\n");
 		}
-		fprintf_s(fp, "}\n");
-		fprintf_s(fp, "nNumTotalActive2DTracklet:%d\n\n", (int)nNumTotalActive2DTracklet_);
+		fprintf_s(fpTracklet2D, "}\n");
+		fprintf_s(fpTracklet2D, "nNumTotalActive2DTracklet:%d\n\n", (int)nNumTotalActive2DTracklet_);
+		fclose(fpTracklet2D);
 
 		//---------------------------------------------------------
 		// 3D TRACK RELATED
 		//---------------------------------------------------------
-		fprintf_s(fp, ">> 3D track\n");
-		fprintf_s(fp, "bReceiveNewMeasurement:%d\n", (int)bReceiveNewMeasurement_);
-		fprintf_s(fp, "bInitiationPenaltyFree:%d\n", (int)bInitiationPenaltyFree_);
-		fprintf_s(fp, "nNewTrackID:%d\n", (int)nNewTrackID_);
-		fprintf_s(fp, "nNewTreeID:%d\n", (int)nNewTreeID_);
+		sprintf_s(strFilename, "%ssnapshot_3D_track.txt", strFilepath);
+		fopen_s(&fpTrack3D, strFilename, "w");
+		fprintf_s(fpTrack3D, "numCamera:%d\n", NUM_CAM);
+		fprintf_s(fpTrack3D, "frameIndex:%d\n\n", (int)nCurrentFrameIdx_);
+		fprintf_s(fpTrack3D, "bReceiveNewMeasurement:%d\n", (int)bReceiveNewMeasurement_);
+		fprintf_s(fpTrack3D, "bInitiationPenaltyFree:%d\n", (int)bInitiationPenaltyFree_);
+		fprintf_s(fpTrack3D, "nNewTrackID:%d\n", (int)nNewTrackID_);
+		fprintf_s(fpTrack3D, "nNewTreeID:%d\n", (int)nNewTreeID_);
 
 		// track
-		fprintf_s(fp, "listTrack3D:%d,\n{\n", listTrack3D_.size());
+		fprintf_s(fpTrack3D, "listTrack3D:%d,\n{\n", listTrack3D_.size());
 		for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 			trackIter != listTrack3D_.end();
 			trackIter++)
 		{
 			Track3D *curTrack = &(*trackIter);			
-			fprintf_s(fp, "\t{\n\t\tid:%d\n", (int)curTrack->id);
+			fprintf_s(fpTrack3D, "\t{\n\t\tid:%d\n", (int)curTrack->id);
 
 			// curTracklet2Ds
-			fprintf_s(fp, "\t\tcurTracklet2Ds:{");
+			fprintf_s(fpTrack3D, "\t\tcurTracklet2Ds:{");
 			for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
 				if (NULL == curTrack->curTracklet2Ds.get(camIdx)) 
 				{ 
-					fprintf_s(fp, "-1"); 
+					fprintf_s(fpTrack3D, "-1"); 
 				}
 				else 
 				{ 
-					fprintf_s(fp, "%d", curTrack->curTracklet2Ds.get(camIdx)->id); 
+					fprintf_s(fpTrack3D, "%d", curTrack->curTracklet2Ds.get(camIdx)->id); 
 				}
 
 				if (camIdx < NUM_CAM - 1) 
 				{ 
-					fprintf_s(fp, ","); 
+					fprintf_s(fpTrack3D, ","); 
 				}
 			}
-			fprintf_s(fp, "}\n");
+			fprintf_s(fpTrack3D, "}\n");
 
 			// tracklet2DIDs
-			fprintf_s(fp, "\t\ttrackleIDs:\n\t\t{\n");
+			fprintf_s(fpTrack3D, "\t\ttrackleIDs:\n\t\t{\n");
 			for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
 				if(0 == curTrack->tracklet2DIDs[camIdx].size())
 				{
-					fprintf_s(fp, "\t\t\tnumTracklet:0,{}\n");
+					fprintf_s(fpTrack3D, "\t\t\tnumTracklet:0,{}\n");
 					continue;
 				}
-				fprintf_s(fp, "\t\t\tnumTracklet:%d,{", (int)curTrack->tracklet2DIDs[camIdx].size());
+				fprintf_s(fpTrack3D, "\t\t\tnumTracklet:%d,{", (int)curTrack->tracklet2DIDs[camIdx].size());
 				for(unsigned int trackletIDIdx = 0; trackletIDIdx < curTrack->tracklet2DIDs[camIdx].size(); trackletIDIdx++)
 				{
-					fprintf_s(fp, "%d", (int)curTrack->tracklet2DIDs[camIdx][trackletIDIdx]);
+					fprintf_s(fpTrack3D, "%d", (int)curTrack->tracklet2DIDs[camIdx][trackletIDIdx]);
 					if(curTrack->tracklet2DIDs[camIdx].size() - 1 != trackletIDIdx)
 					{
-						fprintf_s(fp, ",");
+						fprintf_s(fpTrack3D, ",");
 					}
 					else
 					{
-						fprintf_s(fp, "}\n");
+						fprintf_s(fpTrack3D, "}\n");
 					}
 				}
 			}
-			fprintf_s(fp, "\t\t}\n");
+			fprintf_s(fpTrack3D, "\t\t}\n");
 
-			fprintf_s(fp, "\t\tbActive:%d\n", (int)curTrack->bActive);
-			fprintf_s(fp, "\t\tbValid:%d\n", (int)curTrack->bValid);
-			fprintf_s(fp, "\t\ttreeID:%d\n", (int)curTrack->tree->id);
+			fprintf_s(fpTrack3D, "\t\tbActive:%d\n", (int)curTrack->bActive);
+			fprintf_s(fpTrack3D, "\t\tbValid:%d\n", (int)curTrack->bValid);
+			fprintf_s(fpTrack3D, "\t\ttreeID:%d\n", (int)curTrack->tree->id);
 			if (NULL == curTrack->parentTrack)
 			{
-				fprintf_s(fp, "\t\tparentTrackID:-1\n");
+				fprintf_s(fpTrack3D, "\t\tparentTrackID:-1\n");
 			}
 			else
 			{
-				fprintf_s(fp, "\t\tparentTrackID:%d\n", (int)curTrack->parentTrack->id);
+				fprintf_s(fpTrack3D, "\t\tparentTrackID:%d\n", (int)curTrack->parentTrack->id);
 			}
 
 			// children tracks
-			fprintf_s(fp, "\t\tchildrenTrack:%d,", (int)curTrack->childrenTrack.size());
+			fprintf_s(fpTrack3D, "\t\tchildrenTrack:%d,", (int)curTrack->childrenTrack.size());
 			trackIDList = psn::MakeTrackIDList(&curTrack->childrenTrack) + "\n";
-			fprintf_s(fp, trackIDList.c_str());
+			fprintf_s(fpTrack3D, trackIDList.c_str());
 			//for (int trackIdx = 0; trackIdx < curTrack->childrenTrack.size(); trackIdx++)
 			//{
 			//	fprintf_s(fp, "%d", curTrack->childrenTrack[trackIdx]->id);
@@ -3895,556 +3865,404 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 			//fprintf_s(fp, "}\n");
 
 			// temporal information
-			fprintf_s(fp, "\t\ttimeStart:%d\n", (int)curTrack->timeStart);
-			fprintf_s(fp, "\t\ttimeEnd:%d\n", (int)curTrack->timeEnd);
-			fprintf_s(fp, "\t\ttimeGeneration:%d\n", (int)curTrack->timeGeneration);
-			fprintf_s(fp, "\t\tduration:%d\n", (int)curTrack->duration);
+			fprintf_s(fpTrack3D, "\t\ttimeStart:%d\n", (int)curTrack->timeStart);
+			fprintf_s(fpTrack3D, "\t\ttimeEnd:%d\n", (int)curTrack->timeEnd);
+			fprintf_s(fpTrack3D, "\t\ttimeGeneration:%d\n", (int)curTrack->timeGeneration);
+			fprintf_s(fpTrack3D, "\t\tduration:%d\n", (int)curTrack->duration);
 
 			// reconstrcution related
-			fprintf(fp, "\t\treconstructions:%d,\n\t\t{\n", (int)curTrack->reconstructions.size());
+			fprintf(fpTrack3D, "\t\treconstructions:%d,\n\t\t{\n", (int)curTrack->reconstructions.size());
 			for(std::deque<stReconstruction>::iterator pointIter = curTrack->reconstructions.begin();
 				pointIter != curTrack->reconstructions.end();
 				pointIter++)
 			{
-				fprintf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", (int)(*pointIter).bIsMeasurement, 
+				fprintf_s(fpTrack3D, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", (int)(*pointIter).bIsMeasurement, 
 					(*pointIter).point.x, (*pointIter).point.y, (*pointIter).point.z, 
 					(*pointIter).velocity.x, (*pointIter).velocity.y, (*pointIter).velocity.z,
 					(*pointIter).costReconstruction, (*pointIter).costLink);
-				fprintf_s(fp, "tracklet2Ds:{");
+				fprintf_s(fpTrack3D, "tracklet2Ds:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
 					if (NULL == (*pointIter).tracklet2Ds.get(camIdx))
 					{
-						fprintf_s(fp, "-1");
+						fprintf_s(fpTrack3D, "-1");
 					}
 					else
 					{
-						fprintf_s(fp, "%d", (*pointIter).tracklet2Ds.get(camIdx)->id); 
+						fprintf_s(fpTrack3D, "%d", (*pointIter).tracklet2Ds.get(camIdx)->id); 
 					}
 					if (camIdx < NUM_CAM - 1) 
 					{ 
-						fprintf_s(fp, ","); 
+						fprintf_s(fpTrack3D, ","); 
 					}
 				}
-				fprintf_s(fp, "}\n");
+				fprintf_s(fpTrack3D, "}\n");
 			}
-			fprintf_s(fp, "\t\t}\n");
+			fprintf_s(fpTrack3D, "\t\t}\n");
 
 			// cost
-			fprintf_s(fp, "\t\tcostTotal:%e\n", curTrack->costTotal);
-			fprintf_s(fp, "\t\tcostReconstruction:%e\n", curTrack->costReconstruction);
-			fprintf_s(fp, "\t\tcostLink:%e\n", curTrack->costLink);
-			fprintf_s(fp, "\t\tcostEnter:%e\n", curTrack->costEnter);
-			fprintf_s(fp, "\t\tcostExit:%e\n", curTrack->costExit);
-			fprintf_s(fp, "\t\tcostRGB:%e\n", curTrack->costRGB);
+			fprintf_s(fpTrack3D, "\t\tcostTotal:%e\n", curTrack->costTotal);
+			fprintf_s(fpTrack3D, "\t\tcostReconstruction:%e\n", curTrack->costReconstruction);
+			fprintf_s(fpTrack3D, "\t\tcostLink:%e\n", curTrack->costLink);
+			fprintf_s(fpTrack3D, "\t\tcostEnter:%e\n", curTrack->costEnter);
+			fprintf_s(fpTrack3D, "\t\tcostExit:%e\n", curTrack->costExit);
+			fprintf_s(fpTrack3D, "\t\tcostRGB:%e\n", curTrack->costRGB);
 
 			// loglikelihood
-			fprintf_s(fp, "\t\tloglikelihood:%e\n", curTrack->loglikelihood);
+			fprintf_s(fpTrack3D, "\t\tloglikelihood:%e\n", curTrack->loglikelihood);
 
 			// GTP
-			fprintf_s(fp, "\t\tGTProb:%e\n", curTrack->GTProb);
-			fprintf_s(fp, "\t\tBranchGTProb:%e\n", curTrack->BranchGTProb);
-			fprintf_s(fp, "\t\tbWasBestSolution:%d\n", (int)curTrack->bWasBestSolution);
-			fprintf_s(fp, "\t\tbCurrentBestSolution:%d\n", (int)curTrack->bCurrentBestSolution);
+			fprintf_s(fpTrack3D, "\t\tGTProb:%e\n", curTrack->GTProb);
+			fprintf_s(fpTrack3D, "\t\tBranchGTProb:%e\n", curTrack->BranchGTProb);
+			fprintf_s(fpTrack3D, "\t\tbWasBestSolution:%d\n", (int)curTrack->bWasBestSolution);
+			fprintf_s(fpTrack3D, "\t\tbCurrentBestSolution:%d\n", (int)curTrack->bCurrentBestSolution);
 
 			// HO-MHT
-			fprintf_s(fp, "\t\tbNewTrack:%d\n", (int)curTrack->bNewTrack);
+			fprintf_s(fpTrack3D, "\t\tbNewTrack:%d\n", (int)curTrack->bNewTrack);
 
 			// appearance
-			fprintf_s(fp, "\t\tlastRGBFeature:\n\t\t{\n");
+			fprintf_s(fpTrack3D, "\t\tlastRGBFeature:\n\t\t{\n");
 			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
-				fprintf_s(fp, "\t\t\tlastRGBFeature[%d]:%d,(", camIdx, curTrack->lastRGBFeature[camIdx].rows);
+				fprintf_s(fpTrack3D, "\t\t\tlastRGBFeature[%d]:%d,(", camIdx, curTrack->lastRGBFeature[camIdx].rows);
 				for (int idx = 0; idx < curTrack->lastRGBFeature[camIdx].rows; idx++)
 				{
-					fprintf_s(fp, "%f", curTrack->lastRGBFeature[camIdx].at<double>(idx, 0));
-					if (idx < curTrack->lastRGBFeature[camIdx].rows - 1) { fprintf_s(fp, ","); }
+					fprintf_s(fpTrack3D, "%f", curTrack->lastRGBFeature[camIdx].at<double>(idx, 0));
+					if (idx < curTrack->lastRGBFeature[camIdx].rows - 1) { fprintf_s(fpTrack3D, ","); }
 				}
-				fprintf_s(fp, ")\n");
+				fprintf_s(fpTrack3D, ")\n");
 			}
-			fprintf_s(fp, "\t\t}\n");
-			fprintf_s(fp, "\t\ttimeTrackletEnded:(");
+			fprintf_s(fpTrack3D, "\t\t}\n");
+			fprintf_s(fpTrack3D, "\t\ttimeTrackletEnded:(");
 			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
-				fprintf_s(fp, "%d", (int)curTrack->timeTrackletEnded[camIdx]);
-				if (camIdx < NUM_CAM - 1) { fprintf_s(fp, ","); }				
+				fprintf_s(fpTrack3D, "%d", (int)curTrack->timeTrackletEnded[camIdx]);
+				if (camIdx < NUM_CAM - 1) { fprintf_s(fpTrack3D, ","); }				
 			}
-			fprintf_s(fp, ")\n\t}\n");
+			fprintf_s(fpTrack3D, ")\n\t}\n");
 		}
-		fprintf_s(fp, "}\n");
+		fprintf_s(fpTrack3D, "}\n");
 		
 		// track tree
-		fprintf_s(fp, "listTrackTree:%d,\n{\n", listTrackTree_.size());
+		fprintf_s(fpTrack3D, "listTrackTree:%d,\n{\n", listTrackTree_.size());
 		for (std::list<TrackTree>::iterator treeIter = listTrackTree_.begin();
 			treeIter != listTrackTree_.end();
 			treeIter++)
 		{
 			TrackTree *curTree = &(*treeIter);
-			fprintf_s(fp, "\t{\n\t\tid:%d\n", (int)curTree->id);
-			fprintf_s(fp, "\t\ttimeGeneration:%d\n", (int)curTree->timeGeneration);
-			fprintf_s(fp, "\t\tbValid:%d\n", (int)curTree->bValid);
-			fprintf_s(fp, "\t\ttracks:%d,", (int)curTree->tracks.size());
+			fprintf_s(fpTrack3D, "\t{\n\t\tid:%d\n", (int)curTree->id);
+			fprintf_s(fpTrack3D, "\t\ttimeGeneration:%d\n", (int)curTree->timeGeneration);
+			fprintf_s(fpTrack3D, "\t\tbValid:%d\n", (int)curTree->bValid);
+			fprintf_s(fpTrack3D, "\t\ttracks:%d,", (int)curTree->tracks.size());
 			trackIDList = psn::MakeTrackIDList(&curTree->tracks) + "\n";
-			fprintf_s(fp, trackIDList.c_str());
-			//for (int trackIdx = 0; trackIdx < curTree->tracks.size(); trackIdx++)
-			//{
-			//	fprintf_s(fp, "%d", curTree->tracks[trackIdx]->id);
-			//	if (curTree->tracks.size() - 1 > trackIdx)
-			//	{
-			//		fprintf_s(fp, ",");
-			//	}
-			//	else
-			//	{
-			//		fprintf_s(fp, "}\n");
-			//	}
-			//}
-			fprintf_s(fp, "\t\tnumMeasurements:%d\n", (int)curTree->numMeasurements);
-
+			fprintf_s(fpTrack3D, trackIDList.c_str());
+			fprintf_s(fpTrack3D, "\t\tnumMeasurements:%d\n", (int)curTree->numMeasurements);
 			// tracklet2Ds
-			fprintf_s(fp, "\t\ttrackle2Ds:\n\t\t{\n");
+			fprintf_s(fpTrack3D, "\t\ttrackle2Ds:\n\t\t{\n");
 			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
 				if (0 == curTree->tracklet2Ds[camIdx].size())
 				{
-					fprintf_s(fp, "\t\t\ttrackletInfo:0,{}\n");
+					fprintf_s(fpTrack3D, "\t\t\ttrackletInfo:0,{}\n");
 					continue;
 				}
-				fprintf_s(fp, "\t\t\ttrackletInfo:%d,\n\t\t\t{", (int)curTree->tracklet2Ds[camIdx].size());
+				fprintf_s(fpTrack3D, "\t\t\ttrackletInfo:%d,\n\t\t\t{", (int)curTree->tracklet2Ds[camIdx].size());
 				for (int trackletIDIdx = 0; trackletIDIdx < curTree->tracklet2Ds[camIdx].size(); trackletIDIdx++)
 				{
-					fprintf_s(fp, "\n\t\t\t\tid:%d,relatedTracks:%d,{", (int)curTree->tracklet2Ds[camIdx][trackletIDIdx].tracklet2D->id, (int)curTree->tracklet2Ds[camIdx][trackletIDIdx].queueRelatedTracks.size());
+					fprintf_s(fpTrack3D, "\n\t\t\t\tid:%d,relatedTracks:%d,{", (int)curTree->tracklet2Ds[camIdx][trackletIDIdx].tracklet2D->id, (int)curTree->tracklet2Ds[camIdx][trackletIDIdx].queueRelatedTracks.size());
 					for (int trackIdx = 0; trackIdx < curTree->tracklet2Ds[camIdx][trackletIDIdx].queueRelatedTracks.size(); trackIdx++)
 					{
-						fprintf_s(fp, "%d", curTree->tracklet2Ds[camIdx][trackletIDIdx].queueRelatedTracks[trackIdx]->id);
+						fprintf_s(fpTrack3D, "%d", curTree->tracklet2Ds[camIdx][trackletIDIdx].queueRelatedTracks[trackIdx]->id);
 						if(curTree->tracklet2Ds[camIdx][trackletIDIdx].queueRelatedTracks.size() - 1 >  trackIdx)
 						{
-							fprintf_s(fp, ",");
+							fprintf_s(fpTrack3D, ",");
 						}					
 					}
-					fprintf_s(fp, "}\n");
+					fprintf_s(fpTrack3D, "}\n");
 				}
-				fprintf_s(fp, "\t\t\t}\n");
+				fprintf_s(fpTrack3D, "\t\t\t}\n");
 			}
-			fprintf_s(fp, "\t\t}\n\t}\n");
+			fprintf_s(fpTrack3D, "\t\t}\n\t}\n");
 		}
-		fprintf_s(fp, "}\n");
+		fprintf_s(fpTrack3D, "}\n");
 
 		// new seed tracks
-		fprintf_s(fp, "queueNewSeedTracks:%d,", (int)queueNewSeedTracks_.size());
+		fprintf_s(fpTrack3D, "queueNewSeedTracks:%d,", (int)queueNewSeedTracks_.size());
 		trackIDList = psn::MakeTrackIDList(&queueNewSeedTracks_) + "\n";
-		fprintf_s(fp, trackIDList.c_str());
+		fprintf_s(fpTrack3D, trackIDList.c_str());
 
 		// active tracks
-		fprintf_s(fp, "queueActiveTrack:%d,", (int)queueActiveTrack_.size());
+		fprintf_s(fpTrack3D, "queueActiveTrack:%d,", (int)queueActiveTrack_.size());
 		trackIDList = psn::MakeTrackIDList(&queueActiveTrack_) + "\n";
-		fprintf_s(fp, trackIDList.c_str());
+		fprintf_s(fpTrack3D, trackIDList.c_str());
 
 		// puased tracks
-		fprintf_s(fp, "queuePausedTrack:%d,", (int)queuePausedTrack_.size());
+		fprintf_s(fpTrack3D, "queuePausedTrack:%d,", (int)queuePausedTrack_.size());
 		trackIDList = psn::MakeTrackIDList(&queuePausedTrack_) + "\n";
-		fprintf_s(fp, trackIDList.c_str());
+		fprintf_s(fpTrack3D, trackIDList.c_str());
 
 		// tracks in window
-		fprintf_s(fp, "queueTracksInWindow:%d,", (int)queueTracksInWindow_.size());
+		fprintf_s(fpTrack3D, "queueTracksInWindow:%d,", (int)queueTracksInWindow_.size());
 		trackIDList = psn::MakeTrackIDList(&queueTracksInWindow_) + "\n";
-		fprintf_s(fp, trackIDList.c_str());
+		fprintf_s(fpTrack3D, trackIDList.c_str());
 
 		// tracks in the best solution
-		fprintf_s(fp, "queueTracksInBestSolution:%d,", (int)queueTracksInBestSolution_.size());
+		fprintf_s(fpTrack3D, "queueTracksInBestSolution:%d,", (int)queueTracksInBestSolution_.size());
 		trackIDList = psn::MakeTrackIDList(&queueTracksInBestSolution_) + "\n";
-		fprintf_s(fp, trackIDList.c_str());
+		fprintf_s(fpTrack3D, trackIDList.c_str());
 
 		// active trees
-		fprintf_s(fp, "queuePtActiveTrees:%d,{", (int)queuePtActiveTrees_.size());
+		fprintf_s(fpTrack3D, "queuePtActiveTrees:%d,{", (int)queuePtActiveTrees_.size());
 		for (int treeIdx = 0; treeIdx < queuePtActiveTrees_.size(); treeIdx++)
 		{
-			fprintf_s(fp, "%d", queuePtActiveTrees_[treeIdx]->id);
-			if (treeIdx < queuePtActiveTrees_.size() - 1) { fprintf_s(fp, ","); }
+			fprintf_s(fpTrack3D, "%d", queuePtActiveTrees_[treeIdx]->id);
+			if (treeIdx < queuePtActiveTrees_.size() - 1) { fprintf_s(fpTrack3D, ","); }
 		}
-		fprintf_s(fp, "}\n");
+		fprintf_s(fpTrack3D, "}\n");
 
 		// unconfirmed trees
-		fprintf_s(fp, "queuePtUnconfirmedTrees:%d,{", (int)queuePtUnconfirmedTrees_.size());
+		fprintf_s(fpTrack3D, "queuePtUnconfirmedTrees:%d,{", (int)queuePtUnconfirmedTrees_.size());
 		for (int treeIdx = 0; treeIdx < queuePtUnconfirmedTrees_.size(); treeIdx++)
 		{
-			fprintf_s(fp, "%d", queuePtUnconfirmedTrees_[treeIdx]->id);
-			if (treeIdx < queuePtUnconfirmedTrees_.size() - 1) { fprintf_s(fp, ","); }
+			fprintf_s(fpTrack3D, "%d", queuePtUnconfirmedTrees_[treeIdx]->id);
+			if (treeIdx < queuePtUnconfirmedTrees_.size() - 1) { fprintf_s(fpTrack3D, ","); }
 		}
-		fprintf_s(fp, "}\n");
-
-		//// result tracks
-		//fprintf_s(fp, "listResultTrack3D:%d,\n{\n", listResultTrack3D_.size());
-		//for (std::list<Track3D>::iterator trackIter = listResultTrack3D_.begin();
-		//	trackIter != listResultTrack3D_.end();
-		//	trackIter++)
-		//{
-		//	Track3D *curTrack = &(*trackIter);			
-		//	fprintf_s(fp, "\t{\n\t\tid:%d\n", (int)curTrack->id);
-
-		//	// curTracklet2Ds
-		//	fprintf_s(fp, "\t\tcurTracklet2Ds:{");
-		//	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-		//	{
-		//		if (NULL == curTrack->curTracklet2Ds.get(camIdx)) 
-		//		{ 
-		//			fprintf_s(fp, "-1"); 
-		//		}
-		//		else 
-		//		{ 
-		//			fprintf_s(fp, "%d", curTrack->curTracklet2Ds.get(camIdx)->id); 
-		//		}
-
-		//		if (camIdx < NUM_CAM - 1) 
-		//		{ 
-		//			fprintf_s(fp, ","); 
-		//		}
-		//	}
-		//	fprintf_s(fp, "}\n");
-
-		//	// tracklet2DIDs
-		//	fprintf_s(fp, "\t\ttrackleIDs:\n\t\t{\n");
-		//	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-		//	{
-		//		if(0 == curTrack->tracklet2DIDs[camIdx].size())
-		//		{
-		//			fprintf_s(fp, "\t\t\tnumTracklet:0,{}\n");
-		//			continue;
-		//		}
-		//		fprintf_s(fp, "\t\t\tnumTracklet:%d,{", (int)curTrack->tracklet2DIDs[camIdx].size());
-		//		for(unsigned int trackletIDIdx = 0; trackletIDIdx < curTrack->tracklet2DIDs[camIdx].size(); trackletIDIdx++)
-		//		{
-		//			fprintf_s(fp, "%d", (int)curTrack->tracklet2DIDs[camIdx][trackletIDIdx]);
-		//			if(curTrack->tracklet2DIDs[camIdx].size() - 1 != trackletIDIdx)
-		//			{
-		//				fprintf_s(fp, ",");
-		//			}
-		//			else
-		//			{
-		//				fprintf_s(fp, "}\n");
-		//			}
-		//		}
-		//	}
-		//	fprintf_s(fp, "\t\t}\n");
-
-		//	fprintf_s(fp, "\t\tbActive:%d\n", (int)curTrack->bActive);
-		//	fprintf_s(fp, "\t\tbValid:%d\n", (int)curTrack->bValid);
-		//	fprintf_s(fp, "\t\ttreeID:%d\n", (int)curTrack->tree->id);
-		//	if (NULL == curTrack->parentTrack)
-		//	{
-		//		fprintf_s(fp, "\t\tparentTrackID:-1\n");
-		//	}
-		//	else
-		//	{
-		//		fprintf_s(fp, "\t\tparentTrackID:%d\n", (int)curTrack->parentTrack->id);
-		//	}
-
-		//	// children tracks
-		//	fprintf_s(fp, "\t\tchildrenTrack:%d,", (int)curTrack->childrenTrack.size());
-		//	trackIDList = psn::MakeTrackIDList(&curTrack->childrenTrack) + "\n";
-		//	fprintf_s(fp, trackIDList.c_str());
-		//	//for (int trackIdx = 0; trackIdx < curTrack->childrenTrack.size(); trackIdx++)
-		//	//{
-		//	//	fprintf_s(fp, "%d", curTrack->childrenTrack[trackIdx]->id);
-		//	//	if (trackIdx < curTrack->childrenTrack.size() - 1) { fprintf_s(fp, ","); }
-		//	//}
-		//	//fprintf_s(fp, "}\n");
-
-		//	// temporal information
-		//	fprintf_s(fp, "\t\ttimeStart:%d\n", (int)curTrack->timeStart);
-		//	fprintf_s(fp, "\t\ttimeEnd:%d\n", (int)curTrack->timeEnd);
-		//	fprintf_s(fp, "\t\ttimeGeneration:%d\n", (int)curTrack->timeGeneration);
-		//	fprintf_s(fp, "\t\tduration:%d\n", (int)curTrack->duration);
-
-		//	// reconstrcution related
-		//	fprintf(fp, "\t\treconstructions:%d,\n\t\t{\n", (int)curTrack->reconstructions.size());
-		//	for(std::deque<stReconstruction>::iterator pointIter = curTrack->reconstructions.begin();
-		//		pointIter != curTrack->reconstructions.end();
-		//		pointIter++)
-		//	{
-		//		fprintf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", (int)(*pointIter).bIsMeasurement, 
-		//			(*pointIter).point.x, (*pointIter).point.y, (*pointIter).point.z, 
-		//			(*pointIter).velocity.x, (*pointIter).velocity.y, (*pointIter).velocity.z,
-		//			(*pointIter).costReconstruction, (*pointIter).costLink);
-		//		fprintf_s(fp, "tracklet2Ds:{");
-		//		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-		//		{
-		//			if (NULL == (*pointIter).tracklet2Ds.get(camIdx))
-		//			{
-		//				fprintf_s(fp, "-1");
-		//			}
-		//			else
-		//			{
-		//				fprintf_s(fp, "%d", (*pointIter).tracklet2Ds.get(camIdx)->id); 
-		//			}
-		//			if (camIdx < NUM_CAM - 1) 
-		//			{ 
-		//				fprintf_s(fp, ","); 
-		//			}
-		//		}
-		//		fprintf_s(fp, "}\n");
-		//	}
-		//	fprintf_s(fp, "\t\t}\n");
-
-		//	// cost
-		//	fprintf_s(fp, "\t\tcostTotal:%e\n", curTrack->costTotal);
-		//	fprintf_s(fp, "\t\tcostReconstruction:%e\n", curTrack->costReconstruction);
-		//	fprintf_s(fp, "\t\tcostLink:%e\n", curTrack->costLink);
-		//	fprintf_s(fp, "\t\tcostEnter:%e\n", curTrack->costEnter);
-		//	fprintf_s(fp, "\t\tcostExit:%e\n", curTrack->costExit);
-		//	fprintf_s(fp, "\t\tcostRGB:%e\n", curTrack->costRGB);
-
-		//	// loglikelihood
-		//	fprintf_s(fp, "\t\tloglikelihood:%e\n", curTrack->loglikelihood);
-
-		//	// GTP
-		//	fprintf_s(fp, "\t\tGTProb:%e\n", curTrack->GTProb);
-		//	fprintf_s(fp, "\t\tBranchGTProb:%e\n", curTrack->BranchGTProb);
-		//	fprintf_s(fp, "\t\tbWasBestSolution:%d\n", (int)curTrack->bWasBestSolution);
-		//	fprintf_s(fp, "\t\tbCurrentBestSolution:%d\n", (int)curTrack->bCurrentBestSolution);
-
-		//	// HO-MHT
-		//	fprintf_s(fp, "\t\tbNewTrack:%d\n", (int)curTrack->bNewTrack);
-
-		//	// appearance
-		//	fprintf_s(fp, "\t\tlastRGBFeature:\n\t\t{\n");
-		//	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-		//	{
-		//		fprintf_s(fp, "\t\t\tlastRGBFeature[%d]:%d,(", camIdx, curTrack->lastRGBFeature[camIdx].rows);
-		//		for (int idx = 0; idx < curTrack->lastRGBFeature[camIdx].rows; idx++)
-		//		{
-		//			fprintf_s(fp, "%f", curTrack->lastRGBFeature[camIdx].at<double>(idx, 0));
-		//			if (idx < curTrack->lastRGBFeature[camIdx].rows - 1) { fprintf_s(fp, ","); }
-		//		}
-		//		fprintf_s(fp, ")\n");
-		//	}
-		//	fprintf_s(fp, "\t\t}\n");
-		//	fprintf_s(fp, "\t\ttimeTrackletEnded:(");
-		//	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-		//	{
-		//		fprintf_s(fp, "%d", (int)curTrack->timeTrackletEnded[camIdx]);
-		//		if (camIdx < NUM_CAM - 1) { fprintf_s(fp, ","); }				
-		//	}
-		//	fprintf_s(fp, ")\n\t}\n");
-		//}
-		//fprintf_s(fp, "}\n");
+		fprintf_s(fpTrack3D, "}\n");
+		fclose(fpTrack3D);
 
 		//---------------------------------------------------------
 		// RESULTS
 		//---------------------------------------------------------
+		sprintf_s(strFilename, "%ssnapshot_3D_result.txt", strFilepath);
+		fopen_s(&fpResult, strFilename, "w");
+		fprintf_s(fpResult, "numCamera:%d\n", NUM_CAM);
+		fprintf_s(fpResult, "frameIndex:%d\n\n", (int)nCurrentFrameIdx_);
+
 		// instance result
-		fprintf_s(fp, "queueTrackingResult:%d,\n{\n", (int)queueTrackingResult_.size());
+		fprintf_s(fpResult, "queueTrackingResult:%d,\n{\n", (int)queueTrackingResult_.size());
 		for (int resultIdx = 0; resultIdx < queueTrackingResult_.size(); resultIdx++)
 		{
 			stTrack3DResult *curResult = &queueTrackingResult_[resultIdx];
-			fprintf_s(fp, "\t{\n\t\tframeIdx:%d\n", curResult->frameIdx);
-			fprintf_s(fp, "\t\tprocessingTime:%f\n", curResult->processingTime);			
+			fprintf_s(fpResult, "\t{\n\t\tframeIdx:%d\n", curResult->frameIdx);
+			fprintf_s(fpResult, "\t\tprocessingTime:%f\n", curResult->processingTime);			
 
 			// object info
-			fprintf_s(fp, "\t\tobjectInfo:%d,\n\t\t{\n", (int)curResult->object3DInfo.size());
+			fprintf_s(fpResult, "\t\tobjectInfo:%d,\n\t\t{\n", (int)curResult->object3DInfo.size());
 			for (int objIdx = 0; objIdx < curResult->object3DInfo.size(); objIdx++)
 			{
 				stObject3DInfo *curObject = &curResult->object3DInfo[objIdx];
-				fprintf_s(fp, "\t\t\t{\n\t\t\t\tid:%d\n", curObject->id);
+				fprintf_s(fpResult, "\t\t\t{\n\t\t\t\tid:%d\n", curObject->id);
 
 				// points
-				fprintf_s(fp, "\t\t\t\trecentPoints:%d,{", (int)curObject->recentPoints.size());
+				fprintf_s(fpResult, "\t\t\t\trecentPoints:%d,{", (int)curObject->recentPoints.size());
 				for (int pointIdx = 0; pointIdx < curObject->recentPoints.size(); pointIdx++)
 				{
 					PSN_Point3D curPoint = curObject->recentPoints[pointIdx];
-					fprintf_s(fp, "(%f,%f,%f)", (float)curPoint.x, (float)curPoint.y, (float)curPoint.z);
-					if (pointIdx < curObject->recentPoints.size() - 1) { fprintf_s(fp, ","); }
+					fprintf_s(fpResult, "(%f,%f,%f)", (float)curPoint.x, (float)curPoint.y, (float)curPoint.z);
+					if (pointIdx < curObject->recentPoints.size() - 1) { fprintf_s(fpResult, ","); }
 				}
-				fprintf_s(fp, "}\n");
+				fprintf_s(fpResult, "}\n");
 
 				// 2D points
-				fprintf_s(fp, "\t\t\t\trecentPoint2Ds:\n\t\t\t\t{\n");
+				fprintf_s(fpResult, "\t\t\t\trecentPoint2Ds:\n\t\t\t\t{\n");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{					
-					fprintf_s(fp, "\t\t\t\t\tcam%d:%d,{", camIdx, (int)curObject->recentPoint2Ds[camIdx].size());
+					fprintf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", camIdx, (int)curObject->recentPoint2Ds[camIdx].size());
 					for (int pointIdx = 0; pointIdx < curObject->recentPoint2Ds[camIdx].size(); pointIdx++)
 					{
 						PSN_Point2D curPoint = curObject->recentPoint2Ds[camIdx][pointIdx];
-						fprintf_s(fp, "(%f,%f)", (float)curPoint.x, (float)curPoint.y);
-						if (pointIdx < curObject->recentPoint2Ds[camIdx].size() - 1) { fprintf_s(fp, ","); }
+						fprintf_s(fpResult, "(%f,%f)", (float)curPoint.x, (float)curPoint.y);
+						if (pointIdx < curObject->recentPoint2Ds[camIdx].size() - 1) { fprintf_s(fpResult, ","); }
 					}
-					fprintf_s(fp, "}\n");
+					fprintf_s(fpResult, "}\n");
 				}
-				fprintf_s(fp, "\t\t\t\t}\n");
+				fprintf_s(fpResult, "\t\t\t\t}\n");
 
 				// 3D box points in each view
-				fprintf_s(fp, "\t\t\t\tpoint3DBox:\n\t\t\t\t{\n");
+				fprintf_s(fpResult, "\t\t\t\tpoint3DBox:\n\t\t\t\t{\n");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{					
-					fprintf_s(fp, "\t\t\t\t\tcam%d:%d,{", camIdx, (int)curObject->point3DBox[camIdx].size());
+					fprintf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", camIdx, (int)curObject->point3DBox[camIdx].size());
 					for (int pointIdx = 0; pointIdx < curObject->point3DBox[camIdx].size(); pointIdx++)
 					{
 						PSN_Point2D curPoint = curObject->point3DBox[camIdx][pointIdx];
-						fprintf_s(fp, "(%f,%f)", (float)curPoint.x, (float)curPoint.y);
-						if (pointIdx < curObject->recentPoint2Ds[camIdx].size() - 1) { fprintf_s(fp, ","); }
+						fprintf_s(fpResult, "(%f,%f)", (float)curPoint.x, (float)curPoint.y);
+						if (pointIdx < curObject->recentPoint2Ds[camIdx].size() - 1) { fprintf_s(fpResult, ","); }
 					}
-					fprintf_s(fp, "}\n");
+					fprintf_s(fpResult, "}\n");
 				}
-				fprintf_s(fp, "\t\t\t\t}\n");
+				fprintf_s(fpResult, "\t\t\t\t}\n");
 
 				// rects
-				fprintf_s(fp, "\t\t\t\trectInViews:{");
+				fprintf_s(fpResult, "\t\t\t\trectInViews:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
 					PSN_Rect curRect = curObject->rectInViews[camIdx];
-					fprintf_s(fp, "(%f,%f,%f,%f)", (float)curRect.x, (float)curRect.y, (float)curRect.w, (float)curRect.h);
-					if (camIdx < NUM_CAM - 1) { fprintf_s(fp, ","); }
+					fprintf_s(fpResult, "(%f,%f,%f,%f)", (float)curRect.x, (float)curRect.y, (float)curRect.w, (float)curRect.h);
+					if (camIdx < NUM_CAM - 1) { fprintf_s(fpResult, ","); }
 				}
-				fprintf_s(fp, "}\n");
+				fprintf_s(fpResult, "}\n");
 
 				// visibility
-				fprintf_s(fp, "\t\t\t\tbVisibleInViews:{");
+				fprintf_s(fpResult, "\t\t\t\tbVisibleInViews:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
-					fprintf_s(fp, "%d", (int)curObject->bVisibleInViews[camIdx]);
-					if (camIdx < NUM_CAM - 1) { fprintf_s(fp, ","); }
+					fprintf_s(fpResult, "%d", (int)curObject->bVisibleInViews[camIdx]);
+					if (camIdx < NUM_CAM - 1) { fprintf_s(fpResult, ","); }
 				}
-				fprintf_s(fp, "}\n\t\t\t}\n");
+				fprintf_s(fpResult, "}\n\t\t\t}\n");
 			}
-			fprintf_s(fp, "\t\t}\n\t}\n");
+			fprintf_s(fpResult, "\t\t}\n\t}\n");
 		}
-		fprintf_s(fp, "}\n");
+		fprintf_s(fpResult, "}\n");
 
 		// deferred result
-		fprintf_s(fp, "queueDeferredTrackingResult:%d,\n{\n", (int)queueDeferredTrackingResult_.size());
+		fprintf_s(fpResult, "queueDeferredTrackingResult:%d,\n{\n", (int)queueDeferredTrackingResult_.size());
 		for (int resultIdx = 0; resultIdx < queueDeferredTrackingResult_.size(); resultIdx++)
 		{
 			stTrack3DResult *curResult = &queueDeferredTrackingResult_[resultIdx];
-			fprintf_s(fp, "\t{\n\t\tframeIdx:%d\n", curResult->frameIdx);
-			fprintf_s(fp, "\t\tprocessingTime:%f\n", curResult->processingTime);			
+			fprintf_s(fpResult, "\t{\n\t\tframeIdx:%d\n", curResult->frameIdx);
+			fprintf_s(fpResult, "\t\tprocessingTime:%f\n", curResult->processingTime);			
 
 			// object info
-			fprintf_s(fp, "\t\tobjectInfo:%d,\n\t\t{\n", (int)curResult->object3DInfo.size());
+			fprintf_s(fpResult, "\t\tobjectInfo:%d,\n\t\t{\n", (int)curResult->object3DInfo.size());
 			for (int objIdx = 0; objIdx < curResult->object3DInfo.size(); objIdx++)
 			{
 				stObject3DInfo *curObject = &curResult->object3DInfo[objIdx];
-				fprintf_s(fp, "\t\t\t{\n\t\t\t\tid:%d\n", curObject->id);
+				fprintf_s(fpResult, "\t\t\t{\n\t\t\t\tid:%d\n", curObject->id);
 
 				// points
-				fprintf_s(fp, "\t\t\t\trecentPoints:%d,{", (int)curObject->recentPoints.size());
+				fprintf_s(fpResult, "\t\t\t\trecentPoints:%d,{", (int)curObject->recentPoints.size());
 				for (int pointIdx = 0; pointIdx < curObject->recentPoints.size(); pointIdx++)
 				{
 					PSN_Point3D curPoint = curObject->recentPoints[pointIdx];
-					fprintf_s(fp, "(%f,%f,%f)", (float)curPoint.x, (float)curPoint.y, (float)curPoint.z);
-					if (pointIdx < curObject->recentPoints.size() - 1) { fprintf_s(fp, ","); }
+					fprintf_s(fpResult, "(%f,%f,%f)", (float)curPoint.x, (float)curPoint.y, (float)curPoint.z);
+					if (pointIdx < curObject->recentPoints.size() - 1) { fprintf_s(fpResult, ","); }
 				}
-				fprintf_s(fp, "}\n");
+				fprintf_s(fpResult, "}\n");
 
 				// 2D points
-				fprintf_s(fp, "\t\t\t\trecentPoint2Ds:\n\t\t\t\t{\n");
+				fprintf_s(fpResult, "\t\t\t\trecentPoint2Ds:\n\t\t\t\t{\n");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{					
-					fprintf_s(fp, "\t\t\t\t\tcam%d:%d,{", camIdx, (int)curObject->recentPoint2Ds[camIdx].size());
+					fprintf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", camIdx, (int)curObject->recentPoint2Ds[camIdx].size());
 					for (int pointIdx = 0; pointIdx < curObject->recentPoint2Ds[camIdx].size(); pointIdx++)
 					{
 						PSN_Point2D curPoint = curObject->recentPoint2Ds[camIdx][pointIdx];
-						fprintf_s(fp, "(%f,%f)", (float)curPoint.x, (float)curPoint.y);
-						if (pointIdx < curObject->recentPoint2Ds[camIdx].size() - 1) { fprintf_s(fp, ","); }
+						fprintf_s(fpResult, "(%f,%f)", (float)curPoint.x, (float)curPoint.y);
+						if (pointIdx < curObject->recentPoint2Ds[camIdx].size() - 1) { fprintf_s(fpResult, ","); }
 					}
-					fprintf_s(fp, "}\n");
+					fprintf_s(fpResult, "}\n");
 				}
-				fprintf_s(fp, "\t\t\t\t}\n");
+				fprintf_s(fpResult, "\t\t\t\t}\n");
 
 				// 3D box points in each view
-				fprintf_s(fp, "\t\t\t\tpoint3DBox:\n\t\t\t\t{\n");
+				fprintf_s(fpResult, "\t\t\t\tpoint3DBox:\n\t\t\t\t{\n");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{					
-					fprintf_s(fp, "\t\t\t\t\tcam%d:%d,{", camIdx, (int)curObject->point3DBox[camIdx].size());
+					fprintf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", camIdx, (int)curObject->point3DBox[camIdx].size());
 					for (int pointIdx = 0; pointIdx < curObject->point3DBox[camIdx].size(); pointIdx++)
 					{
 						PSN_Point2D curPoint = curObject->point3DBox[camIdx][pointIdx];
-						fprintf_s(fp, "(%f,%f)", (float)curPoint.x, (float)curPoint.y);
-						if (pointIdx < curObject->recentPoint2Ds[camIdx].size() - 1) { fprintf_s(fp, ","); }
+						fprintf_s(fpResult, "(%f,%f)", (float)curPoint.x, (float)curPoint.y);
+						if (pointIdx < curObject->recentPoint2Ds[camIdx].size() - 1) { fprintf_s(fpResult, ","); }
 					}
-					fprintf_s(fp, "}\n");
+					fprintf_s(fpResult, "}\n");
 				}
-				fprintf_s(fp, "\t\t\t\t}\n");
+				fprintf_s(fpResult, "\t\t\t\t}\n");
 
 				// rects
-				fprintf_s(fp, "\t\t\t\trectInViews:{");
+				fprintf_s(fpResult, "\t\t\t\trectInViews:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
 					PSN_Rect curRect = curObject->rectInViews[camIdx];
-					fprintf_s(fp, "(%f,%f,%f,%f)", (float)curRect.x, (float)curRect.y, (float)curRect.w, (float)curRect.h);
-					if (camIdx < NUM_CAM - 1) { fprintf_s(fp, ","); }
+					fprintf_s(fpResult, "(%f,%f,%f,%f)", (float)curRect.x, (float)curRect.y, (float)curRect.w, (float)curRect.h);
+					if (camIdx < NUM_CAM - 1) { fprintf_s(fpResult, ","); }
 				}
-				fprintf_s(fp, "}\n");
+				fprintf_s(fpResult, "}\n");
 
 				// visibility
-				fprintf_s(fp, "\t\t\t\tbVisibleInViews:{");
+				fprintf_s(fpResult, "\t\t\t\tbVisibleInViews:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
-					fprintf_s(fp, "%d", (int)curObject->bVisibleInViews[camIdx]);
-					if (camIdx < NUM_CAM - 1) { fprintf_s(fp, ","); }
+					fprintf_s(fpResult, "%d", (int)curObject->bVisibleInViews[camIdx]);
+					if (camIdx < NUM_CAM - 1) { fprintf_s(fpResult, ","); }
 				}
-				fprintf_s(fp, "}\n\t\t\t}\n");
+				fprintf_s(fpResult, "}\n\t\t\t}\n");
 			}
-			fprintf_s(fp, "\t\t}\n\t}\n");
+			fprintf_s(fpResult, "\t\t}\n\t}\n");
 		}
-		fprintf_s(fp, "}\n");
+		fprintf_s(fpResult, "}\n");
+		fclose(fpResult);
 
 		//---------------------------------------------------------
 		// HYPOTHESES
 		//---------------------------------------------------------
+		sprintf_s(strFilename, "%ssnapshot_3D_hypotheses.txt", strFilepath);
+		fopen_s(&fpHypothesis, strFilename, "w");
+		fprintf_s(fpHypothesis, "numCamera:%d\n", NUM_CAM);
+		fprintf_s(fpHypothesis, "frameIndex:%d\n\n", (int)nCurrentFrameIdx_);
+
 		// queuePrevGlobalHypotheses
-		fprintf_s(fp, "queuePrevGlobalHypotheses:%d,\n{\n", (int)queuePrevGlobalHypotheses_.size());
+		fprintf_s(fpHypothesis, "queuePrevGlobalHypotheses:%d,\n{\n", (int)queuePrevGlobalHypotheses_.size());
 		for (PSN_HypothesisSet::iterator hypothesisIter = queuePrevGlobalHypotheses_.begin();
 			hypothesisIter != queuePrevGlobalHypotheses_.end();
 			hypothesisIter++)
 		{
-			fprintf_s(fp, "\t{\n\t\tselectedTracks:%d,", (int)(*hypothesisIter).selectedTracks.size());
+			fprintf_s(fpHypothesis, "\t{\n\t\tselectedTracks:%d,", (int)(*hypothesisIter).selectedTracks.size());
 			trackIDList = psn::MakeTrackIDList(&(*hypothesisIter).selectedTracks) + "\n";
-			fprintf_s(fp, trackIDList.c_str());
+			fprintf_s(fpHypothesis, trackIDList.c_str());
 
-			fprintf_s(fp, "\t\trelatedTracks:%d,", (int)(*hypothesisIter).relatedTracks.size());
+			fprintf_s(fpHypothesis, "\t\trelatedTracks:%d,", (int)(*hypothesisIter).relatedTracks.size());
 			trackIDList = psn::MakeTrackIDList(&(*hypothesisIter).relatedTracks) + "\n";
-			fprintf_s(fp, trackIDList.c_str());
+			fprintf_s(fpHypothesis, trackIDList.c_str());
 
-			fprintf_s(fp, "\t\tlogLikelihood:%e\n", (*hypothesisIter).logLikelihood);
-			fprintf_s(fp, "\t\tprobability:%e\n", (*hypothesisIter).probability);
-			fprintf_s(fp, "\t\tbValid:%d\n\t}\n", (int)(*hypothesisIter).bValid);
+			fprintf_s(fpHypothesis, "\t\tlogLikelihood:%e\n", (*hypothesisIter).logLikelihood);
+			fprintf_s(fpHypothesis, "\t\tprobability:%e\n", (*hypothesisIter).probability);
+			fprintf_s(fpHypothesis, "\t\tbValid:%d\n\t}\n", (int)(*hypothesisIter).bValid);
 		}
-		fprintf_s(fp, "}\n");
+		fprintf_s(fpHypothesis, "}\n");
 
 		// queueCurrGlobalHypotheses
-		fprintf_s(fp, "queueCurrGlobalHypotheses:%d,\n{\n", (int)queueCurrGlobalHypotheses_.size());
+		fprintf_s(fpHypothesis, "queueCurrGlobalHypotheses:%d,\n{\n", (int)queueCurrGlobalHypotheses_.size());
 		for (PSN_HypothesisSet::iterator hypothesisIter = queueCurrGlobalHypotheses_.begin();
 			hypothesisIter != queueCurrGlobalHypotheses_.end();
 			hypothesisIter++)
 		{
-			fprintf_s(fp, "\t{\n\t\tselectedTracks:%d,", (int)(*hypothesisIter).selectedTracks.size());
+			fprintf_s(fpHypothesis, "\t{\n\t\tselectedTracks:%d,", (int)(*hypothesisIter).selectedTracks.size());
 			trackIDList = psn::MakeTrackIDList(&(*hypothesisIter).selectedTracks) + "\n";
-			fprintf_s(fp, trackIDList.c_str());
+			fprintf_s(fpHypothesis, trackIDList.c_str());
 
-			fprintf_s(fp, "\t\trelatedTracks:%d,", (int)(*hypothesisIter).relatedTracks.size());
+			fprintf_s(fpHypothesis, "\t\trelatedTracks:%d,", (int)(*hypothesisIter).relatedTracks.size());
 			trackIDList = psn::MakeTrackIDList(&(*hypothesisIter).relatedTracks) + "\n";
-			fprintf_s(fp, trackIDList.c_str());
+			fprintf_s(fpHypothesis, trackIDList.c_str());
 
-			fprintf_s(fp, "\t\tlogLikelihood:%e\n", (*hypothesisIter).logLikelihood);
-			fprintf_s(fp, "\t\tprobability:%e\n", (*hypothesisIter).probability);
-			fprintf_s(fp, "\t\tbValid:%d\n\t}\n", (int)(*hypothesisIter).bValid);
+			fprintf_s(fpHypothesis, "\t\tlogLikelihood:%e\n", (*hypothesisIter).logLikelihood);
+			fprintf_s(fpHypothesis, "\t\tprobability:%e\n", (*hypothesisIter).probability);
+			fprintf_s(fpHypothesis, "\t\tbValid:%d\n\t}\n", (int)(*hypothesisIter).bValid);
 		}
-		fprintf_s(fp, "}\n");
+		fprintf_s(fpHypothesis, "}\n");
+		fclose(fpHypothesis);
 
 		//---------------------------------------------------------
 		// VISUALIZATION
 		//---------------------------------------------------------
-		fprintf_s(fp, "nNewVisualizationID:%d\n", (int)nNewVisualizationID_);
-		fprintf_s(fp, "queuePairTreeIDToVisualizationID:%d,{", (int)queuePairTreeIDToVisualizationID_.size());
+		sprintf_s(strFilename, "%ssnapshot_3D_info.txt", strFilepath);
+		fopen_s(&fpInfo, strFilename, "w");
+		fprintf_s(fpInfo, "numCamera:%d\n", NUM_CAM);
+		fprintf_s(fpInfo, "frameIndex:%d\n\n", (int)nCurrentFrameIdx_);
+		fprintf_s(fpInfo, "nNewVisualizationID:%d\n", (int)nNewVisualizationID_);
+		fprintf_s(fpInfo, "queuePairTreeIDToVisualizationID:%d,{", (int)queuePairTreeIDToVisualizationID_.size());
 		for (int pairIdx = 0; pairIdx < queuePairTreeIDToVisualizationID_.size(); pairIdx++)
 		{
-			fprintf_s(fp, "(%d,%d)", queuePairTreeIDToVisualizationID_[pairIdx].first, queuePairTreeIDToVisualizationID_[pairIdx].second);
+			fprintf_s(fpInfo, "(%d,%d)", queuePairTreeIDToVisualizationID_[pairIdx].first, queuePairTreeIDToVisualizationID_[pairIdx].second);
 		}
-		fprintf_s(fp, "}\n");
+		fprintf_s(fpInfo, "}\n");
 
-		fprintf_s(fp, "()()\n");
-		fprintf_s(fp, "('')\n");
+		fprintf_s(fpInfo, "()()\n");
+		fprintf_s(fpInfo, "('')\n");
 
-		fclose(fp);
+		fclose(fpInfo);
 	}
 	catch(DWORD dwError)
 	{
@@ -4465,9 +4283,9 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 {
 #ifdef PSN_DEBUG_MODE_
-	printf(">> Reading snapshot......");
+	printf(">> Reading snapshot......\n");
 #endif
-	FILE *fp;
+	FILE *fpTracklet, *fpTrack, *fpHypothesis, *fpResult, *fpInfo;
 	char strFilename[128] = "";
 	int readingInt = 0;
 	float readingFloat = 0.0;
@@ -4477,110 +4295,117 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 
 	try
 	{	
-		sprintf_s(strFilename, "%ssnapshot_3D.txt", strFilepath);
-
-		// first file open for generating track instances
-		fopen_s(&fp, strFilename, "r");
-		if (NULL == fp) { return false; }
-
-		fscanf_s(fp, "numCamera:%d\n", &readingInt);
+		// file open
+		sprintf_s(strFilename, "%ssnapshot_3D_tracklet.txt", strFilepath);		
+		fopen_s(&fpTracklet, strFilename, "r"); 
+		if (NULL == fpTracklet) { return false; }
+		fscanf_s(fpTracklet, "numCamera:%d\n", &readingInt);
 		assert(NUM_CAM == readingInt);
-		fscanf_s(fp, "frameIndex:%d\n\n", &readingInt);
+		fscanf_s(fpTracklet, "frameIndex:%d\n\n", &readingInt);
 		nCurrentFrameIdx_ = (unsigned int)readingInt;
 	
 		//---------------------------------------------------------
 		// 2D TRACKLET RELATED
 		//---------------------------------------------------------
-		fscanf_s(fp, ">> 2D tracklet\nvecTracklet2DSet:\n{\n");
+		fscanf_s(fpTracklet, "vecTracklet2DSet:\n{\n");
 		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 		{
+#ifdef PSN_DEBUG_MODE_
+			printf(">> Reading 2D tracklet set at cam %d: %3.1f%%", camIdx, 0);
+#endif
 			int numTrackletSet = 0;
-			fscanf_s(fp, "\t{\n\t\ttracklets:%d,\n\t\t{\n", &numTrackletSet);
+			fscanf_s(fpTracklet, "\t{\n\t\ttracklets:%d,\n\t\t{\n", &numTrackletSet);
 			vecTracklet2DSet_[camIdx].tracklets.clear();
 			for (int trackletIdx = 0; trackletIdx < numTrackletSet; trackletIdx++)
 			{
 				stTracklet2D newTracklet;
 
-				fscanf_s(fp, "\t\t\t{\n");
-				fscanf_s(fp, "\t\t\t\tid:%d\n", &readingInt);
+				fscanf_s(fpTracklet, "\t\t\t{\n");
+				fscanf_s(fpTracklet, "\t\t\t\tid:%d\n", &readingInt);
 				newTracklet.id = (unsigned int)readingInt;
-				fscanf_s(fp, "\t\t\t\tcamIdx:%d\n", &readingInt);
+				fscanf_s(fpTracklet, "\t\t\t\tcamIdx:%d\n", &readingInt);
 				newTracklet.camIdx = (unsigned int)readingInt;
-				fscanf_s(fp, "\t\t\t\tbActivated:%d\n", &readingInt);
+				fscanf_s(fpTracklet, "\t\t\t\tbActivated:%d\n", &readingInt);
 				newTracklet.bActivated = 0 < readingInt ? true : false;
-				fscanf_s(fp, "\t\t\t\ttimeStart:%d\n", &readingInt);
+				fscanf_s(fpTracklet, "\t\t\t\ttimeStart:%d\n", &readingInt);
 				newTracklet.timeStart = (unsigned int)readingInt;
-				fscanf_s(fp, "\t\t\t\ttimeEnd:%d\n", &readingInt);
+				fscanf_s(fpTracklet, "\t\t\t\ttimeEnd:%d\n", &readingInt);
 				newTracklet.timeEnd = (unsigned int)readingInt;
-				fscanf_s(fp, "\t\t\t\tduration:%d\n", &readingInt);
+				fscanf_s(fpTracklet, "\t\t\t\tduration:%d\n", &readingInt);
 				newTracklet.duration = (unsigned int)readingInt;
 
 				// rects
 				int numRect = 0;
-				fscanf_s(fp, "\t\t\t\trects:%d,\n\t\t\t\t{\n", &numRect);
+				fscanf_s(fpTracklet, "\t\t\t\trects:%d,\n\t\t\t\t{\n", &numRect);
 				for (int rectIdx = 0; rectIdx < numRect; rectIdx++)
 				{
 					float x, y, w, h;
-					fscanf_s(fp, "\t\t\t\t\t(%f,%f,%f,%f)\n", &x, &y, &w, &h);
+					fscanf_s(fpTracklet, "\t\t\t\t\t(%f,%f,%f,%f)\n", &x, &y, &w, &h);
 					newTracklet.rects.push_back(PSN_Rect((double)x, (double)y, (double)w, (double)h));
 				}
-				fscanf_s(fp, "\t\t\t\t}\n");
+				fscanf_s(fpTracklet, "\t\t\t\t}\n");
 
 				// backprojectionLines
 				int numLine = 0;
-				fscanf_s(fp, "\t\t\t\tbackprojectionLines:%d,\n\t\t\t\t{\n", &numLine);
+				fscanf_s(fpTracklet, "\t\t\t\tbackprojectionLines:%d,\n\t\t\t\t{\n", &numLine);
 				for (int lineIdx = 0; lineIdx < numLine; lineIdx++)
 				{
 					float x1, y1, z1, x2, y2, z2;					
-					fscanf_s(fp, "\t\t\t\t\t(%f,%f,%f,%f,%f,%f)\n", &x1, &y1, &z1, &x2, &y2, &z2);
+					fscanf_s(fpTracklet, "\t\t\t\t\t(%f,%f,%f,%f,%f,%f)\n", &x1, &y1, &z1, &x2, &y2, &z2);
 					newTracklet.backprojectionLines.push_back(std::make_pair(PSN_Point3D((double)x1, (double)y1, (double)z1), PSN_Point3D((double)x2, (double)y2, (double)z2)));
 				}
-				fscanf_s(fp, "\t\t\t\t}\n");
+				fscanf_s(fpTracklet, "\t\t\t\t}\n");
 
 				// appearance
-				fscanf_s(fp, "\t\t\t\tRGBFeatureHead:%d,(", &readingInt);
+				fscanf_s(fpTracklet, "\t\t\t\tRGBFeatureHead:%d,(", &readingInt);
 				newTracklet.RGBFeatureHead = cv::Mat::zeros(readingInt, 1, CV_64FC1);
 				for (int idx = 0; idx < readingInt; idx++)
 				{
-					fscanf_s(fp, "%f", &readingFloat);
+					fscanf_s(fpTracklet, "%f", &readingFloat);
 					newTracklet.RGBFeatureHead.at<double>(idx, 0) = (double)readingFloat;
-					if (idx < readingInt - 1) { fscanf_s(fp, ","); }
+					if (idx < readingInt - 1) { fscanf_s(fpTracklet, ","); }
 				}
-				fscanf_s(fp, ")\n");
-				fscanf_s(fp, "\t\t\t\tRGBFeatureTail:%d,(", &readingInt);
+				fscanf_s(fpTracklet, ")\n");
+				fscanf_s(fpTracklet, "\t\t\t\tRGBFeatureTail:%d,(", &readingInt);
 				newTracklet.RGBFeatureTail = cv::Mat::zeros(readingInt, 1, CV_64FC1);
 				for (int idx = 0; idx < readingInt; idx++)
 				{
-					fscanf_s(fp, "%f", &readingFloat);
+					fscanf_s(fpTracklet, "%f", &readingFloat);
 					newTracklet.RGBFeatureTail.at<double>(idx, 0) = (double)readingFloat;
-					if (idx < readingInt - 1) { fscanf_s(fp, ","); }
+					if (idx < readingInt - 1) { fscanf_s(fpTracklet, ","); }
 				}
-				fscanf_s(fp, ")\n");
+				fscanf_s(fpTracklet, ")\n");
 
 				// bAssociableNewMeasurement
 				for (int compCamIdx = 0; compCamIdx < NUM_CAM; compCamIdx++)
 				{
 					int numFlags = 0;
-					fscanf_s(fp, "\t\t\t\tbAssociableNewMeasurement[%d]:%d,{", &readingInt, &numFlags);
+					fscanf_s(fpTracklet, "\t\t\t\tbAssociableNewMeasurement[%d]:%d,{", &readingInt, &numFlags);
 					for (int flagIdx = 0; flagIdx < numFlags; flagIdx++)
 					{
-						fscanf_s(fp, "%d", &readingInt);
+						fscanf_s(fpTracklet, "%d", &readingInt);
 						bool curFlag = 0 < readingInt ? true : false;
 						newTracklet.bAssociableNewMeasurement[compCamIdx].push_back(curFlag);
-						if (flagIdx < numFlags - 1) { fscanf_s(fp, ","); }
+						if (flagIdx < numFlags - 1) { fscanf_s(fpTracklet, ","); }
 					}
-					fscanf_s(fp, "}\n");
+					fscanf_s(fpTracklet, "}\n");
 				}
-				fscanf_s(fp, "\t\t\t}\n");
+				fscanf_s(fpTracklet, "\t\t\t}\n");
 				vecTracklet2DSet_[camIdx].tracklets.push_back(newTracklet);
+#ifdef PSN_DEBUG_MODE_
+				printf("\r>> Reading 2D tracklet set at cam %d: %3.1f%%", camIdx, 100.0 * (double)trackletIdx / (double)numTrackletSet);
+#endif
 			}
+#ifdef PSN_DEBUG_MODE_
+			printf("\n");
+#endif
 
 			int numActiveTracklet = 0;
 			vecTracklet2DSet_[camIdx].activeTracklets.clear();
-			fscanf_s(fp, "\t\tactiveTracklets:%d,{", &numActiveTracklet);
+			fscanf_s(fpTracklet, "\t\tactiveTracklets:%d,{", &numActiveTracklet);
 			for (int trackletIdx = 0; trackletIdx < numActiveTracklet; trackletIdx++)
 			{
-				fscanf_s(fp, "%d", &readingInt);
+				fscanf_s(fpTracklet, "%d", &readingInt);
 				// search active tracklet
 				for (std::list<stTracklet2D>::iterator trackletIter = vecTracklet2DSet_[camIdx].tracklets.begin();
 					trackletIter != vecTracklet2DSet_[camIdx].tracklets.end();
@@ -4590,14 +4415,14 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 					vecTracklet2DSet_[camIdx].activeTracklets.push_back(&(*trackletIter));
 					break;
 				}
-				if (trackletIdx < numActiveTracklet - 1) { fscanf_s(fp, ","); }
+				if (trackletIdx < numActiveTracklet - 1) { fscanf_s(fpTracklet, ","); }
 			}
 
 			int numNewTracklet = 0;
-			fscanf_s(fp, "}\n\t\tnewMeasurements:%d,{", &numNewTracklet);
+			fscanf_s(fpTracklet, "}\n\t\tnewMeasurements:%d,{", &numNewTracklet);
 			for (int trackletIdx = 0; trackletIdx < numNewTracklet; trackletIdx++)
 			{
-				fscanf_s(fp, "%d", &readingInt);
+				fscanf_s(fpTracklet, "%d", &readingInt);
 				// search active tracklet
 				for (std::list<stTracklet2D>::iterator trackletIter = vecTracklet2DSet_[camIdx].tracklets.begin();
 					trackletIter != vecTracklet2DSet_[camIdx].tracklets.end();
@@ -4607,44 +4432,57 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 					vecTracklet2DSet_[camIdx].newMeasurements.push_back(&(*trackletIter));
 					break;
 				}
-				if (trackletIdx < numNewTracklet - 1) { fscanf_s(fp, ","); }
+				if (trackletIdx < numNewTracklet - 1) { fscanf_s(fpTracklet, ","); }
 			}
-			fscanf_s(fp, "}\n\t}\n");
+			fscanf_s(fpTracklet, "}\n\t}\n");
 		}
-		fscanf_s(fp, "}\n");
-		fscanf_s(fp, "nNumTotalActive2DTracklet:%d\n\n", &readingInt);
+		fscanf_s(fpTracklet, "}\n");
+		fscanf_s(fpTracklet, "nNumTotalActive2DTracklet:%d\n\n", &readingInt);
 		nNumTotalActive2DTracklet_ = (unsigned int)readingInt;
+
+		fclose(fpTracklet);
 
 		//---------------------------------------------------------
 		// 3D TRACK RELATED
 		//---------------------------------------------------------
-		fscanf_s(fp, ">> 3D track\n");
-		fscanf_s(fp, "bReceiveNewMeasurement:%d\n", &readingInt);
+#ifdef PSN_DEBUG_MODE_
+		printf(">> Reading 3D tracks: %3.1f%%", 0);
+#endif
+		// file open
+		sprintf_s(strFilename, "%ssnapshot_3D_track.txt", strFilepath);		
+		fopen_s(&fpTrack, strFilename, "r"); 
+		if (NULL == fpTrack) { return false; }
+		fscanf_s(fpTrack, "numCamera:%d\n", &readingInt);
+		assert(NUM_CAM == readingInt);
+		fscanf_s(fpTrack, "frameIndex:%d\n\n", &readingInt);
+		nCurrentFrameIdx_ = (unsigned int)readingInt;
+
+		fscanf_s(fpTrack, "bReceiveNewMeasurement:%d\n", &readingInt);
 		bReceiveNewMeasurement_ = 0 < readingInt ? true : false;
-		fscanf_s(fp, "bInitiationPenaltyFree:%d\n", &readingInt);
+		fscanf_s(fpTrack, "bInitiationPenaltyFree:%d\n", &readingInt);
 		bInitiationPenaltyFree_ = 0 < readingInt ? true : false;
-		fscanf_s(fp, "nNewTrackID:%d\n", &readingInt);
+		fscanf_s(fpTrack, "nNewTrackID:%d\n", &readingInt);
 		nNewTrackID_ = (unsigned int)readingInt;
-		fscanf_s(fp, "nNewTreeID:%d\n", &readingInt);
+		fscanf_s(fpTrack, "nNewTreeID:%d\n", &readingInt);
 		nNewTreeID_ = (unsigned int)readingInt;
 
 		// track
 		int numTrack = 0;
 		listTrack3D_.clear();
-		fscanf_s(fp, "listTrack3D:%d,\n{\n", &numTrack);
+		fscanf_s(fpTrack, "listTrack3D:%d,\n{\n", &numTrack);
 		for (int trackIdx = 0; trackIdx < numTrack; trackIdx++)
 		{
 			Track3D newTrack;
 			int parentTrackID = 0, treeID = 0;
 			std::deque<unsigned int> childrenTrackID;
-			fscanf_s(fp, "\t{\n\t\tid:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t{\n\t\tid:%d\n", &readingInt);
 			newTrack.id = (unsigned int)readingInt;
 
 			// curTracklet2Ds
-			fscanf_s(fp, "\t\tcurTracklet2Ds:{");
+			fscanf_s(fpTrack, "\t\tcurTracklet2Ds:{");
 			for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
-				fscanf_s(fp, "%d", &readingInt);
+				fscanf_s(fpTrack, "%d", &readingInt);
 				if (-1 == readingInt)
 				{
 					newTrack.curTracklet2Ds.set(camIdx, NULL);
@@ -4660,34 +4498,34 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 						break;
 					}
 				}
-				if (camIdx < NUM_CAM - 1) { fscanf_s(fp, ","); }
+				if (camIdx < NUM_CAM - 1) { fscanf_s(fpTrack, ","); }
 			}
-			fscanf_s(fp, "}\n");
+			fscanf_s(fpTrack, "}\n");
 
 			// tracklet2DIDs
-			fscanf_s(fp, "\t\ttrackleIDs:\n\t\t{\n");
+			fscanf_s(fpTrack, "\t\ttrackleIDs:\n\t\t{\n");
 			for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
 				int numTracklet = 0;
-				fscanf_s(fp, "\t\t\tnumTracklet:%d,{", &numTracklet);
+				fscanf_s(fpTrack, "\t\t\tnumTracklet:%d,{", &numTracklet);
 
 				for (int trackletIdx = 0; trackletIdx < numTracklet; trackletIdx++)
 				{
-					fscanf_s(fp, "%d", &readingInt);
+					fscanf_s(fpTrack, "%d", &readingInt);
 					newTrack.tracklet2DIDs[camIdx].push_back((unsigned int)readingInt);
-					if (trackletIdx < numTracklet - 1) { fscanf_s(fp, ","); }
+					if (trackletIdx < numTracklet - 1) { fscanf_s(fpTrack, ","); }
 				}
 
-				fscanf_s(fp, "}\n");
+				fscanf_s(fpTrack, "}\n");
 			}
-			fscanf_s(fp, "\t\t}\n");
+			fscanf_s(fpTrack, "\t\t}\n");
 
-			fscanf_s(fp, "\t\tbActive:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\tbActive:%d\n", &readingInt);
 			newTrack.bActive = 0 < readingInt ? true : false;
-			fscanf_s(fp, "\t\tbValid:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\tbValid:%d\n", &readingInt);
 			newTrack.bValid = 0 < readingInt ? true : false;
-			fscanf_s(fp, "\t\ttreeID:%d\n",  &treeID);
-			fscanf_s(fp, "\t\tparentTrackID:%d\n", &parentTrackID);
+			fscanf_s(fpTrack, "\t\ttreeID:%d\n",  &treeID);
+			fscanf_s(fpTrack, "\t\tparentTrackID:%d\n", &parentTrackID);
 			for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 				trackIter != listTrack3D_.end();
 				trackIter++)
@@ -4699,33 +4537,33 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 
 			// children tracks
 			int numChildrenTrack = 0;
-			fscanf_s(fp, "\t\tchildrenTrack:%d,{", &numChildrenTrack);
+			fscanf_s(fpTrack, "\t\tchildrenTrack:%d,{", &numChildrenTrack);
 			for (int childTrackIdx = 0; childTrackIdx < numChildrenTrack; childTrackIdx++)
 			{
-				fscanf_s(fp, "%d", &readingInt);
+				fscanf_s(fpTrack, "%d", &readingInt);
 				childrenTrackID.push_back((unsigned int)readingInt);
-				if (childTrackIdx < numChildrenTrack - 1) { fscanf_s(fp, ","); }
+				if (childTrackIdx < numChildrenTrack - 1) { fscanf_s(fpTrack, ","); }
 			}
-			fscanf_s(fp, "}\n");
+			fscanf_s(fpTrack, "}\n");
 			
 			// temporal information
-			fscanf_s(fp, "\t\ttimeStart:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\ttimeStart:%d\n", &readingInt);
 			newTrack.timeStart = (unsigned int)readingInt;
-			fscanf_s(fp, "\t\ttimeEnd:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\ttimeEnd:%d\n", &readingInt);
 			newTrack.timeEnd = (unsigned int)readingInt;
-			fscanf_s(fp, "\t\ttimeGeneration:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\ttimeGeneration:%d\n", &readingInt);
 			newTrack.timeGeneration = (unsigned int)readingInt;
-			fscanf_s(fp, "\t\tduration:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\tduration:%d\n", &readingInt);
 			newTrack.duration = (unsigned int)readingInt;
 
 			// reconstrcution related
 			int numReconstruction = 0;
-			fscanf_s(fp, "\t\treconstructions:%d,\n\t\t{\n", &numReconstruction);
+			fscanf_s(fpTrack, "\t\treconstructions:%d,\n\t\t{\n", &numReconstruction);
 			for (int pointIdx = 0; pointIdx < numReconstruction; pointIdx++)
 			{
 				stReconstruction newReconstruction;
 				float x, y, z, vx, vy, vz, costReconstruction, costLink;
-				fscanf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", 
+				fscanf_s(fpTrack, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", 
 					&readingInt, &x, &y, &z, &vx, &vy, &vz, &costReconstruction, &costLink);
 				newReconstruction.bIsMeasurement = 0 < readingInt ? true : false;
 				newReconstruction.point = PSN_Point3D((double)x, (double)y, (double)z);
@@ -4733,10 +4571,10 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				newReconstruction.costLink = (double)costLink;
 				newReconstruction.costReconstruction = (double)costReconstruction;
 
-				fscanf_s(fp, "tracklet2Ds:{");
+				fscanf_s(fpTrack, "tracklet2Ds:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
-					fscanf_s(fp, "%d", &readingInt);
+					fscanf_s(fpTrack, "%d", &readingInt);
 
 					if (0 > readingInt)
 					{
@@ -4753,76 +4591,83 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 							break;
 						}
 					}
-					if (camIdx < NUM_CAM - 1) { fscanf_s(fp, ","); }
+					if (camIdx < NUM_CAM - 1) { fscanf_s(fpTrack, ","); }
 				}
-				fscanf_s(fp, "}\n");
+				fscanf_s(fpTrack, "}\n");
 
 				newTrack.reconstructions.push_back(newReconstruction);
 			}
-			fscanf_s(fp, "\t\t}\n");
+			fscanf_s(fpTrack, "\t\t}\n");
 
 			// cost
-			fscanf_s(fp, "\t\tcostTotal:%e\n", &readingFloat);
+			fscanf_s(fpTrack, "\t\tcostTotal:%e\n", &readingFloat);
 			newTrack.costTotal = (double)readingFloat;
-			fscanf_s(fp, "\t\tcostReconstruction:%e\n", &readingFloat);
+			fscanf_s(fpTrack, "\t\tcostReconstruction:%e\n", &readingFloat);
 			newTrack.costReconstruction = (double)readingFloat;
-			fscanf_s(fp, "\t\tcostLink:%e\n", &readingFloat);
+			fscanf_s(fpTrack, "\t\tcostLink:%e\n", &readingFloat);
 			newTrack.costLink = (double)readingFloat;
-			fscanf_s(fp, "\t\tcostEnter:%e\n", &readingFloat);
+			fscanf_s(fpTrack, "\t\tcostEnter:%e\n", &readingFloat);
 			newTrack.costEnter = (double)readingFloat;
-			fscanf_s(fp, "\t\tcostExit:%e\n", &readingFloat);
+			fscanf_s(fpTrack, "\t\tcostExit:%e\n", &readingFloat);
 			newTrack.costExit = (double)readingFloat;
-			fscanf_s(fp, "\t\tcostRGB:%e\n", &readingFloat);
+			fscanf_s(fpTrack, "\t\tcostRGB:%e\n", &readingFloat);
 			newTrack.costRGB = (double)readingFloat;
 
 			// loglikelihood
-			fscanf_s(fp, "\t\tloglikelihood:%e\n", &readingFloat);
+			fscanf_s(fpTrack, "\t\tloglikelihood:%e\n", &readingFloat);
 			newTrack.loglikelihood = (double)readingFloat;
 
 			// GTP
-			fscanf_s(fp, "\t\tGTProb:%e\n", &readingFloat);
+			fscanf_s(fpTrack, "\t\tGTProb:%e\n", &readingFloat);
 			newTrack.GTProb = (double)readingFloat;
-			fscanf_s(fp, "\t\tBranchGTProb:%e\n", &readingFloat);
+			fscanf_s(fpTrack, "\t\tBranchGTProb:%e\n", &readingFloat);
 			newTrack.BranchGTProb = (double)readingFloat;
-			fscanf_s(fp, "\t\tbWasBestSolution:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\tbWasBestSolution:%d\n", &readingInt);
 			newTrack.bWasBestSolution = 0 < readingInt ? true: false;
-			fscanf_s(fp, "\t\tbCurrentBestSolution:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\tbCurrentBestSolution:%d\n", &readingInt);
 			newTrack.bCurrentBestSolution = 0 < readingInt ? true : false;
 
 			// HO-MHT
-			fscanf_s(fp, "\t\tbNewTrack:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\tbNewTrack:%d\n", &readingInt);
 			newTrack.bNewTrack = 0 < readingInt ? true : false;
 
 			// appearance
-			fscanf_s(fp, "\t\tlastRGBFeature:\n\t\t{\n");
+			fscanf_s(fpTrack, "\t\tlastRGBFeature:\n\t\t{\n");
 			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
 				int dimFeature = 0;
-				fscanf_s(fp, "\t\t\tlastRGBFeature[%d]:%d,(", &readingInt, &dimFeature);
+				fscanf_s(fpTrack, "\t\t\tlastRGBFeature[%d]:%d,(", &readingInt, &dimFeature);
 				newTrack.lastRGBFeature[camIdx] = cv::Mat::zeros(dimFeature, 1, CV_64FC1);
 				for (int idx = 0; idx < dimFeature; idx++)
 				{
-					fscanf_s(fp, "%f", &readingFloat);
+					fscanf_s(fpTrack, "%f", &readingFloat);
 					newTrack.lastRGBFeature[camIdx].at<double>(idx, 0) = (double)readingFloat;
-					if (idx < dimFeature - 1) { fscanf_s(fp, ","); }
+					if (idx < dimFeature - 1) { fscanf_s(fpTrack, ","); }
 				}
-				fscanf_s(fp, ")\n");
+				fscanf_s(fpTrack, ")\n");
 			}
-			fscanf_s(fp, "\t\t}\n\t\ttimeTrackletEnded:(");
+			fscanf_s(fpTrack, "\t\t}\n\t\ttimeTrackletEnded:(");
 			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
-				fscanf_s(fp, "%d", &readingInt);
+				fscanf_s(fpTrack, "%d", &readingInt);
 				newTrack.timeTrackletEnded[camIdx] = (unsigned int)readingInt;
-				if (camIdx < NUM_CAM - 1) { fscanf_s(fp, ","); }				
+				if (camIdx < NUM_CAM - 1) { fscanf_s(fpTrack, ","); }				
 			}
-			fscanf_s(fp, ")\n\t}\n");
+			fscanf_s(fpTrack, ")\n\t}\n");
 
 			// generate instance
 			listTrack3D_.push_back(newTrack);
 			treeIDPair.push_back(std::make_pair(&listTrack3D_.back(), (unsigned int)treeID));
 			childrenTrackIDPair.push_back(std::make_pair(&listTrack3D_.back(), childrenTrackID));
+
+#ifdef PSN_DEBUG_MODE_
+			printf("\r>> Reading 3D tracks: %3.1f%%", 100.0 * (double)trackIdx / (double)numTrack);
+#endif
 		}
-		fscanf_s(fp, "}\n");
+		fscanf_s(fpTrack, "}\n");
+#ifdef PSN_DEBUG_MODE_
+		printf("\n");
+#endif
 		
 		// children track
 		for (int queueIdx = 0; queueIdx < childrenTrackIDPair.size(); queueIdx++)
@@ -4841,26 +4686,29 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				}
 			}
 		}
-				
+
+#ifdef PSN_DEBUG_MODE_
+		printf(">> Reading 3D track trees: %3.1f%%", 0);
+#endif
 		// track tree
 		int numTree = 0;
 		listTrackTree_.clear();
-		fscanf_s(fp, "listTrackTree:%d,\n{\n", &numTree);
+		fscanf_s(fpTrack, "listTrackTree:%d,\n{\n", &numTree);
 		for (int treeIdx = 0; treeIdx < numTree; treeIdx++)
 		{
 			TrackTree newTree;
 
-			fscanf_s(fp, "\t{\n\t\tid:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t{\n\t\tid:%d\n", &readingInt);
 			newTree.id = (unsigned int)readingInt;
-			fscanf_s(fp, "\t\ttimeGeneration:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\ttimeGeneration:%d\n", &readingInt);
 			newTree.timeGeneration = (unsigned int)readingInt;
-			fscanf_s(fp, "\t\tbValid:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\tbValid:%d\n", &readingInt);
 			newTree.bValid = 0 < readingInt ? true : false;
 			int numTracks = 0;
-			fscanf_s(fp, "\t\ttracks:%d,{", &numTracks);
+			fscanf_s(fpTrack, "\t\ttracks:%d,{", &numTracks);
 			for (int trackIdx = 0; trackIdx < numTracks; trackIdx++)
 			{
-				fscanf_s(fp, "%d", &readingInt);
+				fscanf_s(fpTrack, "%d", &readingInt);
 				for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 					trackIter != listTrack3D_.end();
 					trackIter++)
@@ -4869,30 +4717,30 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 					newTree.tracks.push_back(&(*trackIter));
 					break;
 				}
-				if (trackIdx < numTracks - 1) { fscanf_s(fp, ","); }
+				if (trackIdx < numTracks - 1) { fscanf_s(fpTrack, ","); }
 			}
-			fscanf_s(fp, "}\n");
+			fscanf_s(fpTrack, "}\n");
 
-			fscanf_s(fp, "\t\tnumMeasurements:%d\n", &readingInt);
+			fscanf_s(fpTrack, "\t\tnumMeasurements:%d\n", &readingInt);
 			newTree.numMeasurements = (unsigned int)readingInt;
 
 			// tracklet2Ds
 			int numTracklet = 0;
-			fscanf_s(fp, "\t\ttrackle2Ds:\n\t\t{\n");
+			fscanf_s(fpTrack, "\t\ttrackle2Ds:\n\t\t{\n");
 			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
-				fscanf_s(fp, "\t\t\ttrackletInfo:%d,", &numTracklet);
+				fscanf_s(fpTrack, "\t\t\ttrackletInfo:%d,", &numTracklet);
 				if (0 == numTracklet)
 				{
-					fscanf_s(fp, "{}\n");
+					fscanf_s(fpTrack, "{}\n");
 					continue;
 				}
-				fscanf_s(fp, "\n\t\t\t{\n");
+				fscanf_s(fpTrack, "\n\t\t\t{\n");
 				for (int trackletIdx = 0; trackletIdx < numTracklet; trackletIdx++)
 				{
 					int numRelatedTracks = 0;
 					stTracklet2DInfo newTrackletInfo;
-					fscanf_s(fp, "\t\t\t\tid:%d,relatedTracks:%d,{", &readingInt, &numRelatedTracks);
+					fscanf_s(fpTrack, "\t\t\t\tid:%d,relatedTracks:%d,{", &readingInt, &numRelatedTracks);
 					// find tracklet
 					for (std::list<stTracklet2D>::iterator trackletIter = vecTracklet2DSet_[camIdx].tracklets.begin();
 						trackletIter != vecTracklet2DSet_[camIdx].tracklets.end();
@@ -4906,7 +4754,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 					// find related tracks
 					for (int idIdx = 0; idIdx < numRelatedTracks; idIdx++)
 					{
-						fscanf_s(fp, "%d", &readingInt);
+						fscanf_s(fpTrack, "%d", &readingInt);
 						for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 							trackIter != listTrack3D_.end();
 							trackIter++)
@@ -4915,18 +4763,25 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 							newTrackletInfo.queueRelatedTracks.push_back(&(*trackIter));
 							break;
 						}
-						if (trackletIdx < numTracklet - 1) { fscanf_s(fp, ","); }
+						if (trackletIdx < numTracklet - 1) { fscanf_s(fpTrack, ","); }
 					}
-					fscanf_s(fp, "}\n");
+					fscanf_s(fpTrack, "}\n");
 					newTree.tracklet2Ds[camIdx].push_back(newTrackletInfo);					
 				}
-				fscanf_s(fp, "\t\t\t}\n");
+				fscanf_s(fpTrack, "\t\t\t}\n");
 			}
-			fscanf_s(fp, "\t\t}\n\t}\n");
+			fscanf_s(fpTrack, "\t\t}\n\t}\n");
 
 			listTrackTree_.push_back(newTree);
+
+#ifdef PSN_DEBUG_MODE_
+			printf("\r>> Reading 3D tracks: %3.1f%%", 100.0 * (double)treeIdx / (double)numTree);
+#endif
 		}
-		fscanf_s(fp, "}\n");
+		fscanf_s(fpTrack, "}\n");
+#ifdef PSN_DEBUG_MODE_
+		printf("\n");
+#endif
 
 		// set track's tree pointers
 		for (int pairIdx = 0; pairIdx < treeIDPair.size(); pairIdx++)
@@ -4945,11 +4800,11 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 		// new seed tracks
 		int numSeedTracks = 0;
 		queueNewSeedTracks_.clear();
-		fscanf_s(fp, "queueNewSeedTracks:%d,{", &numSeedTracks);
+		fscanf_s(fpTrack, "queueNewSeedTracks:%d,{", &numSeedTracks);
 		for (int trackIdx = 0; trackIdx < numSeedTracks; trackIdx++)
 		{
-			fscanf_s(fp, "%d", &readingInt);
-			if (trackIdx < numSeedTracks - 1) { fscanf_s(fp, ","); }
+			fscanf_s(fpTrack, "%d", &readingInt);
+			if (trackIdx < numSeedTracks - 1) { fscanf_s(fpTrack, ","); }
 
 			for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 				trackIter != listTrack3D_.end();
@@ -4960,16 +4815,16 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				break;
 			}
 		}
-		fscanf_s(fp, "}\n");
+		fscanf_s(fpTrack, "}\n");
 
 		// active tracks
 		int numActiveTracks = 0;
 		queueActiveTrack_.clear();
-		fscanf_s(fp, "queueActiveTrack:%d,{", &numActiveTracks);
+		fscanf_s(fpTrack, "queueActiveTrack:%d,{", &numActiveTracks);
 		for (int trackIdx = 0; trackIdx < numActiveTracks; trackIdx++)
 		{
-			fscanf_s(fp, "%d", &readingInt);
-			if (trackIdx < numActiveTracks - 1) { fscanf_s(fp, ","); }
+			fscanf_s(fpTrack, "%d", &readingInt);
+			if (trackIdx < numActiveTracks - 1) { fscanf_s(fpTrack, ","); }
 
 			for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 				trackIter != listTrack3D_.end();
@@ -4980,16 +4835,16 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				break;
 			}
 		}
-		fscanf_s(fp, "}\n");
+		fscanf_s(fpTrack, "}\n");
 
 		// puased tracks
 		int numPuasedTracks = 0;
 		queuePausedTrack_.clear();
-		fscanf_s(fp, "queuePausedTrack:%d,{", &numPuasedTracks);
+		fscanf_s(fpTrack, "queuePausedTrack:%d,{", &numPuasedTracks);
 		for (int trackIdx = 0; trackIdx < numPuasedTracks; trackIdx++)
 		{
-			fscanf_s(fp, "%d", &readingInt);
-			if (trackIdx < numPuasedTracks - 1) { fscanf_s(fp, ","); }
+			fscanf_s(fpTrack, "%d", &readingInt);
+			if (trackIdx < numPuasedTracks - 1) { fscanf_s(fpTrack, ","); }
 
 			for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 				trackIter != listTrack3D_.end();
@@ -5000,16 +4855,16 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				break;
 			}
 		}
-		fscanf_s(fp, "}\n");
+		fscanf_s(fpTrack, "}\n");
 		
 		// tracks in window
 		int numInWindowTracks = 0;
 		queueTracksInWindow_.clear();
-		fscanf_s(fp, "queueTracksInWindow:%d,{", &numInWindowTracks);
+		fscanf_s(fpTrack, "queueTracksInWindow:%d,{", &numInWindowTracks);
 		for (int trackIdx = 0; trackIdx < numInWindowTracks; trackIdx++)
 		{
-			fscanf_s(fp, "%d", &readingInt);
-			if (trackIdx < numInWindowTracks - 1) { fscanf_s(fp, ","); }
+			fscanf_s(fpTrack, "%d", &readingInt);
+			if (trackIdx < numInWindowTracks - 1) { fscanf_s(fpTrack, ","); }
 
 			for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 				trackIter != listTrack3D_.end();
@@ -5020,16 +4875,16 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				break;
 			}
 		}
-		fscanf_s(fp, "}\n");
+		fscanf_s(fpTrack, "}\n");
 
 		// tracks in the best solution
 		int numBSTracks = 0;
 		queueTracksInBestSolution_.clear();
-		fscanf_s(fp, "queueTracksInBestSolution:%d,{", &numBSTracks);
+		fscanf_s(fpTrack, "queueTracksInBestSolution:%d,{", &numBSTracks);
 		for (int trackIdx = 0; trackIdx < numBSTracks; trackIdx++)
 		{
-			fscanf_s(fp, "%d", &readingInt);
-			if (trackIdx < numBSTracks - 1) { fscanf_s(fp, ","); }
+			fscanf_s(fpTrack, "%d", &readingInt);
+			if (trackIdx < numBSTracks - 1) { fscanf_s(fpTrack, ","); }
 
 			for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 				trackIter != listTrack3D_.end();
@@ -5040,16 +4895,16 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				break;
 			}
 		}
-		fscanf_s(fp, "}\n");
+		fscanf_s(fpTrack, "}\n");
 
 		// active trees
 		int numActiveTrees = 0;
 		queuePtActiveTrees_.clear();
-		fscanf_s(fp, "queuePtActiveTrees:%d,{", &numActiveTrees);
+		fscanf_s(fpTrack, "queuePtActiveTrees:%d,{", &numActiveTrees);
 		for (int treeIdx = 0; treeIdx < numActiveTrees; treeIdx++)
 		{
-			fscanf_s(fp, "%d", &readingInt);
-			if (treeIdx < numActiveTrees - 1) { fscanf_s(fp, ","); }
+			fscanf_s(fpTrack, "%d", &readingInt);
+			if (treeIdx < numActiveTrees - 1) { fscanf_s(fpTrack, ","); }
 
 			for (std::list<TrackTree>::iterator treeIter = listTrackTree_.begin();
 				treeIter != listTrackTree_.end();
@@ -5060,16 +4915,16 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				break;
 			}
 		}
-		fscanf_s(fp, "}\n");
+		fscanf_s(fpTrack, "}\n");
 
 		// unconfirmed trees
 		int numUCTrees = 0;
 		queuePtUnconfirmedTrees_.clear();
-		fscanf_s(fp, "queuePtUnconfirmedTrees:%d,{", &numUCTrees);
+		fscanf_s(fpTrack, "queuePtUnconfirmedTrees:%d,{", &numUCTrees);
 		for (int treeIdx = 0; treeIdx < numUCTrees; treeIdx++)
 		{
-			fscanf_s(fp, "%d", &readingInt);
-			if (treeIdx < numUCTrees - 1) { fscanf_s(fp, ","); }
+			fscanf_s(fpTrack, "%d", &readingInt);
+			if (treeIdx < numUCTrees - 1) { fscanf_s(fpTrack, ","); }
 
 			for (std::list<TrackTree>::iterator treeIter = listTrackTree_.begin();
 				treeIter != listTrackTree_.end();
@@ -5080,401 +4935,256 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				break;
 			}
 		}
-		fscanf_s(fp, "}\n");
-
-		//// result track
-		//numTrack = 0;
-		//listResultTrack3D_.clear();
-		//fscanf_s(fp, "listResultTrack3D:%d,\n{\n", &numTrack);
-		//for (int trackIdx = 0; trackIdx < numTrack; trackIdx++)
-		//{
-		//	Track3D newTrack;
-		//	int parentTrackID = 0, treeID = 0;
-		//	std::deque<unsigned int> childrenTrackID;
-		//	fscanf_s(fp, "\t{\n\t\tid:%d\n", &readingInt);
-		//	newTrack.id = (unsigned int)readingInt;
-
-		//	// curTracklet2Ds
-		//	fscanf_s(fp, "\t\tcurTracklet2Ds:{");
-		//	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-		//	{
-		//		fscanf_s(fp, "%d", &readingInt);
-		//		if (-1 == readingInt)
-		//		{
-		//			newTrack.curTracklet2Ds.set(camIdx, NULL);
-		//		}
-		//		else
-		//		{
-		//			for (std::deque<stTracklet2D*>::iterator trackletIter = vecTracklet2DSet_[camIdx].activeTracklets.begin();
-		//				trackletIter != vecTracklet2DSet_[camIdx].activeTracklets.end();
-		//				trackletIter++)
-		//			{
-		//				if ((*trackletIter)->id != (unsigned int)readingInt) { continue; }
-		//				newTrack.curTracklet2Ds.set(camIdx, *trackletIter);
-		//				break;
-		//			}
-		//		}
-		//		if (camIdx < NUM_CAM - 1) { fscanf_s(fp, ","); }
-		//	}
-		//	fscanf_s(fp, "}\n");
-
-		//	// tracklet2DIDs
-		//	fscanf_s(fp, "\t\ttrackleIDs:\n\t\t{\n");
-		//	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-		//	{
-		//		int numTracklet = 0;
-		//		fscanf_s(fp, "\t\t\tnumTracklet:%d,{", &numTracklet);
-
-		//		for (int trackletIdx = 0; trackletIdx < numTracklet; trackletIdx++)
-		//		{
-		//			fscanf_s(fp, "%d", &readingInt);
-		//			newTrack.tracklet2DIDs[camIdx].push_back((unsigned int)readingInt);
-		//			if (trackletIdx < numTracklet - 1) { fscanf_s(fp, ","); }
-		//		}
-
-		//		fscanf_s(fp, "}\n");
-		//	}
-		//	fscanf_s(fp, "\t\t}\n");
-
-		//	fscanf_s(fp, "\t\tbActive:%d\n", &readingInt);
-		//	newTrack.bActive = 0 < readingInt ? true : false;
-		//	fscanf_s(fp, "\t\tbValid:%d\n", &readingInt);
-		//	newTrack.bValid = 0 < readingInt ? true : false;
-		//	fscanf_s(fp, "\t\ttreeID:%d\n",  &treeID);
-		//	for (std::list<TrackTree>::iterator treeIter = listTrackTree_.begin();
-		//		treeIter != listTrackTree_.end();
-		//		treeIter++)
-		//	{
-		//		if ((unsigned int)treeID != (*treeIter).id) { continue; }
-		//		newTrack.tree = &(*treeIter);
-		//		break;
-		//	}
-		//	fscanf_s(fp, "\t\tparentTrackID:%d\n", &parentTrackID);
-		//	for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
-		//		trackIter != listTrack3D_.end();
-		//		trackIter++)
-		//	{
-		//		if ((unsigned int)parentTrackID != (*trackIter).id) { continue; }
-		//		newTrack.parentTrack = &(*trackIter);
-		//		break;
-		//	}
-
-		//	// children tracks
-		//	int numChildrenTrack = 0;
-		//	fscanf_s(fp, "\t\tchildrenTrack:%d,{", &numChildrenTrack);
-		//	for (int childTrackIdx = 0; childTrackIdx < numChildrenTrack; childTrackIdx++)
-		//	{
-		//		fscanf_s(fp, "%d", &readingInt);				
-		//		if (childTrackIdx < numChildrenTrack - 1) { fscanf_s(fp, ","); }
-
-		//		for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
-		//			trackIter != listTrack3D_.end();
-		//			trackIter++)
-		//		{
-		//			if ((unsigned int)readingInt != (*trackIter).id) { continue; }
-		//			newTrack.childrenTrack.push_back(&(*trackIter));
-		//			break;
-		//		}
-		//	}
-		//	fscanf_s(fp, "}\n");
-		//	
-		//	// temporal information
-		//	fscanf_s(fp, "\t\ttimeStart:%d\n", &readingInt);
-		//	newTrack.timeStart = (unsigned int)readingInt;
-		//	fscanf_s(fp, "\t\ttimeEnd:%d\n", &readingInt);
-		//	newTrack.timeEnd = (unsigned int)readingInt;
-		//	fscanf_s(fp, "\t\ttimeGeneration:%d\n", &readingInt);
-		//	newTrack.timeGeneration = (unsigned int)readingInt;
-		//	fscanf_s(fp, "\t\tduration:%d\n", &readingInt);
-		//	newTrack.duration = (unsigned int)readingInt;
-
-		//	// reconstrcution related
-		//	int numReconstruction = 0;
-		//	fscanf_s(fp, "\t\treconstructions:%d,\n\t\t{\n", &numReconstruction);
-		//	for (int pointIdx = 0; pointIdx < numReconstruction; pointIdx++)
-		//	{
-		//		stReconstruction newReconstruction;
-		//		float x, y, z, vx, vy, vz, costReconstruction, costLink;
-		//		fscanf_s(fp, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", 
-		//			&readingInt, &x, &y, &z, &vx, &vy, &vz, &costReconstruction, &costLink);
-		//		newReconstruction.bIsMeasurement = 0 < readingInt ? true : false;
-		//		newReconstruction.point = PSN_Point3D((double)x, (double)y, (double)z);
-		//		newReconstruction.velocity = PSN_Point3D((double)vx, (double)vy, (double)vz);
-		//		newReconstruction.costLink = (double)costLink;
-		//		newReconstruction.costReconstruction = (double)costReconstruction;
-
-		//		fscanf_s(fp, "tracklet2Ds:{");
-		//		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-		//		{
-		//			fscanf_s(fp, "%d", &readingInt);
-
-		//			if (0 > readingInt)
-		//			{
-		//				newReconstruction.tracklet2Ds.set(camIdx, NULL);
-		//			}
-		//			else
-		//			{
-		//				for (std::list<stTracklet2D>::iterator trackletIter = vecTracklet2DSet_[camIdx].tracklets.begin();
-		//					trackletIter != vecTracklet2DSet_[camIdx].tracklets.end();
-		//					trackletIter++)
-		//				{
-		//					if ((*trackletIter).id != (unsigned int)readingInt) { continue; }
-		//					newReconstruction.tracklet2Ds.set(camIdx, &(*trackletIter));
-		//					break;
-		//				}
-		//			}
-		//			if (camIdx < NUM_CAM - 1) { fscanf_s(fp, ","); }
-		//		}
-		//		fscanf_s(fp, "}\n");
-
-		//		newTrack.reconstructions.push_back(newReconstruction);
-		//	}
-		//	fscanf_s(fp, "\t\t}\n");
-
-		//	// cost
-		//	fscanf_s(fp, "\t\tcostTotal:%e\n", &readingFloat);
-		//	newTrack.costTotal = (double)readingFloat;
-		//	fscanf_s(fp, "\t\tcostReconstruction:%e\n", &readingFloat);
-		//	newTrack.costReconstruction = (double)readingFloat;
-		//	fscanf_s(fp, "\t\tcostLink:%e\n", &readingFloat);
-		//	newTrack.costLink = (double)readingFloat;
-		//	fscanf_s(fp, "\t\tcostEnter:%e\n", &readingFloat);
-		//	newTrack.costEnter = (double)readingFloat;
-		//	fscanf_s(fp, "\t\tcostExit:%e\n", &readingFloat);
-		//	newTrack.costExit = (double)readingFloat;
-		//	fscanf_s(fp, "\t\tcostRGB:%e\n", &readingFloat);
-		//	newTrack.costRGB = (double)readingFloat;
-
-		//	// loglikelihood
-		//	fscanf_s(fp, "\t\tloglikelihood:%e\n", &readingFloat);
-		//	newTrack.loglikelihood = (double)readingFloat;
-
-		//	// GTP
-		//	fscanf_s(fp, "\t\tGTProb:%e\n", &readingFloat);
-		//	newTrack.GTProb = (double)readingFloat;
-		//	fscanf_s(fp, "\t\tBranchGTProb:%e\n", &readingFloat);
-		//	newTrack.BranchGTProb = (double)readingFloat;
-		//	fscanf_s(fp, "\t\tbWasBestSolution:%d\n", &readingInt);
-		//	newTrack.bWasBestSolution = 0 < readingInt ? true: false;
-		//	fscanf_s(fp, "\t\tbCurrentBestSolution:%d\n", &readingInt);
-		//	newTrack.bCurrentBestSolution = 0 < readingInt ? true : false;
-
-		//	// HO-MHT
-		//	fscanf_s(fp, "\t\tbNewTrack:%d\n\t}\n", &readingInt);
-		//	newTrack.bNewTrack = 0 < readingInt ? true : false;
-
-		//	listResultTrack3D_.push_back(newTrack);
-		//}
-		//fscanf_s(fp, "}\n");
+		fscanf_s(fpTrack, "}\n");
+		fclose(fpTrack);
 
 		//---------------------------------------------------------
 		// RESULTS
 		//---------------------------------------------------------
+#ifdef PSN_DEBUG_MODE_
+		printf(">> Reading instant results: %3.1f%%", 0);
+#endif
+		// file open
+		sprintf_s(strFilename, "%ssnapshot_3D_result.txt", strFilepath);		
+		fopen_s(&fpResult, strFilename, "r"); 
+		if (NULL == fpResult) { return false; }
+		fscanf_s(fpResult, "numCamera:%d\n", &readingInt);
+		assert(NUM_CAM == readingInt);
+		fscanf_s(fpResult, "frameIndex:%d\n\n", &readingInt);
+		nCurrentFrameIdx_ = (unsigned int)readingInt;
+
 		// instance result
 		int numTrackingResults = 0;
 		queueTrackingResult_.clear();
-		fscanf_s(fp, "queueTrackingResult:%d,\n{\n", &numTrackingResults);
+		fscanf_s(fpResult, "queueTrackingResult:%d,\n{\n", &numTrackingResults);
 		for (int resultIdx = 0; resultIdx < numTrackingResults; resultIdx++)
 		{
 			stTrack3DResult curResult;
-			fscanf_s(fp, "\t{\n\t\tframeIdx:%d\n", &readingInt);
+			fscanf_s(fpResult, "\t{\n\t\tframeIdx:%d\n", &readingInt);
 			curResult.frameIdx = (unsigned int)readingInt;
-			fscanf_s(fp, "\t\tprocessingTime:%f\n", &readingFloat);
+			fscanf_s(fpResult, "\t\tprocessingTime:%f\n", &readingFloat);
 			curResult.processingTime = (double)readingFloat;
 
 			// object info
 			int numObjects = 0;
-			fscanf_s(fp, "\t\tobjectInfo:%d,\n\t\t{\n", &numObjects);
+			fscanf_s(fpResult, "\t\tobjectInfo:%d,\n\t\t{\n", &numObjects);
 			for (int objIdx = 0; objIdx < numObjects; objIdx++)
 			{
 				stObject3DInfo curObject;
-				fscanf_s(fp, "\t\t\t{\n\t\t\t\tid:%d\n", &readingInt);
+				fscanf_s(fpResult, "\t\t\t{\n\t\t\t\tid:%d\n", &readingInt);
 				curObject.id = (unsigned int)readingInt;
 
 				// points
 				int numPoints = 0;
-				fscanf_s(fp, "\t\t\t\trecentPoints:%d,{", &numPoints);
+				fscanf_s(fpResult, "\t\t\t\trecentPoints:%d,{", &numPoints);
 				for (int pointIdx = 0; pointIdx < numPoints; pointIdx++)
 				{
 					float x, y, z;
-					fscanf_s(fp, "(%f,%f,%f)", &x, &y, &z);
-					if (pointIdx < numPoints - 1) { fscanf_s(fp, ","); }
+					fscanf_s(fpResult, "(%f,%f,%f)", &x, &y, &z);
+					if (pointIdx < numPoints - 1) { fscanf_s(fpResult, ","); }
 					curObject.recentPoints.push_back(PSN_Point3D((double)x, (double)y, (double)z));
 				}
-				fscanf_s(fp, "}\n");
+				fscanf_s(fpResult, "}\n");
 
 				// 2D points
-				fscanf_s(fp, "\t\t\t\trecentPoint2Ds:\n\t\t\t\t{\n");
+				fscanf_s(fpResult, "\t\t\t\trecentPoint2Ds:\n\t\t\t\t{\n");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{					
-					fscanf_s(fp, "\t\t\t\t\tcam%d:%d,{", &readingInt, &numPoints);
+					fscanf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", &readingInt, &numPoints);
 					for (int pointIdx = 0; pointIdx < numPoints; pointIdx++)
 					{
 						float x, y;
-						fscanf_s(fp, "(%f,%f)", &x, &y);
-						if (pointIdx < numPoints - 1) { fscanf_s(fp, ","); }
+						fscanf_s(fpResult, "(%f,%f)", &x, &y);
+						if (pointIdx < numPoints - 1) { fscanf_s(fpResult, ","); }
 						curObject.recentPoint2Ds[camIdx].push_back(PSN_Point2D((double)x, (double)y));
 					}
-					fscanf_s(fp, "}\n");
+					fscanf_s(fpResult, "}\n");
 				}
-				fscanf_s(fp, "\t\t\t\t}\n");
+				fscanf_s(fpResult, "\t\t\t\t}\n");
 
 				// 3D box points in each view
-				fscanf_s(fp, "\t\t\t\tpoint3DBox:\n\t\t\t\t{\n");
+				fscanf_s(fpResult, "\t\t\t\tpoint3DBox:\n\t\t\t\t{\n");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{					
-					fscanf_s(fp, "\t\t\t\t\tcam%d:%d,{", &readingInt, &numPoints);
+					fscanf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", &readingInt, &numPoints);
 					for (int pointIdx = 0; pointIdx < numPoints; pointIdx++)
 					{
 						float x, y;
-						fscanf_s(fp, "(%f,%f)", &x, &y);
-						if (pointIdx < numPoints - 1) { fscanf_s(fp, ","); }
+						fscanf_s(fpResult, "(%f,%f)", &x, &y);
+						if (pointIdx < numPoints - 1) { fscanf_s(fpResult, ","); }
 						curObject.point3DBox[camIdx].push_back(PSN_Point2D((double)x, (double)y));
 					}
-					fscanf_s(fp, "}\n");
+					fscanf_s(fpResult, "}\n");
 				}
-				fscanf_s(fp, "\t\t\t\t}\n");
+				fscanf_s(fpResult, "\t\t\t\t}\n");
 
 				// rects
-				fscanf_s(fp, "\t\t\t\trectInViews:{");
+				fscanf_s(fpResult, "\t\t\t\trectInViews:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
 					float x, y, w, h;
-					fscanf_s(fp, "(%f,%f,%f,%f)", &x, &y, &w, &h);
-					if (camIdx < NUM_CAM - 1) { fscanf_s(fp, ","); }
+					fscanf_s(fpResult, "(%f,%f,%f,%f)", &x, &y, &w, &h);
+					if (camIdx < NUM_CAM - 1) { fscanf_s(fpResult, ","); }
 					curObject.rectInViews[camIdx] = PSN_Rect((double)x, (double)y, (double)w, (double)h);
 				}
-				fscanf_s(fp, "}\n");
+				fscanf_s(fpResult, "}\n");
 
 				// visibility
-				fscanf_s(fp, "\t\t\t\tbVisibleInViews:{");
+				fscanf_s(fpResult, "\t\t\t\tbVisibleInViews:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
-					fscanf_s(fp, "%d", &readingInt);
-					if (camIdx < NUM_CAM - 1) { fscanf_s(fp, ","); }
+					fscanf_s(fpResult, "%d", &readingInt);
+					if (camIdx < NUM_CAM - 1) { fscanf_s(fpResult, ","); }
 					curObject.bVisibleInViews[camIdx] = 0 < readingInt ? true : false;
 				}
-				fscanf_s(fp, "}\n\t\t\t}\n");
+				fscanf_s(fpResult, "}\n\t\t\t}\n");
 
 				curResult.object3DInfo.push_back(curObject);
 			}
-			fscanf_s(fp, "\t\t}\n\t}\n");
+			fscanf_s(fpResult, "\t\t}\n\t}\n");
 
 			queueTrackingResult_.push_back(curResult);
+
+#ifdef PSN_DEBUG_MODE_
+			printf("\r>> Reading instant results: %3.1f%%", 100.0 * (double)resultIdx / (double)numTrackingResults);
+#endif
 		}
-		fscanf_s(fp, "}\n");
+		fscanf_s(fpResult, "}\n");
+#ifdef PSN_DEBUG_MODE_
+		printf("\n>> Reading deferred results: %3.1f%%", 0);
+#endif
 
 		// deferred result
 		numTrackingResults = 0;
 		queueDeferredTrackingResult_.clear();
-		fscanf_s(fp, "queueDeferredTrackingResult:%d,\n{\n", &numTrackingResults);
+		fscanf_s(fpResult, "queueDeferredTrackingResult:%d,\n{\n", &numTrackingResults);
 		for (int resultIdx = 0; resultIdx < numTrackingResults; resultIdx++)
 		{
 			stTrack3DResult curResult;
-			fscanf_s(fp, "\t{\n\t\tframeIdx:%d\n", &readingInt);
+			fscanf_s(fpResult, "\t{\n\t\tframeIdx:%d\n", &readingInt);
 			curResult.frameIdx = (unsigned int)readingInt;
-			fscanf_s(fp, "\t\tprocessingTime:%f\n", &readingFloat);
+			fscanf_s(fpResult, "\t\tprocessingTime:%f\n", &readingFloat);
 			curResult.processingTime = (double)readingFloat;
 
 			// object info
 			int numObjects = 0;
-			fscanf_s(fp, "\t\tobjectInfo:%d,\n\t\t{\n", &numObjects);
+			fscanf_s(fpResult, "\t\tobjectInfo:%d,\n\t\t{\n", &numObjects);
 			for (int objIdx = 0; objIdx < numObjects; objIdx++)
 			{
 				stObject3DInfo curObject;
-				fscanf_s(fp, "\t\t\t{\n\t\t\t\tid:%d\n", &readingInt);
+				fscanf_s(fpResult, "\t\t\t{\n\t\t\t\tid:%d\n", &readingInt);
 				curObject.id = (unsigned int)readingInt;
 
 				// points
 				int numPoints = 0;
-				fscanf_s(fp, "\t\t\t\trecentPoints:%d,{", &numPoints);
+				fscanf_s(fpResult, "\t\t\t\trecentPoints:%d,{", &numPoints);
 				for (int pointIdx = 0; pointIdx < numPoints; pointIdx++)
 				{
 					float x, y, z;
-					fscanf_s(fp, "(%f,%f,%f)", &x, &y, &z);
-					if (pointIdx < numPoints - 1) { fscanf_s(fp, ","); }
+					fscanf_s(fpResult, "(%f,%f,%f)", &x, &y, &z);
+					if (pointIdx < numPoints - 1) { fscanf_s(fpResult, ","); }
 					curObject.recentPoints.push_back(PSN_Point3D((double)x, (double)y, (double)z));
 				}
-				fscanf_s(fp, "}\n");
+				fscanf_s(fpResult, "}\n");
 
 				// 2D points
-				fscanf_s(fp, "\t\t\t\trecentPoint2Ds:\n\t\t\t\t{\n");
+				fscanf_s(fpResult, "\t\t\t\trecentPoint2Ds:\n\t\t\t\t{\n");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{					
-					fscanf_s(fp, "\t\t\t\t\tcam%d:%d,{", &readingInt, &numPoints);
+					fscanf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", &readingInt, &numPoints);
 					for (int pointIdx = 0; pointIdx < numPoints; pointIdx++)
 					{
 						float x, y;
-						fscanf_s(fp, "(%f,%f)", &x, &y);
-						if (pointIdx < numPoints - 1) { fscanf_s(fp, ","); }
+						fscanf_s(fpResult, "(%f,%f)", &x, &y);
+						if (pointIdx < numPoints - 1) { fscanf_s(fpResult, ","); }
 						curObject.recentPoint2Ds[camIdx].push_back(PSN_Point2D((double)x, (double)y));
 					}
-					fscanf_s(fp, "}\n");
+					fscanf_s(fpResult, "}\n");
 				}
-				fscanf_s(fp, "\t\t\t\t}\n");
+				fscanf_s(fpResult, "\t\t\t\t}\n");
 
 				// 3D box points in each view
-				fscanf_s(fp, "\t\t\t\tpoint3DBox:\n\t\t\t\t{\n");
+				fscanf_s(fpResult, "\t\t\t\tpoint3DBox:\n\t\t\t\t{\n");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{					
-					fscanf_s(fp, "\t\t\t\t\tcam%d:%d,{", &readingInt, &numPoints);
+					fscanf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", &readingInt, &numPoints);
 					for (int pointIdx = 0; pointIdx < numPoints; pointIdx++)
 					{
 						float x, y;
-						fscanf_s(fp, "(%f,%f)", &x, &y);
-						if (pointIdx < numPoints - 1) { fscanf_s(fp, ","); }
+						fscanf_s(fpResult, "(%f,%f)", &x, &y);
+						if (pointIdx < numPoints - 1) { fscanf_s(fpResult, ","); }
 						curObject.point3DBox[camIdx].push_back(PSN_Point2D((double)x, (double)y));
 					}
-					fscanf_s(fp, "}\n");
+					fscanf_s(fpResult, "}\n");
 				}
-				fscanf_s(fp, "\t\t\t\t}\n");
+				fscanf_s(fpResult, "\t\t\t\t}\n");
 
 				// rects
-				fscanf_s(fp, "\t\t\t\trectInViews:{");
+				fscanf_s(fpResult, "\t\t\t\trectInViews:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
 					float x, y, w, h;
-					fscanf_s(fp, "(%f,%f,%f,%f)", &x, &y, &w, &h);
-					if (camIdx < NUM_CAM - 1) { fscanf_s(fp, ","); }
+					fscanf_s(fpResult, "(%f,%f,%f,%f)", &x, &y, &w, &h);
+					if (camIdx < NUM_CAM - 1) { fscanf_s(fpResult, ","); }
 					curObject.rectInViews[camIdx] = PSN_Rect((double)x, (double)y, (double)w, (double)h);
 				}
-				fscanf_s(fp, "}\n");
+				fscanf_s(fpResult, "}\n");
 
 				// visibility
-				fscanf_s(fp, "\t\t\t\tbVisibleInViews:{");
+				fscanf_s(fpResult, "\t\t\t\tbVisibleInViews:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
-					fscanf_s(fp, "%d", &readingInt);
-					if (camIdx < NUM_CAM - 1) { fscanf_s(fp, ","); }
+					fscanf_s(fpResult, "%d", &readingInt);
+					if (camIdx < NUM_CAM - 1) { fscanf_s(fpResult, ","); }
 					curObject.bVisibleInViews[camIdx] = 0 < readingInt ? true : false;
 				}
-				fscanf_s(fp, "}\n\t\t\t}\n");
+				fscanf_s(fpResult, "}\n\t\t\t}\n");
 
 				curResult.object3DInfo.push_back(curObject);
 			}
-			fscanf_s(fp, "\t\t}\n\t}\n");
+			fscanf_s(fpResult, "\t\t}\n\t}\n");
 
 			queueDeferredTrackingResult_.push_back(curResult);
+
+#ifdef PSN_DEBUG_MODE_
+			printf("\r>> Reading deferred results: %3.1f%%", 100.0 * (double)resultIdx / (double)numTrackingResults);
+#endif
 		}
-		fscanf_s(fp, "}\n");
+#ifdef PSN_DEBUG_MODE_
+		printf("\n");
+#endif
+		fscanf_s(fpResult, "}\n");
+		fclose(fpResult);
 
 		//---------------------------------------------------------
 		// HYPOTHESES
 		//---------------------------------------------------------
+		// file open
+		sprintf_s(strFilename, "%ssnapshot_3D_hypotheses.txt", strFilepath);		
+		fopen_s(&fpHypothesis, strFilename, "r"); 
+		if (NULL == fpHypothesis) { return false; }
+		fscanf_s(fpHypothesis, "numCamera:%d\n", &readingInt);
+		assert(NUM_CAM == readingInt);
+		fscanf_s(fpHypothesis, "frameIndex:%d\n\n", &readingInt);
+		nCurrentFrameIdx_ = (unsigned int)readingInt;
+
+#ifdef PSN_DEBUG_MODE_
+		printf(">> Reading previous hypotheses: %3.1f%%", 0);
+#endif
 		// queuePrevGlobalHypotheses
 		int numPrevGH = 0;
 		queuePrevGlobalHypotheses_.clear();
-		fscanf_s(fp, "queuePrevGlobalHypotheses:%d,\n{\n", &numPrevGH);
+		fscanf_s(fpHypothesis, "queuePrevGlobalHypotheses:%d,\n{\n", &numPrevGH);
 		for (int hypothesisIdx = 0; hypothesisIdx < numPrevGH; hypothesisIdx++)
 		{
 			stGlobalHypothesis newHypothesis;
 
 			int numSelectedTracks = 0;
-			fscanf_s(fp, "\t{\n\t\tselectedTracks:%d,{", &numSelectedTracks);			
+			fscanf_s(fpHypothesis, "\t{\n\t\tselectedTracks:%d,{", &numSelectedTracks);			
 			for (int trackIdx = 0; trackIdx < numSelectedTracks; trackIdx++)
 			{
-				fscanf_s(fp, "%d", &readingInt);
-				if (trackIdx < numSelectedTracks - 1) { fscanf_s(fp, ","); }
+				fscanf_s(fpHypothesis, "%d", &readingInt);
+				if (trackIdx < numSelectedTracks - 1) { fscanf_s(fpHypothesis, ","); }
 
 				for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 					trackIter != listTrack3D_.end();
@@ -5485,14 +5195,14 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 					break;
 				}
 			}
-			fscanf_s(fp, "}\n");
+			fscanf_s(fpHypothesis, "}\n");
 
 			int numRelatedTracks = 0;
-			fscanf_s(fp, "\t\trelatedTracks:%d,{", &numRelatedTracks);			
+			fscanf_s(fpHypothesis, "\t\trelatedTracks:%d,{", &numRelatedTracks);			
 			for (int trackIdx = 0; trackIdx < numRelatedTracks; trackIdx++)
 			{
-				fscanf_s(fp, "%d", &readingInt);
-				if (trackIdx < numRelatedTracks - 1) { fscanf_s(fp, ","); }
+				fscanf_s(fpHypothesis, "%d", &readingInt);
+				if (trackIdx < numRelatedTracks - 1) { fscanf_s(fpHypothesis, ","); }
 
 				for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 					trackIter != listTrack3D_.end();
@@ -5503,32 +5213,39 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 					break;
 				}
 			}
-			fscanf_s(fp, "}\n");
-			fscanf_s(fp, "\t\tlogLikelihood:%e\n", &readingFloat);
+			fscanf_s(fpHypothesis, "}\n");
+			fscanf_s(fpHypothesis, "\t\tlogLikelihood:%e\n", &readingFloat);
 			newHypothesis.logLikelihood = (double)readingFloat;
-			fscanf_s(fp, "\t\tprobability:%e\n", &readingFloat);
+			fscanf_s(fpHypothesis, "\t\tprobability:%e\n", &readingFloat);
 			newHypothesis.probability = (double)readingFloat;
-			fscanf_s(fp, "\t\tbValid:%d\n\t}\n", &readingInt);
+			fscanf_s(fpHypothesis, "\t\tbValid:%d\n\t}\n", &readingInt);
 			newHypothesis.bValid = 0 < readingInt ? true : false;
 
 			queuePrevGlobalHypotheses_.push_back(newHypothesis);
-		}
-		fscanf_s(fp, "}\n");
 
+#ifdef PSN_DEBUG_MODE_
+			printf("\r>> Reading previous hypotheses: %3.1f%%", 100.0 * (double)hypothesisIdx / (double)numPrevGH);
+#endif
+		}
+		fscanf_s(fpHypothesis, "}\n");
+
+#ifdef PSN_DEBUG_MODE_
+		printf("\n>> Reading current hypotheses: %3.1f%%", 0);
+#endif
 		// queueCurrGlobalHypotheses
 		int numCurrGH = 0;
 		queueCurrGlobalHypotheses_.clear();
-		fscanf_s(fp, "queueCurrGlobalHypotheses:%d,\n{\n", &numCurrGH);
+		fscanf_s(fpHypothesis, "queueCurrGlobalHypotheses:%d,\n{\n", &numCurrGH);
 		for (int hypothesisIdx = 0; hypothesisIdx < numCurrGH; hypothesisIdx++)
 		{
 			stGlobalHypothesis newHypothesis;
 
 			int numSelectedTracks = 0;
-			fscanf_s(fp, "\t{\n\t\tselectedTracks:%d,{", &numSelectedTracks);			
+			fscanf_s(fpHypothesis, "\t{\n\t\tselectedTracks:%d,{", &numSelectedTracks);			
 			for (int trackIdx = 0; trackIdx < numSelectedTracks; trackIdx++)
 			{
-				fscanf_s(fp, "%d", &readingInt);
-				if (trackIdx < numSelectedTracks - 1) { fscanf_s(fp, ","); }
+				fscanf_s(fpHypothesis, "%d", &readingInt);
+				if (trackIdx < numSelectedTracks - 1) { fscanf_s(fpHypothesis, ","); }
 
 				for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 					trackIter != listTrack3D_.end();
@@ -5539,14 +5256,14 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 					break;
 				}
 			}
-			fscanf_s(fp, "}\n");
+			fscanf_s(fpHypothesis, "}\n");
 
 			int numRelatedTracks = 0;
-			fscanf_s(fp, "\t\trelatedTracks:%d,{", &numRelatedTracks);			
+			fscanf_s(fpHypothesis, "\t\trelatedTracks:%d,{", &numRelatedTracks);			
 			for (int trackIdx = 0; trackIdx < numRelatedTracks; trackIdx++)
 			{
-				fscanf_s(fp, "%d", &readingInt);
-				if (trackIdx < numRelatedTracks - 1) { fscanf_s(fp, ","); }
+				fscanf_s(fpHypothesis, "%d", &readingInt);
+				if (trackIdx < numRelatedTracks - 1) { fscanf_s(fpHypothesis, ","); }
 
 				for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
 					trackIter != listTrack3D_.end();
@@ -5557,36 +5274,52 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 					break;
 				}
 			}
-			fscanf_s(fp, "}\n");
-			fscanf_s(fp, "\t\tlogLikelihood:%e\n", &readingFloat);
+			fscanf_s(fpHypothesis, "}\n");
+			fscanf_s(fpHypothesis, "\t\tlogLikelihood:%e\n", &readingFloat);
 			newHypothesis.logLikelihood = (double)readingFloat;
-			fscanf_s(fp, "\t\tprobability:%e\n", &readingFloat);
+			fscanf_s(fpHypothesis, "\t\tprobability:%e\n", &readingFloat);
 			newHypothesis.probability = (double)readingFloat;
-			fscanf_s(fp, "\t\tbValid:%d\n\t}\n", &readingInt);
+			fscanf_s(fpHypothesis, "\t\tbValid:%d\n\t}\n", &readingInt);
 			newHypothesis.bValid = 0 < readingInt ? true : false;
 
 			queueCurrGlobalHypotheses_.push_back(newHypothesis);
+#ifdef PSN_DEBUG_MODE_
+			printf("\r>> Reading current hypotheses: %3.1f%%", 100.0 * (double)hypothesisIdx / (double)numCurrGH);
+#endif
 		}
-		fscanf_s(fp, "}\n");
+		fscanf_s(fpHypothesis, "}\n");
+		fclose(fpHypothesis);
+#ifdef PSN_DEBUG_MODE_
+		printf("\n");
+#endif
 
 		//---------------------------------------------------------
 		// VISUALIZATION
 		//---------------------------------------------------------
-		fscanf_s(fp, "nNewVisualizationID:%d\n", &readingInt);
+		// file open
+		sprintf_s(strFilename, "%ssnapshot_3D_info.txt", strFilepath);		
+		fopen_s(&fpInfo, strFilename, "r"); 
+		if (NULL == fpInfo) { return false; }
+		fscanf_s(fpInfo, "numCamera:%d\n", &readingInt);
+		assert(NUM_CAM == readingInt);
+		fscanf_s(fpInfo, "frameIndex:%d\n\n", &readingInt);
+		nCurrentFrameIdx_ = (unsigned int)readingInt;
+
+		fscanf_s(fpInfo, "nNewVisualizationID:%d\n", &readingInt);
 		nNewVisualizationID_ = (unsigned int)readingInt;
 
 		int numPair = 0;
 		queuePairTreeIDToVisualizationID_.clear();
-		fscanf_s(fp, "queuePairTreeIDToVisualizationID:%d,{", &numPair);
+		fscanf_s(fpInfo, "queuePairTreeIDToVisualizationID:%d,{", &numPair);
 		for (int pairIdx = 0; pairIdx < queuePairTreeIDToVisualizationID_.size(); pairIdx++)
 		{
 			int id1, id2;
-			fscanf_s(fp, "(%d,%d)", &id1, &id2);
+			fscanf_s(fpInfo, "(%d,%d)", &id1, &id2);
 			queuePairTreeIDToVisualizationID_.push_back(std::make_pair(id1, id2));
 		}
-		fscanf_s(fp, "}\n");
+		fscanf_s(fpInfo, "}\n");
 
-		fclose(fp);
+		fclose(fpInfo);
 	}
 	catch(DWORD dwError)
 	{

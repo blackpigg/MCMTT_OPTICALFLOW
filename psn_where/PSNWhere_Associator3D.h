@@ -259,7 +259,6 @@ private:
 
 	std::deque<TrackTree*> queuePtActiveTrees_;
 	std::deque<TrackTree*> queuePtUnconfirmedTrees_;
-	//std::list<Track3D> listResultTrack3D_;
 
 	// for result saving
 	std::deque<stTrack3DResult> queueTrackingResult_;
