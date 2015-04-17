@@ -20,7 +20,7 @@ NOTES:
 // optimization related
 #define PROC_WINDOW_SIZE (5)
 #define GTP_THRESHOLD (0.0001)
-#define MAX_TRACK_IN_OPTIMIZATION (500)
+#define MAX_TRACK_IN_OPTIMIZATION (2000)
 #define MAX_UNCONFIRMED_TRACK (50)
 #define NUM_FRAME_FOR_GTP_CHECK (3)
 #define NUM_FRAME_FOR_CONFIRMATION (3)
@@ -3152,6 +3152,10 @@ void CPSNWhere_Associator3D::Hypothesis_PruningTrackWithGTP(unsigned int nCurren
 
 		(*trackIter)->bValid = false;
 	}
+#ifdef PSN_DEBUG_MODE_
+	printf("[CPSNWhere_Associator3D](Hypothesis_PruningTrackWithGTP)\n");
+	if (MAX_TRACK_IN_OPTIMIZATION <= numTrackLeft) { printf("*** Tracks are truncated!!! ****\n"); }
+#endif
 }
 
 /************************************************************************

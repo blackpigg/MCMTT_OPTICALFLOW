@@ -14,7 +14,7 @@
 #define PSN_MONITOR_MODE_
 //#define LOAD_SNAPSHOT_
 
-//#define SAVE_SNAPSHOT_
+#define SAVE_SNAPSHOT_
 #define DO_RECORD
 #define SHOW_TOPVIEW
 
