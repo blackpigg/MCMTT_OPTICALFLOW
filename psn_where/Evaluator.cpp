@@ -1,11 +1,11 @@
 #include "Evaluator.h"
 #include <numeric>
 
-#define CROP_ZONE_X_MIN (-14069.6)
-#define CROP_ZONE_X_MAX (4981.3)
-#define CROP_ZONE_Y_MIN (-14274.0)
-#define CROP_ZONE_Y_MAX (1733.5)
-#define CROP_ZONE_MARGIN (1000.0)
+//#define CROP_ZONE_X_MIN (-14069.6)
+//#define CROP_ZONE_X_MAX (4981.3)
+//#define CROP_ZONE_Y_MIN (-14274.0)
+//#define CROP_ZONE_Y_MAX (1733.5)
+//#define CROP_ZONE_MARGIN (1000.0)
 
 CEvaluator::CEvaluator(void)
 	: bInit(false)
@@ -100,14 +100,6 @@ void CEvaluator::Initialize(std::string strFilepath)
 	this->m_rectCropZoneMargin.h += 2 * CROP_ZONE_MARGIN;
 
 	this->bInit = true;
-
-	//// DEBUG
-	//this->matX = this->matXgt.clone();
-	//this->matY = this->matYgt.clone();
-	//for(int i = 0; i < this->m_nNumObj; i++)
-	//{
-	//	this->m_queueID.push_back(i);
-	//}	
 }
 
 void CEvaluator::Finalize(void)
@@ -129,35 +121,31 @@ void CEvaluator::Finalize(void)
 
 void CEvaluator::SetResult(PSN_TrackSet &trackSet, unsigned int timeIdx)
 {
-	if(timeIdx > this->m_queueSavedResult.size())
-	{ return; }
+	if (timeIdx > this->m_queueSavedResult.size()) { return; }
 
 	this->m_queueSavedResult[timeIdx].clear();
-	for(PSN_TrackSet::iterator trackIter = trackSet.begin();
+	for (PSN_TrackSet::iterator trackIter = trackSet.begin();
 		trackIter != trackSet.end();
 		trackIter++)
 	{
 		int reconIdx = (int)timeIdx - (*trackIter)->timeStart;
-		if(0 > reconIdx || (int)(*trackIter)->reconstructions.size() <= reconIdx)
-		{ continue;	}
+		if (0 > reconIdx || (int)(*trackIter)->reconstructions.size() <= reconIdx) { continue;	}
 
 		PSN_Point3D curPoint = (*trackIter)->reconstructions[timeIdx - (*trackIter)->timeStart].point;
-		if(!this->m_rectCropZoneMargin.contain(PSN_Point2D(curPoint.x, curPoint.y)))
-		{ continue; }
+		if (!this->m_rectCropZoneMargin.contain(PSN_Point2D(curPoint.x, curPoint.y))) { continue; }
 
 		// index management
 		int indexPos = 0;
-		std::deque<unsigned int>::iterator findIter = std::find(this->m_queueID.begin(), this->m_queueID.end(), (*trackIter)->id);
-		if(this->m_queueID.end() == findIter)
+		std::deque<unsigned int>::iterator findIter = std::find(this->m_queueID.begin(), this->m_queueID.end(), (*trackIter)->tree->id);
+		if (this->m_queueID.end() == findIter)
 		{
-			this->m_queueID.push_back((*trackIter)->id);
+			this->m_queueID.push_back((*trackIter)->tree->id);
 			indexPos = (int)this->m_queueID.size() - 1;
 		}
 		else
 		{
 			indexPos = (int)(findIter - this->m_queueID.begin());
-		}
-		
+		}		
 		this->m_queueSavedResult[timeIdx].push_back(std::make_pair(indexPos, curPoint));
 	}
 }
@@ -245,9 +233,9 @@ void CEvaluator::Evaluate(void)
 	this->matX = cv::Mat::zeros(this->m_nNumTime, (int)this->m_queueID.size(), CV_64FC1);
 	this->matY = cv::Mat::zeros(this->m_nNumTime, (int)this->m_queueID.size(), CV_64FC1);
 
-	for(int timeIdx = 0; timeIdx < this->m_nNumTime; timeIdx++)
+	for (int timeIdx = 0; timeIdx < this->m_nNumTime; timeIdx++)
 	{
-		for(pointInfoSet::iterator pointInfoIter = this->m_queueSavedResult[timeIdx].begin();
+		for (pointInfoSet::iterator pointInfoIter = this->m_queueSavedResult[timeIdx].begin();
 			pointInfoIter != this->m_queueSavedResult[timeIdx].end();
 			pointInfoIter++)
 		{			
@@ -260,19 +248,19 @@ void CEvaluator::Evaluate(void)
 	PSN_Point2D curPoint;
 	PSN_Point2D prevPoint, nextPoint;
 	bool bPrevIn, bNextIn;
-	for(int timeIdx = 0; timeIdx < this->m_nNumTime; timeIdx++)
+	for (int timeIdx = 0; timeIdx < this->m_nNumTime; timeIdx++)
 	{
-		for(int objIdx = 0; objIdx < (int)this->m_queueID.size(); objIdx++)
+		for (int objIdx = 0; objIdx < (int)this->m_queueID.size(); objIdx++)
 		{
 			curPoint.x = this->matX.at<double>(timeIdx, objIdx);
 			curPoint.y = this->matY.at<double>(timeIdx, objIdx);
 			
-			if(this->m_rectCropZone.contain(curPoint))
-			{ continue; }
+			if (this->m_rectCropZone.contain(curPoint)) { continue; }
 
+			// if point in margin region
 			bPrevIn = false;
 			bNextIn = false;
-			if(timeIdx > 0)
+			if (timeIdx > 0)
 			{
 				prevPoint.x = this->matX.at<double>(timeIdx-1, objIdx);
 				prevPoint.y = this->matY.at<double>(timeIdx-1, objIdx);
@@ -281,26 +269,26 @@ void CEvaluator::Evaluate(void)
 					bPrevIn = true;
 				}
 			}
-			
-			if(timeIdx < this->m_nNumTime - 1)
+
+			if (timeIdx < this->m_nNumTime - 1)
 			{
 				nextPoint.x = this->matX.at<double>(timeIdx+1, objIdx);
 				nextPoint.y = this->matY.at<double>(timeIdx+1, objIdx);
-				if(this->m_rectCropZone.contain(nextPoint))
+				if (this->m_rectCropZone.contain(nextPoint))
 				{
 					bNextIn = true;
 				}
 			}
 
-			if(bPrevIn && bNextIn)
+			if (bPrevIn && bNextIn)
 			{
 				// 1) in->out->in
 			}
-			else if(bPrevIn)
+			else if (bPrevIn)
 			{
 				// 2) in->out
 			}
-			else if(bNextIn)
+			else if (bNextIn)
 			{
 				// 3) out->in
 			}				
@@ -349,12 +337,6 @@ void CEvaluator::Evaluate(void)
 	for(int t = 0; t < F; t++)
 	{
 		g[t] = cv::countNonZero(this->matXgt.row(t));
-
-		if(728 == t)
-		{
-			int a = 0;
-		}
-
 		// inherent matching
 		if(t > 0)
 		{
@@ -389,9 +371,9 @@ void CEvaluator::Evaluate(void)
 		{
 			GTsNotMapped.clear();
 			EsNotMapped.clear();
-			for(int colIdx = 0; colIdx < Ngt; colIdx++)
+			for (int colIdx = 0; colIdx < Ngt; colIdx++)
 			{
-				if(-1 == M.at<int>(t, colIdx) && 0.0 != this->matXgt.at<double>(t, colIdx))
+				if (-1 == M.at<int>(t, colIdx) && 0.0 != this->matXgt.at<double>(t, colIdx))
 				{
 					GTsNotMapped.push_back(colIdx);
 				}
@@ -400,20 +382,20 @@ void CEvaluator::Evaluate(void)
 				//	EsNotMapped.push_back(colIdx);
 				//}
 			}
-			for(int colIdx = 0; colIdx < (int)this->matX.cols; colIdx++)
+			for (int colIdx = 0; colIdx < (int)this->matX.cols; colIdx++)
 			{
-				if(0.0 != this->matX.at<double>(t, colIdx))
+				if (0.0 != this->matX.at<double>(t, colIdx))
 				{
 					bool bFound = false;
-					for(int mColIdx = 0; mColIdx < Ngt; mColIdx++)
+					for (int mColIdx = 0; mColIdx < Ngt; mColIdx++)
 					{
-						if(colIdx == M.at<int>(t, mColIdx))
+						if (colIdx == M.at<int>(t, mColIdx))
 						{
 							bFound = true;
 							break;
 						}
 					}
-					if(!bFound)
+					if (!bFound)
 					{
 						EsNotMapped.push_back(colIdx);
 					}
@@ -423,16 +405,16 @@ void CEvaluator::Evaluate(void)
 			minDist = FLT_MAX;
 			minIdxGT = 0;
 			minIdxE = 0;
-			for(int o = 0; o < (int)GTsNotMapped.size(); o++)
+			for (int o = 0; o < (int)GTsNotMapped.size(); o++)
 			{
 				GT.x = this->matXgt.at<double>(t, GTsNotMapped[o]);
 				GT.y = this->matYgt.at<double>(t, GTsNotMapped[o]);
-				for(int e = 0; e < (int)EsNotMapped.size(); e++)
+				for (int e = 0; e < (int)EsNotMapped.size(); e++)
 				{
 					E.x = this->matX.at<double>(t, EsNotMapped[e]);
 					E.y = this->matY.at<double>(t, EsNotMapped[e]);
 					curDist = (GT - E).norm_L2();
-					if(curDist < minDist)
+					if (curDist < minDist)
 					{
 						minDist = curDist;
 						minIdxGT = GTsNotMapped[o];
@@ -441,33 +423,28 @@ void CEvaluator::Evaluate(void)
 				}
 			}
 
-			if(minDist > CROP_ZONE_MARGIN)
-			{ break; }
-
+			if (minDist > CROP_ZONE_MARGIN) { break; }
 			M.at<int>(t, minIdxGT) = minIdxE;
 		}
-		while(minDist < CROP_ZONE_MARGIN && GTsNotMapped.size() > 0 && EsNotMapped.size() > 0);
+
+		while (minDist < CROP_ZONE_MARGIN && GTsNotMapped.size() > 0 && EsNotMapped.size() > 0);
 
 		// mismatch errors
 		c[t] = 0;		
-		for(int ct = 0; ct < Ngt; ct++)
+		for (int ct = 0; ct < Ngt; ct++)
 		{
-			if(-1 == M.at<int>(t, ct))
-			{ continue; }
+			if (-1 == M.at<int>(t, ct)) { continue; }
 			c[t]++;
 
-			if(t > 0)
+			if (t > 0)
 			{
 				int lastNotEmpty = -1;
-				for(int tIdx = 0; tIdx < t; tIdx++)
+				for (int tIdx = 0; tIdx < t; tIdx++)
 				{
-					if(-1 != M.at<int>(tIdx, ct))
-					{
-						lastNotEmpty = tIdx;
-					}
+					if (-1 != M.at<int>(tIdx, ct)) { lastNotEmpty = tIdx; }
 				}
 
-				if(0.0 != this->matXgt.at<double>(t-1, ct) && -1 != lastNotEmpty && M.at<int>(t, ct) != M.at<int>(lastNotEmpty, ct))
+				if (0.0 != this->matXgt.at<double>(t-1, ct) && -1 != lastNotEmpty && M.at<int>(t, ct) != M.at<int>(lastNotEmpty, ct))
 				{ mme[t]++; }
 			}
 
@@ -481,9 +458,9 @@ void CEvaluator::Evaluate(void)
 		}
 
 		fp[t] = 0;
-		for(int objIdx = 0; objIdx < (int)this->matX.cols; objIdx++)
+		for (int objIdx = 0; objIdx < (int)this->matX.cols; objIdx++)
 		{
-			if(0.0 != this->matX.at<double>(t, objIdx))
+			if (0.0 != this->matX.at<double>(t, objIdx))
 			{ fp[t]++; }
 		}
 		fp[t] -= c[t];
@@ -515,35 +492,32 @@ void CEvaluator::Evaluate(void)
 	this->m_nMostTracked = 0;
 	this->m_nPartilalyTracked = 0;
 	this->m_nMostLost = 0;
-	for(int i = 0; i < Ngt; i++)
+	for (int i = 0; i < Ngt; i++)
 	{
 		double getLength = 0;
 		double trackedLength = 0;
 		int lastIndex;
-		for(int tIdx = 0; tIdx < Fgt; tIdx++)
+		for (int tIdx = 0; tIdx < Fgt; tIdx++)
 		{
-			if(0 != this->matXgt.at<double>(tIdx, i))
+			if (0 != this->matXgt.at<double>(tIdx, i))
 			{
 				getLength++;
 				lastIndex = tIdx;
-				if(0 <= M.at<int>(tIdx, i))
-				{
-					trackedLength++;
-				}
+				if (0 <= M.at<int>(tIdx, i)) { trackedLength++; }
 			}
 		}
 
-		if(trackedLength / getLength < 0.2)
+		if (trackedLength / getLength < 0.2)
 		{
 			MTstatsa[i] = 3;
 			this->m_nMostLost++;
 		}
-		else if(F >= lastIndex && trackedLength / getLength <= 0.8)
+		else if (F >= lastIndex && trackedLength / getLength <= 0.8)
 		{
 			MTstatsa[i] = 2;
 			this->m_nPartilalyTracked++;
 		}
-		else if(trackedLength / getLength >= 0.8)
+		else if (trackedLength / getLength >= 0.8)
 		{
 			MTstatsa[i] = 1;
 			this->m_nMostTracked++;
@@ -553,18 +527,18 @@ void CEvaluator::Evaluate(void)
 	// fragments
 	std::vector<int> fr(Ngt, 0);
 	this->m_nFragments = 0;
-	for(int i = 0; i < Ngt; i++)
+	for (int i = 0; i < Ngt; i++)
 	{
 		int startIdx = 0;
 		int endIdx = 0;
 		int numSwtich = 0;
 		bool bTracked = false;
 		bool bStart = false;
-		for(int tIdx = 0; tIdx < Fgt; tIdx++)
+		for (int tIdx = 0; tIdx < Fgt; tIdx++)
 		{
-			if(0 <= M.at<int>(tIdx, i))
+			if (0 <= M.at<int>(tIdx, i))
 			{
-				if(bStart)
+				if (bStart)
 				{
 					endIdx = tIdx;
 				}
@@ -577,18 +551,12 @@ void CEvaluator::Evaluate(void)
 			}
 			else
 			{
-				if(bTracked)
-				{
-					numSwtich++;
-				}
+				if (bTracked) {	numSwtich++; }
 				bTracked = false;
 			}
 		}
 
-		if(Fgt - 1 > endIdx)
-		{			
-			numSwtich--;
-		}
+		if (Fgt - 1 > endIdx) {	numSwtich--; }
 		this->m_nFragments += numSwtich;
 	}	
 }
@@ -616,6 +584,75 @@ void CEvaluator::PrintResultToConsole()
 		this->m_fMOTAL * 100);
 }
 
-void CEvaluator::PrintResultToFile()
+void CEvaluator::PrintResultToFile(const char *strFilepathAndName)
 {
+	FILE *fp;
+	try
+	{
+		fopen_s(&fp, strFilepathAndName, "w");
+		fprintf_s(fp, "Evaluating PETS S2.L2 on ground plane...\n");
+		fprintf_s(fp, "| Recl Prcn  FAR| MT PT ML|  FPR  FNR  FP  FN  ID  FM  err| MOTA MOTP MOTL\n");
+		fprintf_s(fp, "|%5.1f%5.1f%5.2f|%3i%3i%3i|%5.1f%5.1f%4i%4i%4i%4i%5i|%5.1f %4.1f %4.1f\n", 
+			this->m_fRecall * 100, 
+			this->m_fPrecision * 100, 
+			this->m_fFalseAlarmPerFrame, 
+			this->m_nMostTracked, 
+			this->m_nPartilalyTracked, 
+			this->m_nMostLost, 
+			this->m_fFalseAlarmPerGroundTruth * 100, 
+			this->m_fMissTargetPerGroundTruth * 100,
+			this->m_nFalsePositives, 
+			this->m_nMissed, 
+			this->m_nIDSwitch, 
+			this->m_nFragments, 
+			this->m_nMissed + this->m_nFalsePositives + this->m_nIDSwitch, 
+			this->m_fMOTA * 100, 
+			this->m_fMOTP * 100, 
+			this->m_fMOTAL * 100);
+	}
+	catch (DWORD dwError)
+	{
+		printf("[ERROR](PrintResultToFile) cannot open file! error code %d\n", dwError);
+		return;
+	}
 }
+
+void CEvaluator::PrintResultMatrix(const char *strFilepathAndName)
+{
+	FILE *fp;
+	try
+	{
+		fopen_s(&fp, strFilepathAndName, "w");		
+		
+		// matX
+		fprintf_s(fp, "MatX:(%d,%d)\n", this->matX.rows, this->matX.cols);
+		for (int rowIdx = 0; rowIdx < this->matX.rows; rowIdx++)
+		{
+			for (int colIdx = 0; colIdx < this->matX.cols; colIdx++)
+			{
+				fprintf_s(fp, "%.6f,", this->matX.at<double>(rowIdx, colIdx));				
+			}
+			fprintf_s(fp , "\n");
+		}
+
+		// matY
+		fprintf_s(fp, "MatY:(%d,%d)\n", this->matY.rows, this->matY.cols);
+		for (int rowIdx = 0; rowIdx < this->matY.rows; rowIdx++)
+		{
+			for (int colIdx = 0; colIdx < this->matY.cols; colIdx++)
+			{
+				fprintf_s(fp, "%.6f,", this->matY.at<double>(rowIdx, colIdx));				
+			}
+			fprintf_s(fp , "\n");
+		}
+
+		fclose(fp);
+	}
+	catch (DWORD dwError)
+	{
+		printf("[ERROR](PrintResultMatrix) cannot open file! error code %d\n", dwError);
+		return;
+	}
+}
+
+

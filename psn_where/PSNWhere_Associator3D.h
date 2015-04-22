@@ -170,7 +170,7 @@ private:
 	// cost calculation
 	double ComputeEnterProbability(std::vector<PSN_Point2D_CamIdx> &vecPointInfos);
 	double ComputeExitProbability(std::vector<PSN_Point2D_CamIdx> &vecPointInfos);
-	static double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, unsigned int timeGap);
+	static double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, double preSensitivity, double curSensitivity, unsigned int timeGap);
 	double ComputeRGBCost(const cv::Mat *feature1, const cv::Mat *feature2, unsigned int timeGap);
 
 	// miscellaneous

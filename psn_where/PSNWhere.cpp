@@ -316,6 +316,7 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 	std::vector<cv::Mat> tileInputArray;
 	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) {	
 		this->m_matResultFrames[camIdx] = pDibArray[camIdx].clone();
+
 		// display detections
 		if (2 <= nDispMode) {
 			for (int detectIdx = 0; detectIdx < (int)result2D[camIdx].vecDetectionRects.size(); detectIdx++) {
@@ -383,6 +384,7 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 	//---------------------------------------------------
 	// DISPLAY ON TOPVIEW
 	//---------------------------------------------------
+	bool bZoomed = true;
 	cv::Mat topViewResult = this->m_matTopViewBase.clone();
 
 	// writing frame info
@@ -390,8 +392,24 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 	cv::rectangle(topViewResult, cv::Rect(5, 2, 145, 22), cv::Scalar(0, 0, 0), CV_FILLED);
 	cv::putText(topViewResult, strFrameInfo, cv::Point(6, 20), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255));
 
+	// crop zone
+	PSN_Point3D cropZoneCorner[4];
+	PSN_Point2D cropZoneCornerOnTopView[4];
+	cropZoneCorner[0] = PSN_Point3D(CROP_ZONE_X_MIN, CROP_ZONE_Y_MIN, 0.0);
+	cropZoneCorner[1] = PSN_Point3D(CROP_ZONE_X_MIN, CROP_ZONE_Y_MAX, 0.0);
+	cropZoneCorner[2] = PSN_Point3D(CROP_ZONE_X_MAX, CROP_ZONE_Y_MAX, 0.0);
+	cropZoneCorner[3] = PSN_Point3D(CROP_ZONE_X_MAX, CROP_ZONE_Y_MIN, 0.0);
+	for (int cornerIdx = 0; cornerIdx < 4; cornerIdx++)
+	{
+		cropZoneCornerOnTopView[cornerIdx] = psn::GetLocationOnTopView_PETS2009(cropZoneCorner[cornerIdx], bZoomed);
+	}
+	cv::line(topViewResult, cropZoneCornerOnTopView[0].cv(), cropZoneCornerOnTopView[1].cv(), cv::Scalar(255, 255, 0));
+	cv::line(topViewResult, cropZoneCornerOnTopView[1].cv(), cropZoneCornerOnTopView[2].cv(), cv::Scalar(255, 255, 0));
+	cv::line(topViewResult, cropZoneCornerOnTopView[2].cv(), cropZoneCornerOnTopView[3].cv(), cv::Scalar(255, 255, 0));
+	cv::line(topViewResult, cropZoneCornerOnTopView[3].cv(), cropZoneCornerOnTopView[0].cv(), cv::Scalar(255, 255, 0));
+
 	// draw 3D track
-	for(unsigned int trajectoryIdx = 0; trajectoryIdx < result3D.object3DInfo.size(); trajectoryIdx++)
+	for (int trajectoryIdx = 0; trajectoryIdx < result3D.object3DInfo.size(); trajectoryIdx++)
 	{
 		stObject3DInfo *curTrajectory = &result3D.object3DInfo[trajectoryIdx];
 
@@ -399,12 +417,12 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 		std::vector<PSN_Point2D> topViewRecentPoint2Ds(curTrajectory->recentPoints.size());
 		for (int pointIdx = 0; pointIdx < curTrajectory->recentPoints.size(); pointIdx++)
 		{
-			topViewRecentPoint2Ds[pointIdx] = psn::GetLocationOnTopView_PETS2009(curTrajectory->recentPoints[pointIdx], true);
+			topViewRecentPoint2Ds[pointIdx] = psn::GetLocationOnTopView_PETS2009(curTrajectory->recentPoints[pointIdx], bZoomed);
 		}
 		psn::DrawLine(topViewResult, topViewRecentPoint2Ds, curTrajectory->id, this->m_vecColors, 1);
 
 		// draw ID and triangle
-		psn::DrawTriangleWithID(topViewResult, psn::GetLocationOnTopView_PETS2009(curTrajectory->recentPoints.front(), true), curTrajectory->id, this->m_vecColors);
+		psn::DrawTriangleWithID(topViewResult, psn::GetLocationOnTopView_PETS2009(curTrajectory->recentPoints.front(), bZoomed), curTrajectory->id, this->m_vecColors);
 	}
 	cv::imshow("topView", topViewResult);
 

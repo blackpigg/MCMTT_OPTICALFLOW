@@ -6,6 +6,21 @@ typedef std::deque<pointInfo> pointInfoSet;
 
 class CEvaluator
 {
+public:
+	CEvaluator(void);
+	~CEvaluator(void);
+
+	void Initialize(std::string strFilepath);
+	void Finalize(void);
+
+	void SetResult(PSN_TrackSet &trackSet, unsigned int timeIdx);
+	void LoadResultFromText(std::string strFilepath);
+	void Evaluate(void);
+
+	void PrintResultToConsole();
+	void PrintResultToFile(const char *strFilepathAndName);
+	void PrintResultMatrix(const char *strFilepathAndName);
+
 private:
 	bool bInit;
 	int m_nNumObj;
@@ -38,18 +53,6 @@ private:
 	int m_nMostLost;	
 	int m_nFragments;
 
-public:
-	CEvaluator(void);
-	~CEvaluator(void);
 
-	void Initialize(std::string strFilepath);
-	void Finalize(void);
-
-	void SetResult(PSN_TrackSet &trackSet, unsigned int timeIdx);
-	void LoadResultFromText(std::string strFilepath);
-	void Evaluate(void);
-
-	void PrintResultToConsole();
-	void PrintResultToFile();
 };
 

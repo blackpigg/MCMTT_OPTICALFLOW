@@ -14,9 +14,9 @@
 #define PSN_MONITOR_MODE_
 //#define LOAD_SNAPSHOT_
 
-#define SAVE_SNAPSHOT_
+//#define SAVE_SNAPSHOT_
 //#define DO_RECORD
-//#define SHOW_TOPVIEW
+#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -60,6 +60,15 @@ const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", 
 // VISUALIZATION SETTTING
 /////////////////////////////////////////////////////////////////////////
 #define DISP_TRAJECTORY3D_LENGTH (40)
+
+/////////////////////////////////////////////////////////////////////////
+// EVALUATION SETTING
+/////////////////////////////////////////////////////////////////////////
+#define CROP_ZONE_X_MIN (-14069.6)
+#define CROP_ZONE_X_MAX (4981.3)
+#define CROP_ZONE_Y_MIN (-14274.0)
+#define CROP_ZONE_Y_MAX (1733.5)
+#define CROP_ZONE_MARGIN (1000.0)
 
 /////////////////////////////////////////////////////////////////////////
 // TYPEDEFS
@@ -349,7 +358,7 @@ struct stReconstruction
 	CTrackletCombination tracklet2Ds;
 	PSN_Point3D point;
 	PSN_Point3D velocity;
-
+	double averageSensitivity;
 	double costReconstruction;
 	double costLink;
 };

@@ -15,8 +15,8 @@
 //#define PSN_2D_OPTICALFLOW_SCALE (0.5)
 #define PSN_2D_OPTICALFLOW_SCALE (1.0)
 
-//#define PSN_2D_MAX_HEIGHT (2300)
-#define PSN_2D_MAX_HEIGHT (3000)
+#define PSN_2D_MAX_HEIGHT (2300)
+//#define PSN_2D_MAX_HEIGHT (3000)
 #define PSN_2D_MIN_HEIGHT (1400)
 #define PSN_2D_BOX_MAX_DISTANCE (1.0)
 #define PSN_2D_MAX_DETECTION_DISTANCE (600)
@@ -942,7 +942,10 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 		topCenter = bottomCenter;
 		topCenter.y -= curDetectionResult[detectionIdx].box.h;
 		curHeight = this->EstimateDetectionHeight(bottomCenter, topCenter, &curLocation);
-		if (PSN_2D_MAX_HEIGHT < curHeight || PSN_2D_MIN_HEIGHT > curHeight) { continue; }
+		//if (PSN_2D_MAX_HEIGHT < curHeight || PSN_2D_MIN_HEIGHT > curHeight) { continue; }
+
+		double curMaxHeight = m_nCamID == 0? PSN_2D_MAX_HEIGHT : PSN_2D_MAX_HEIGHT * 1.3;
+		if (curMaxHeight < curHeight || PSN_2D_MIN_HEIGHT > curHeight) { continue; }
 
 		// generate detection information
 		stDetectedObject curDetection;
