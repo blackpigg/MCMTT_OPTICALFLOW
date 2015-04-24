@@ -104,8 +104,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	// PETS2009
 	int frameIdxStart = 0;
-	//int frameIdxEnd = 10;
-	int frameIdxEnd = 794;
+	int frameIdxEnd = 30;
+	//int frameIdxEnd = 794;
 	
 
 	/////////////////////////////////////////////////////////////////

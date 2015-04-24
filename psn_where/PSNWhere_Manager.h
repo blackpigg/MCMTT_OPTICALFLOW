@@ -16,7 +16,7 @@
 
 //#define SAVE_SNAPSHOT_
 //#define DO_RECORD
-#define SHOW_TOPVIEW
+//#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -432,6 +432,14 @@ struct stTracklet2DInfo
 	std::deque<Track3D*> queueRelatedTracks;
 };
 
+struct stTrackInTreeInfo
+{
+	int id;
+	int parentNode;
+	int timeGenerated;
+	float GTP;
+};
+
 class TrackTree
 {
 public:
@@ -457,7 +465,7 @@ public:
 	static bool CheckBranchContainsBestSolution(Track3D *rootOfBranch);
 	static void SetValidityFlagInTrackBranch(Track3D* rootOfBranch, bool bValid);	
 	static void GetTracksInBranch(Track3D* rootOfBranch, std::deque<Track3D*> &queueOutput);
-	static void MakeTreeNodesWithChildren(std::deque<Track3D*> queueChildrenTracks, const unsigned int parentNodeIdx, std::deque<unsigned int> &outQueueNodes);
+	static void MakeTreeNodesWithChildren(std::deque<Track3D*> queueChildrenTracks, const int parentNodeIdx, std::deque<stTrackInTreeInfo> &outQueueNodes);
 	static double GTProbOfBrach(Track3D *rootOfBranch);
 	static double MaxGTProbOfBrach(Track3D *rootOfBranch);
 	static void InvalidateBranchWithMinGTProb(Track3D *rootOfBranch, double minGTProb);

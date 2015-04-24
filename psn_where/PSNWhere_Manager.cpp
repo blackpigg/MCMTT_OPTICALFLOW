@@ -1092,14 +1092,19 @@ void TrackTree::GetTracksInBranch(Track3D* rootOfBranch, std::deque<Track3D*> &q
  Return Values:
 	- none
 ************************************************************************/
-void TrackTree::MakeTreeNodesWithChildren(std::deque<Track3D*> queueChildrenTracks, const unsigned int parentNodeIdx, std::deque<unsigned int> &outQueueNodes)
+void TrackTree::MakeTreeNodesWithChildren(std::deque<Track3D*> queueChildrenTracks, const int parentNodeIdx, std::deque<stTrackInTreeInfo> &outQueueNodes)
 {
 	for(std::deque<Track3D*>::iterator trackIter = queueChildrenTracks.begin();
 		trackIter != queueChildrenTracks.end();
 		trackIter++)
 	{
-		outQueueNodes.push_back(parentNodeIdx);
-		MakeTreeNodesWithChildren((*trackIter)->childrenTrack, (unsigned int)outQueueNodes.size(), outQueueNodes);
+		stTrackInTreeInfo newInfo;
+		newInfo.id = (*trackIter)->id;
+		newInfo.parentNode = parentNodeIdx;
+		newInfo.timeGenerated = (*trackIter)->timeGeneration;
+		newInfo.GTP = (float)(*trackIter)->GTProb;
+		if ((*trackIter)->bValid) { outQueueNodes.push_back(newInfo); }
+		MakeTreeNodesWithChildren((*trackIter)->childrenTrack, (int)outQueueNodes.size(), outQueueNodes);
 	}
 }
 

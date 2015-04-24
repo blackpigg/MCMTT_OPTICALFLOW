@@ -403,10 +403,10 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 	{
 		cropZoneCornerOnTopView[cornerIdx] = psn::GetLocationOnTopView_PETS2009(cropZoneCorner[cornerIdx], bZoomed);
 	}
-	cv::line(topViewResult, cropZoneCornerOnTopView[0].cv(), cropZoneCornerOnTopView[1].cv(), cv::Scalar(255, 255, 0));
-	cv::line(topViewResult, cropZoneCornerOnTopView[1].cv(), cropZoneCornerOnTopView[2].cv(), cv::Scalar(255, 255, 0));
-	cv::line(topViewResult, cropZoneCornerOnTopView[2].cv(), cropZoneCornerOnTopView[3].cv(), cv::Scalar(255, 255, 0));
-	cv::line(topViewResult, cropZoneCornerOnTopView[3].cv(), cropZoneCornerOnTopView[0].cv(), cv::Scalar(255, 255, 0));
+	cv::line(topViewResult, cropZoneCornerOnTopView[0].cv(), cropZoneCornerOnTopView[1].cv(), cv::Scalar(255, 255, 255));
+	cv::line(topViewResult, cropZoneCornerOnTopView[1].cv(), cropZoneCornerOnTopView[2].cv(), cv::Scalar(255, 255, 255));
+	cv::line(topViewResult, cropZoneCornerOnTopView[2].cv(), cropZoneCornerOnTopView[3].cv(), cv::Scalar(255, 255, 255));
+	cv::line(topViewResult, cropZoneCornerOnTopView[3].cv(), cropZoneCornerOnTopView[0].cv(), cv::Scalar(255, 255, 255));
 
 	// draw 3D track
 	for (int trajectoryIdx = 0; trajectoryIdx < result3D.object3DInfo.size(); trajectoryIdx++)

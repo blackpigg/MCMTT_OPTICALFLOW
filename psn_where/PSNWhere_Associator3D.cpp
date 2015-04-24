@@ -549,10 +549,20 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	this->Hypothesis_Formation(queueCurrGlobalHypotheses_, &queuePrevGlobalHypotheses_);	
 	//this->Track3D_SolveHOMHT();
 
+	if (80 == nCurrentFrameIdx_)
+	{
+		this->PrintCurrentTrackTrees("data/trees.txt");
+	}
+
 	// post-pruning
 	this->Hypothesis_PruningNScanBack(nCurrentFrameIdx_, PROC_WINDOW_SIZE, &queueTracksInWindow_, &queueCurrGlobalHypotheses_);
 	this->Hypothesis_PruningTrackWithGTP(nCurrentFrameIdx_, MAX_TRACK_IN_OPTIMIZATION, &queueTracksInWindow_);
 	this->Hypothesis_RefreshHypotheses(queueCurrGlobalHypotheses_);
+
+	if (80 == nCurrentFrameIdx_)
+	{
+		this->PrintCurrentTrackTrees("data/trees_afterPruning.txt");
+	}
 
 	//this->Track3D_Pruning_KBest();
 	//if(MAX_TRACK_IN_OPTIMIZATION < queueTracksInWindow_.size())
@@ -1651,18 +1661,28 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		treeIter++)
 	{
 		// track validation
+		double GTPSum = 0.0;
 		std::deque<Track3D*> queueUpdated; // copy is faster than delete
 		for (std::deque<Track3D*>::iterator trackIter = (*treeIter)->tracks.begin();
 			trackIter != (*treeIter)->tracks.end();
 			trackIter++)
 		{
+			GTPSum += (*trackIter)->GTProb;
 			// reset fields for optimization
 			(*trackIter)->BranchGTProb = 0.0;
 			(*trackIter)->GTProb = 0.0;
 			(*trackIter)->bCurrentBestSolution = false;
 
+			//if (!(*trackIter)->bValid && (*trackIter)->timeGeneration + PROC_WINDOW_SIZE > nCurrentFrameIdx_) { continue; }
 			if (!(*trackIter)->bValid) { continue; }
 			queueUpdated.push_back(*trackIter);
+		}
+		(*treeIter)->tracks = queueUpdated;
+		//if (0 == (*treeIter)->tracks.size() || (0 == GTPSum && (*treeIter)->timeGeneration + NUM_FRAME_FOR_CONFIRMATION <= nCurrentFrameIdx_))
+		if (0 == (*treeIter)->tracks.size())
+		{
+			(*treeIter)->bValid = false;
+			continue;
 		}
 
 		// update 2D tracklet info
@@ -1695,14 +1715,6 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 			(*treeIter)->numMeasurements += (unsigned int)queueUpdatedTrackletInfo.size();
 			(*treeIter)->tracklet2Ds[camIdx] = queueUpdatedTrackletInfo;
 		}
-
-		(*treeIter)->tracks = queueUpdated;
-		if (0 == (*treeIter)->tracks.size())
-		{
-			(*treeIter)->bValid = false;
-			continue;
-		}
-
 		queueNewActiveTrees.push_back(*treeIter);
 	}	
 	queuePtActiveTrees_ = queueNewActiveTrees;
@@ -3116,6 +3128,8 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 	Track3D *brachSeedTrack = NULL;
 	for (int trackIdx = 0; trackIdx < tracksInBestSolution->size(); trackIdx++)
 	{
+		(*tracksInBestSolution)[trackIdx]->bCurrentBestSolution = true;
+
 		// left unconfirmed tracks
 		if ((*tracksInBestSolution)[trackIdx]->tree->timeGeneration + NUM_FRAME_FOR_CONFIRMATION > nCurrentFrameIdx){ continue; }
 
@@ -3484,34 +3498,39 @@ void CPSNWhere_Associator3D::PrintCurrentTrackTrees(const char *strFilePath)
 	{
 		FILE *fp;
 		fopen_s(&fp, strFilePath, "w");
+		int numTree = 0;
 
-		std::deque<unsigned int> queueNodes;
-		for(std::list<TrackTree>::iterator treeIter = listTrackTree_.begin();
+		// structure
+		std::deque<stTrackInTreeInfo> queueNodes;
+		for (std::list<TrackTree>::iterator treeIter = listTrackTree_.begin();
 			treeIter != listTrackTree_.end();
 			treeIter++)
 		{
-			if(0 == (*treeIter).tracks.size())
-			{
-				continue;
-			}
+			if (0 == (*treeIter).tracks.size()) { continue;	}
+			numTree++;
 
 			Track3D* curTrack = (*treeIter).tracks.front();
-			queueNodes.push_back(0);
-			TrackTree::MakeTreeNodesWithChildren(curTrack->childrenTrack, (unsigned int)queueNodes.size(), queueNodes);
+			if (!curTrack->bValid) { continue; }
+			stTrackInTreeInfo newInfo;
+			newInfo.id = curTrack->id;
+			newInfo.parentNode = 0;
+			newInfo.timeGenerated = curTrack->timeGeneration;
+			newInfo.GTP = (float)curTrack->GTProb;
+			queueNodes.push_back(newInfo);
+			TrackTree::MakeTreeNodesWithChildren(curTrack->childrenTrack, (int)queueNodes.size(), queueNodes);
 		}
 
-		fprintf(fp, "nodeLength:%d\n[", (int)queueNodes.size());
-		for(std::deque<unsigned int>::iterator idxIter = queueNodes.begin();
+		// write trees
+		fprintf(fp, "numTrees:%d\n", numTree);
+		fprintf(fp, "nodeLength:%d,{", (int)queueNodes.size());
+		for (std::deque<stTrackInTreeInfo>::iterator idxIter = queueNodes.begin();
 			idxIter != queueNodes.end();
 			idxIter++)
 		{
-			fprintf(fp, "%d", (int)(*idxIter));
-			if(idxIter != queueNodes.end() - 1)
-			{
-				fprintf(fp, ",");
-			}
+			fprintf(fp, "(%d,%d,%d,%f)", (*idxIter).id, (*idxIter).parentNode, (*idxIter).timeGenerated, (*idxIter).GTP);
+			if (idxIter < queueNodes.end() - 1) { fprintf(fp, ","); }
 		}
-		fprintf(fp, "]");
+		fprintf(fp, "}");
 		
 		fclose(fp);
 	}
