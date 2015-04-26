@@ -1103,7 +1103,8 @@ void TrackTree::MakeTreeNodesWithChildren(std::deque<Track3D*> queueChildrenTrac
 		newInfo.parentNode = parentNodeIdx;
 		newInfo.timeGenerated = (*trackIter)->timeGeneration;
 		newInfo.GTP = (float)(*trackIter)->GTProb;
-		if ((*trackIter)->bValid) { outQueueNodes.push_back(newInfo); }
+		//if ((*trackIter)->bValid) { outQueueNodes.push_back(newInfo); }
+		outQueueNodes.push_back(newInfo);
 		MakeTreeNodesWithChildren((*trackIter)->childrenTrack, (int)outQueueNodes.size(), outQueueNodes);
 	}
 }

@@ -10,9 +10,6 @@ NOTES:
 #include "PSNWhere_Associator3D.h"
 #include "Helpers\PSNWhere_Hungarian.h"
 
-//#define PSN_DEBUG_MODE
-//#define PSN_PRINT_LOG
-
 /////////////////////////////////////////////////////////////////////////
 // PARAMETERS (unit: mm)
 /////////////////////////////////////////////////////////////////////////
@@ -386,7 +383,7 @@ void CPSNWhere_Associator3D::Finalize(void)
 	/////////////////////////////////////////////////////////////////////////////
 	// PRINT RESULT
 	/////////////////////////////////////////////////////////////////////////////
-#ifdef PSN_PRINT_LOG
+#ifdef PSN_PRINT_LOG_
 	//// candidate tracks
 	//this->PrintTracks(queuePausedTrack_, strTrackLogFileName_, true);
 	//this->PrintTracks(queueActiveTrack_, strTrackLogFileName_, true);
@@ -408,7 +405,7 @@ void CPSNWhere_Associator3D::Finalize(void)
 	}
 
 
-#ifdef PSN_PRINT_LOG
+#ifdef PSN_PRINT_LOG_
 	// track print
 	PSN_TrackSet allTracks;
 	for(std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
@@ -547,27 +544,20 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	// solve MHT
 	this->Hypothesis_UpdateHypotheses(queuePrevGlobalHypotheses_, &queueNewSeedTracks_);
 	this->Hypothesis_Formation(queueCurrGlobalHypotheses_, &queuePrevGlobalHypotheses_);	
-	//this->Track3D_SolveHOMHT();
 
-	if (80 == nCurrentFrameIdx_)
-	{
-		this->PrintCurrentTrackTrees("data/trees.txt");
-	}
+	//if (80 == nCurrentFrameIdx_)
+	//{
+	//	this->PrintCurrentTrackTrees("data/trees.txt");
+	//}
 
 	// post-pruning
 	this->Hypothesis_PruningNScanBack(nCurrentFrameIdx_, PROC_WINDOW_SIZE, &queueTracksInWindow_, &queueCurrGlobalHypotheses_);
 	this->Hypothesis_PruningTrackWithGTP(nCurrentFrameIdx_, MAX_TRACK_IN_OPTIMIZATION, &queueTracksInWindow_);
 	this->Hypothesis_RefreshHypotheses(queueCurrGlobalHypotheses_);
 
-	if (80 == nCurrentFrameIdx_)
-	{
-		this->PrintCurrentTrackTrees("data/trees_afterPruning.txt");
-	}
-
-	//this->Track3D_Pruning_KBest();
-	//if(MAX_TRACK_IN_OPTIMIZATION < queueTracksInWindow_.size())
+	//if (80 == nCurrentFrameIdx_)
 	//{
-	//	this->Track3D_Pruning_KBest();
+	//	this->PrintCurrentTrackTrees("data/trees_afterPruning.txt");
 	//}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -630,13 +620,13 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	printf("[CPSNWhere_Associator3D](Run) total candidate tracks:%d\n", listTrack3D_.size());
 #endif
 
-#ifdef PSN_PRINT_LOG
+#ifdef PSN_PRINT_LOG_
 	// PRINT LOG
 	char strLog[128];
 	sprintf_s(strLog, "%d,%d,%d,%f,%f", 
 	nCurrentFrameIdx_, 
-	queueActiveTrack_.size(),
-	queueStGraphSolutions_.size(),
+	nCountTrackInOptimization_,
+	nCountUCTrackInOptimization_,
 	fCurrentProcessingTime_,
 	fCurrentSolvingTime_);
 	CPSNWhere_Manager::printLog(strLogFileName_, strLog);
@@ -1626,7 +1616,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 	queueNewTracks.clear();
 
 	// print out
-#ifdef PSN_PRINT_LOG
+#ifdef PSN_PRINT_LOG_
 	//this->PrintTracks(queueTerminatedTracks, strTrackLogFileName_, true);
 #endif
 	queueTerminatedTracks.clear();
@@ -2649,69 +2639,49 @@ bool CPSNWhere_Associator3D::CheckIncompatibility(Track3D *track1, Track3D *trac
 	bool bIncompatible = false;
 
 	// check coupling
-	if(track1->tree->id == track2->tree->id)
+	if (track1->tree->id == track2->tree->id)
 	{
 		bIncompatible = true;
 	}
 	else
 	{
-		for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+		for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 		{
-			if(0 == track1->tracklet2DIDs[camIdx].size() || 0 == track2->tracklet2DIDs[camIdx].size())
+			if (0 == track1->tracklet2DIDs[camIdx].size() || 0 == track2->tracklet2DIDs[camIdx].size())	{ continue;	}
+			if (track1->tracklet2DIDs[camIdx][0] > track2->tracklet2DIDs[camIdx][0])
 			{
-				continue;
-			}
-
-			if(track1->tracklet2DIDs[camIdx][0] > track2->tracklet2DIDs[camIdx][0])
-			{
-				if(track1->tracklet2DIDs[camIdx][0] > track2->tracklet2DIDs[camIdx].back())
-				{
-					continue;
-				}
-
-				for(std::deque<unsigned int>::iterator tracklet1Iter = track2->tracklet2DIDs[camIdx].begin();
+				if (track1->tracklet2DIDs[camIdx][0] > track2->tracklet2DIDs[camIdx].back()) { continue; }
+				for (std::deque<unsigned int>::iterator tracklet1Iter = track2->tracklet2DIDs[camIdx].begin();
 					tracklet1Iter != track2->tracklet2DIDs[camIdx].end();
 					tracklet1Iter++)
 				{
-					for(std::deque<unsigned int>::iterator tracklet2Iter = track1->tracklet2DIDs[camIdx].begin();
+					for (std::deque<unsigned int>::iterator tracklet2Iter = track1->tracklet2DIDs[camIdx].begin();
 						tracklet2Iter != track1->tracklet2DIDs[camIdx].end();
 						tracklet2Iter++)	
 					{
-						if(*tracklet1Iter != *tracklet2Iter){ continue; }
-						
+						if (*tracklet1Iter != *tracklet2Iter) { continue; }						
 						bIncompatible = true;
 						break;
 					}
-					if(bIncompatible)
-					{
-						break;
-					}
+					if (bIncompatible) { break;	}
 				}
 			}
-			else if(track1->tracklet2DIDs[camIdx][0] < track2->tracklet2DIDs[camIdx][0])
+			else if (track1->tracklet2DIDs[camIdx][0] < track2->tracklet2DIDs[camIdx][0])
 			{
-				if(track1->tracklet2DIDs[camIdx].back() < track2->tracklet2DIDs[camIdx][0])
-				{
-					continue;
-				}
-
-				for(std::deque<unsigned int>::iterator tracklet1Iter = track1->tracklet2DIDs[camIdx].begin();
+				if (track1->tracklet2DIDs[camIdx].back() < track2->tracklet2DIDs[camIdx][0]) { continue; }
+				for (std::deque<unsigned int>::iterator tracklet1Iter = track1->tracklet2DIDs[camIdx].begin();
 					tracklet1Iter != track1->tracklet2DIDs[camIdx].end();
 					tracklet1Iter++)
 				{
-					for(std::deque<unsigned int>::iterator tracklet2Iter = track2->tracklet2DIDs[camIdx].begin();
+					for (std::deque<unsigned int>::iterator tracklet2Iter = track2->tracklet2DIDs[camIdx].begin();
 						tracklet2Iter != track2->tracklet2DIDs[camIdx].end();
 						tracklet2Iter++)
 					{
-						if(*tracklet1Iter != *tracklet2Iter){ continue; }
-						
+						if (*tracklet1Iter != *tracklet2Iter) { continue; }						
 						bIncompatible = true;
 						break;
 					}
-					if(bIncompatible)
-					{
-						break;
-					}
+					if (bIncompatible) { break;	}
 				}
 			}
 			else
@@ -2719,22 +2689,15 @@ bool CPSNWhere_Associator3D::CheckIncompatibility(Track3D *track1, Track3D *trac
 				bIncompatible = true;
 				break;
 			}
-
-			if(bIncompatible)
-			{
-				break; 
-			}
+			if (bIncompatible) { break; }
 		}
 	}
 
 	// check proximity
-	if(!bIncompatible)
+	if (!bIncompatible)
 	{
 		// check overlapping
-		if(track1->timeEnd < track2->timeStart || track2->timeEnd < track1->timeStart)
-		{
-			return bIncompatible;
-		}
+		if(track1->timeEnd < track2->timeStart || track2->timeEnd < track1->timeStart) { return bIncompatible; }
 
 		unsigned int timeStart = std::max(track1->timeStart, track2->timeStart);
 		unsigned int timeEnd = std::min(track1->timeEnd, track2->timeEnd);
@@ -2743,21 +2706,15 @@ bool CPSNWhere_Associator3D::CheckIncompatibility(Track3D *track1, Track3D *trac
 		unsigned int overlapLength = timeEnd - timeStart + 1;
 		PSN_Point3D *reconLocation1;
 		PSN_Point3D *reconLocation2;
-		for(unsigned int reconIdx = 0; reconIdx < overlapLength; reconIdx++)
+		for (unsigned int reconIdx = 0; reconIdx < overlapLength; reconIdx++)
 		{
 			reconLocation1 = &(track1->reconstructions[track1ReconIdx].point);
 			reconLocation2 = &(track2->reconstructions[track2ReconIdx].point);
-
-			if((*reconLocation1 - *reconLocation2).norm_L2() < MIN_TARGET_PROXIMITY)
-			{
-				return true;
-			}
-
+			if ((*reconLocation1 - *reconLocation2).norm_L2() < MIN_TARGET_PROXIMITY) { return true; }
 			track1ReconIdx++;
 			track2ReconIdx++;
 		}
 	}
-
 	return bIncompatible;
 }
 
@@ -2825,6 +2782,10 @@ cv::Mat CPSNWhere_Associator3D::GetRGBFeature(const cv::Mat *patch, int numBins)
 ************************************************************************/
 void CPSNWhere_Associator3D::Hypothesis_UpdateHypotheses(PSN_HypothesisSet &inoutUpdatedHypotheses, PSN_TrackSet *newSeedTracks)
 {
+	// DEBUG
+	nCountTrackInOptimization_ = 0;
+	nCountUCTrackInOptimization_ = 0;
+
 	//---------------------------------------------------------
 	// ADD NEW TRACKS TO RELATED TRACK QUEUE
 	//---------------------------------------------------------
@@ -2847,10 +2808,7 @@ void CPSNWhere_Associator3D::Hypothesis_UpdateHypotheses(PSN_HypothesisSet &inou
 				childTrackIter != (*trackIter)->childrenTrack.end();
 				childTrackIter++)
 			{
-				if ((*childTrackIter)->bNewTrack)
-				{
-					newRelatedTracks.push_back(*childTrackIter);
-				}
+				if ((*childTrackIter)->bNewTrack) { newRelatedTracks.push_back(*childTrackIter); }
 			}
 		}
 		std::sort(newRelatedTracks.begin(), newRelatedTracks.end(), psnTrackGTPandLLDescend);
@@ -2863,12 +2821,20 @@ void CPSNWhere_Associator3D::Hypothesis_UpdateHypotheses(PSN_HypothesisSet &inou
 			newGlobalHypothesis.relatedTracks.insert(newGlobalHypothesis.relatedTracks.end(), newRelatedTracks.begin(), newRelatedTracks.begin() + MAX_TRACK_IN_OPTIMIZATION);
 		}
 		
-
 		// add new seed tracks
 		newGlobalHypothesis.relatedTracks.insert(newGlobalHypothesis.relatedTracks.end(), newSeedTracks->begin(), newSeedTracks->end());
 		
 		// save hypothesis
 		newHypothesesSet.push_back(newGlobalHypothesis);
+
+		// DEBUG
+		nCountTrackInOptimization_ += (int)(*hypothesisIter).relatedTracks.size();
+		for (PSN_TrackSet::iterator trackIter = (*hypothesisIter).relatedTracks.begin();
+			trackIter != (*hypothesisIter).relatedTracks.end();
+			trackIter++)
+		{
+			if ((*trackIter)->tree->timeGeneration + NUM_FRAME_FOR_CONFIRMATION >= nCurrentFrameIdx_) { nCountUCTrackInOptimization_++; }
+		}
 	}
 	inoutUpdatedHypotheses = newHypothesesSet;
 }

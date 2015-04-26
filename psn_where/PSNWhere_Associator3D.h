@@ -277,6 +277,10 @@ private:
 	// evaluation
 	CEvaluator m_cEvaluator;
 	CEvaluator m_cEvaluator_Instance;
+
+	// for debugging
+	int nCountTrackInOptimization_;
+	int nCountUCTrackInOptimization_;
 };
 
 //()()
