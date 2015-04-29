@@ -216,6 +216,9 @@ stMatchInfo* CPSNWhere_Hungarian::Match()
 		return &m_matchInfo;
 	}
 
+	// handling infinity
+	this->CostMatrixPreprocessing();
+
 	// initialize variables
 	m_matMatching.clear(); m_matMatching.resize(m_numRows, std::vector<float>(m_numCols, 0));
 
@@ -228,7 +231,8 @@ stMatchInfo* CPSNWhere_Hungarian::Match()
 	{
 		for(unsigned int rowIdx = 0; rowIdx < m_numRows; rowIdx++)
 		{
-			unsigned int addVal = (unsigned int)_finitef(m_costMatrix[rowIdx][colIdx]);
+			//unsigned int addVal = (unsigned int)_finitef(m_costMatrix[rowIdx][colIdx]);
+			unsigned int addVal = (unsigned int)m_matIsFinite[rowIdx][colIdx];
 			numX[rowIdx] += addVal;
 			numY[colIdx] += addVal;
 		}
@@ -328,6 +332,9 @@ stMatchInfo* CPSNWhere_Hungarian::Match()
 	// remove all the virtual satellites and targets and uncondense
 	// the matching to the size the original performance matrix
 
+	// restore infinity
+	this->MatchResultPostProcessing();
+
 	// extract mathing information together
 	m_matchInfo.rows.clear();
 	m_matchInfo.cols.clear();
@@ -337,7 +344,7 @@ stMatchInfo* CPSNWhere_Hungarian::Match()
 		for(unsigned int colIdx = 0; colIdx < m_numCols; colIdx++)
 		{
 			m_matMatching[rowIdx][colIdx] = matM[rowIdx][colIdx];
-			if(1 == m_matMatching[rowIdx][colIdx])
+			if(1 == m_matMatching[rowIdx][colIdx] && _finitef(this->m_costMatrix[rowIdx][colIdx]))
 			{
 				m_matchInfo.rows.push_back(rowIdx);
 				m_matchInfo.cols.push_back(colIdx);
@@ -699,6 +706,44 @@ unsigned int CPSNWhere_Hungarian::minLineCover(std::vector<std::vector<float>> &
 	cNum -= (unsigned int)(std::accumulate(rCov.begin(), rCov.end(), 0.0f) + std::accumulate(cCov.begin(), cCov.end(), 0.0f));
 	
 	return cNum;
+}
+
+void CPSNWhere_Hungarian::CostMatrixPreprocessing(void)
+{
+	float finiteCostSum = 0.0f;
+	m_matIsFinite.resize(m_costMatrix.size());
+	for (int rowIdx = 0; rowIdx < m_costMatrix.size(); rowIdx++)
+	{
+		m_matIsFinite[rowIdx].resize(m_costMatrix[rowIdx].size(), false);
+		for (int colIdx = 0; colIdx < m_costMatrix[rowIdx].size(); colIdx++)
+		{
+			if (!_finitef(m_costMatrix[rowIdx][colIdx])) { continue; }
+			m_matIsFinite[rowIdx][colIdx] = true;
+			finiteCostSum += m_costMatrix[rowIdx][colIdx];
+		}
+	}
+	m_fInfiniteReplacementCost = FLT_MAX - finiteCostSum;
+
+	for (int rowIdx = 0; rowIdx < m_costMatrix.size(); rowIdx++)	{
+		
+		for (int colIdx = 0; colIdx < m_costMatrix[rowIdx].size(); colIdx++)
+		{
+			if (m_matIsFinite[rowIdx][colIdx]) { continue; }
+			m_costMatrix[rowIdx][colIdx] = m_fInfiniteReplacementCost;
+		}
+	}
+}
+
+void CPSNWhere_Hungarian::MatchResultPostProcessing(void)
+{
+	for (int rowIdx = 0; rowIdx < m_costMatrix.size(); rowIdx++)	
+	{		
+		for (int colIdx = 0; colIdx < m_costMatrix[rowIdx].size(); colIdx++)
+		{
+			if (m_costMatrix[rowIdx][colIdx] != m_fInfiniteReplacementCost) { continue; }
+			m_costMatrix[rowIdx][colIdx] = std::numeric_limits<float>::infinity();
+		}
+	}
 }
 
 //()()

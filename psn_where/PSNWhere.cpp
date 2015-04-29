@@ -170,7 +170,7 @@ bool CPSNWhere::Initialize(std::string datasetPath)
 #ifdef SHOW_TOPVIEW
 	char strTopViewPath[256];
 	//sprintf_s(strTopViewPath, "%s/topView/topview_gray.png", datasetPath.c_str());
-	sprintf_s(strTopViewPath, "%s/topView/topview_gray_zoom.png", datasetPath.c_str());
+	sprintf_s(strTopViewPath, "%s/topView/topview_gray_zoom2.png", datasetPath.c_str());
 	this->m_matTopViewBase = cv::imread(strTopViewPath, cv::IMREAD_COLOR);
 	cv::namedWindow("topView", cv::WINDOW_AUTOSIZE);
 #endif
@@ -403,10 +403,10 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 	{
 		cropZoneCornerOnTopView[cornerIdx] = psn::GetLocationOnTopView_PETS2009(cropZoneCorner[cornerIdx], bZoomed);
 	}
-	cv::line(topViewResult, cropZoneCornerOnTopView[0].cv(), cropZoneCornerOnTopView[1].cv(), cv::Scalar(255, 255, 255));
-	cv::line(topViewResult, cropZoneCornerOnTopView[1].cv(), cropZoneCornerOnTopView[2].cv(), cv::Scalar(255, 255, 255));
-	cv::line(topViewResult, cropZoneCornerOnTopView[2].cv(), cropZoneCornerOnTopView[3].cv(), cv::Scalar(255, 255, 255));
-	cv::line(topViewResult, cropZoneCornerOnTopView[3].cv(), cropZoneCornerOnTopView[0].cv(), cv::Scalar(255, 255, 255));
+	cv::line(topViewResult, cropZoneCornerOnTopView[0].cv(), cropZoneCornerOnTopView[1].cv(), cv::Scalar(150, 150, 150));
+	cv::line(topViewResult, cropZoneCornerOnTopView[1].cv(), cropZoneCornerOnTopView[2].cv(), cv::Scalar(150, 150, 150));
+	cv::line(topViewResult, cropZoneCornerOnTopView[2].cv(), cropZoneCornerOnTopView[3].cv(), cv::Scalar(150, 150, 150));
+	cv::line(topViewResult, cropZoneCornerOnTopView[3].cv(), cropZoneCornerOnTopView[0].cv(), cv::Scalar(150, 150, 150));
 
 	// draw 3D track
 	for (int trajectoryIdx = 0; trajectoryIdx < result3D.object3DInfo.size(); trajectoryIdx++)
@@ -422,7 +422,21 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 		psn::DrawLine(topViewResult, topViewRecentPoint2Ds, curTrajectory->id, this->m_vecColors, 1);
 
 		// draw ID and triangle
-		psn::DrawTriangleWithID(topViewResult, psn::GetLocationOnTopView_PETS2009(curTrajectory->recentPoints.front(), bZoomed), curTrajectory->id, this->m_vecColors);
+		psn::DrawTriangleWithID(topViewResult, topViewRecentPoint2Ds.front(), curTrajectory->id, this->m_vecColors);
+
+		// draw 2D detections
+		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+		{
+			if (0 == curTrajectory->curDetectionPosition[camIdx].x &&
+				0 == curTrajectory->curDetectionPosition[camIdx].y &&
+				0 == curTrajectory->curDetectionPosition[camIdx].z)
+			{
+				continue;
+			}
+			PSN_Point2D detectionLocation = psn::GetLocationOnTopView_PETS2009(curTrajectory->curDetectionPosition[camIdx], bZoomed);
+			cv::circle(topViewResult, detectionLocation.cv(), 3, psn::getColorByID(this->m_vecColors, curTrajectory->id));
+			cv::line(topViewResult, topViewRecentPoint2Ds.front().cv(), detectionLocation.cv(), psn::getColorByID(this->m_vecColors, curTrajectory->id));
+		}
 	}
 	cv::imshow("topView", topViewResult);
 

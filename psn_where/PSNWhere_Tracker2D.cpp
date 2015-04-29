@@ -21,6 +21,7 @@
 #define PSN_2D_BOX_MAX_DISTANCE (1.0)
 #define PSN_2D_MAX_DETECTION_DISTANCE (600)
 #define PSN_2D_MAX_HEIGHT_DIFFERENCE (400)
+#define PSN_2D_MIN_OVERLAPPED_RATIO (0.3)
 #define PSN_2D_MIN_CONFIDENCE (0.01)
 
 #define PSN_2D_COST_COEF_FEATURE (1.0f)
@@ -704,221 +705,6 @@ PSN_Point2D CPSNWhere_Tracker2D::MotionEstimation(stTracker2D &tracker)
 //#define OPTICAL_FLOW_AT_ONCE
 size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetection> &curDetectionResult)
 {
-#ifdef OPTICAL_FLOW_AT_ONCE
-	std::vector<stDetectedObject> vecDetection2D;
-	if(0 == curDetectionResult.size())
-	{
-		this->m_vecDetection2D = vecDetection2D;
-		return 0;
-	}
-
-	size_t numDetection = curDetectionResult.size();
-	size_t detectionID = 0;	
-	this->m_vecDetection2D.clear();
-	this->m_vecDetection2D.reserve(numDetection);		
-	std::vector<cv::KeyPoint> newKeypoints;
-	newKeypoints.reserve(PSN_2D_FEATURE_MAX_NUM_TRACK);	
-	double curHeight = 0.0;
-	PSN_Point2D bottomCenter(0.0, 0.0), topCenter(0.0, 0.0);
-	PSN_Point3D curLocation;
-
-	cv::Mat *ptmatCurrGrayFrame = NULL;
-	cv::Mat *ptmatPrevGrayFrame = NULL;	
-
-	double maxDetectionWidth = 0.0;
-	double maxDetectionHeight = 0.0;
-
-	/////////////////////////////////////////////////////////////////////////////
-	// DETECTION VALIDATION AND FEATURE EXTRACTION
-	/////////////////////////////////////////////////////////////////////////////
-	std::vector<cv::Point2f> currFeatures;
-	std::vector<cv::Point2f> prevFeatures;
-	std::vector<uchar> featureStatus;
-	std::vector<float> featureErrors;
-	std::vector<int> featuresDetectionID;
-	for(size_t detectionIdx = 0; detectionIdx < numDetection; detectionIdx++)
-	{
-		//---------------------------------------------------
-		// DETECTION VALIDATION
-		//---------------------------------------------------
-		// height condition
-		bottomCenter = curDetectionResult[detectionIdx].box.bottomCenter();
-		topCenter = bottomCenter;
-		topCenter.y -= curDetectionResult[detectionIdx].box.h;
-		curHeight = this->EstimateDetectionHeight(bottomCenter, topCenter, &curLocation);
-		if(PSN_2D_MAX_HEIGHT < curHeight || PSN_2D_MIN_HEIGHT > curHeight)
-		{
-			continue;
-		}
-
-		// generate detection information
-		stDetectedObject curDetection;
-		curDetection.id = (unsigned int)detectionID++;
-		curDetection.detection = curDetectionResult[detectionIdx];
-		curDetection.bMatchedWithTracker = false;
-		curDetection.vecvecTrackedFeatures.reserve(PSN_2D_BACKTRACKING_INTERVAL);
-		curDetection.boxes.reserve(PSN_2D_BACKTRACKING_INTERVAL);
-		curDetection.boxes.push_back(curDetection.detection.box);
-		curDetection.location = curLocation;
-		curDetection.height = curHeight;
-
-		size_t costPos = detectionIdx * this->m_queueActiveTracker2D.size();
-
-		//---------------------------------------------------
-		// FEATURE EXTRACTION
-		//---------------------------------------------------
-		// input and mask image for current detection		
-		//cv::Rect rectROI = curDetection.boxes[0].cropWithSize(this->m_nInputWidth, this->m_nInputHeight).scale(PSN_2D_OPTICALFLOW_SCALE).cv();	// full-body
-		cv::Rect rectROI = curDetection.boxes[0].scale(PSN_2D_OPTICALFLOW_SCALE).cropWithSize((*this->m_vecPtGrayFrameBuffer.rbegin())->cols, (*this->m_vecPtGrayFrameBuffer.rbegin())->rows).cv();	// full-body
-		this->m_matMaskForFeature(rectROI) = cv::Scalar(255); // masking with the detection box
-		
-		// extrack point position
-		ptmatCurrGrayFrame = *(this->m_vecPtGrayFrameBuffer.rbegin());
-		this->m_detector->detect(*ptmatCurrGrayFrame, newKeypoints, this->m_matMaskForFeature);
-		this->m_matMaskForFeature(rectROI) = cv::Scalar(0); // restore the mask image
-		
-		if(PSN_2D_FEATURE_MIN_NUM_TRACK > newKeypoints.size())
-		{
-			continue;
-		}
-	
-		// extrack point position
-		std::vector<cv::Point2f> currFeaturesOfCurDetection;
-		std::random_shuffle(newKeypoints.begin(), newKeypoints.end());
-		for(size_t pointIdx = 0; pointIdx < std::min(newKeypoints.size(), (size_t)PSN_2D_FEATURE_MAX_NUM_TRACK); pointIdx++)
-		{
-			// saturate the number of feature points for speed-up
-			currFeatures.push_back(newKeypoints[pointIdx].pt);
-			currFeaturesOfCurDetection.push_back(newKeypoints[pointIdx].pt);
-			featuresDetectionID.push_back((int)curDetection.id);
-		}
-		newKeypoints.clear();
-
-		// keep instance
-		curDetection.vecvecTrackedFeatures.push_back(currFeaturesOfCurDetection);
-		vecDetection2D.push_back(curDetection);
-
-		if(maxDetectionWidth < rectROI.width)
-		{ 
-			maxDetectionWidth = rectROI.width; 
-		}
-
-		if(maxDetectionHeight < rectROI.height)
-		{ 
-			maxDetectionHeight = rectROI.height; 
-		}
-	}
-
-	if(0 == vecDetection2D.size())
-	{
-		this->m_vecDetection2D = vecDetection2D;
-		return 0;
-	}
-
-	/////////////////////////////////////////////////////////////////////////////
-	// BACKWARD TRACKING
-	/////////////////////////////////////////////////////////////////////////////
-	std::vector<bool> vecDetectionTracked(vecDetection2D.size(), true);
-	for(std::vector<cv::Mat*>::reverse_iterator frameIter = this->m_vecPtGrayFrameBuffer.rbegin() + 1;
-		frameIter != this->m_vecPtGrayFrameBuffer.rend();
-		frameIter++)
-	{
-		ptmatPrevGrayFrame = *frameIter;
-		if(NULL == ptmatPrevGrayFrame || 0 == currFeatures.size())
-		{ 
-			break; 
-		}
-
-		// backward feature tracking
-		featureStatus.clear();
-		featureErrors.clear();
-		prevFeatures.clear();
-		cv::calcOpticalFlowPyrLK(*ptmatCurrGrayFrame, 
-								*ptmatPrevGrayFrame,
-								currFeatures, 
-								prevFeatures, 
-								featureStatus, 
-								featureErrors,
-								cv::Size((int)(maxDetectionWidth * PSN_2D_FEATURE_WIN_SIZE_RATIO), (int)(maxDetectionHeight * PSN_2D_FEATURE_WIN_SIZE_RATIO)));
-
-		// position estimation
-		std::vector<cv::Point2f> newCurrFeatures;
-		std::vector<int> newFeaturesDetectionID;
-		int numTrackedFeatures = 0;
-		int featureStartPos = 0;
-		int curDetectionID = 0;
-		for(size_t detectionIdx = 0; detectionIdx < vecDetection2D.size(); detectionIdx++)
-		{
-			if(!vecDetectionTracked[detectionIdx])
-			{ 
-				continue;	
-			}
-
-			std::vector<size_t> vecInlierIndex;
-			stDetectedObject *curDetection = &vecDetection2D[detectionIdx];
-
-			std::vector<cv::Point2f> currFeaturesOfCurDetection;
-			std::vector<cv::Point2f> prevFeaturesOfCurDetection;
-
-			if(featureStartPos >= (int)featuresDetectionID.size())
-			{ 
-				break; 
-			}
-
-			curDetectionID = featuresDetectionID[featureStartPos];
-			while(featureStartPos < (int)featuresDetectionID.size() && featuresDetectionID[featureStartPos] == curDetectionID)
-			{
-				currFeaturesOfCurDetection.push_back(currFeatures[featureStartPos]);
-				prevFeaturesOfCurDetection.push_back(prevFeatures[featureStartPos]);
-				featureStartPos++;
-			}
-			
-			PSN_Rect newRect = LocalSearchKLT(curDetection->detection.box.scale(PSN_2D_OPTICALFLOW_SCALE), currFeaturesOfCurDetection, prevFeaturesOfCurDetection, vecInlierIndex);
-			if(PSN_2D_FEATURE_MIN_NUM_TRACK > vecInlierIndex.size())
-			{
-				vecDetectionTracked[detectionIdx] = false;
-				continue;
-			}
-			curDetection->boxes.push_back(newRect.scale(PSN_2D_OPTICALFLOW_SCALE_RECOVER));
-
-			// save inlier features
-			if(1 == curDetection->vecvecTrackedFeatures.size())
-			{
-				curDetection->vecvecTrackedFeatures[0].clear();
-				for(size_t indexIdx = 0; indexIdx < vecInlierIndex.size(); indexIdx++)
-				{
-					curDetection->vecvecTrackedFeatures[0].push_back(currFeaturesOfCurDetection[vecInlierIndex[indexIdx]]);
-				}
-			}
-
-			std::vector<cv::Point2f> prevInlierFeatures;
-			for(size_t indexIdx = 0; indexIdx < vecInlierIndex.size(); indexIdx++)
-			{
-				prevInlierFeatures.push_back(prevFeaturesOfCurDetection[vecInlierIndex[indexIdx]]);
-
-				newCurrFeatures.push_back(prevFeaturesOfCurDetection[vecInlierIndex[indexIdx]]);
-				newFeaturesDetectionID.push_back(curDetectionID);
-			}
-			curDetection->vecvecTrackedFeatures.push_back(prevInlierFeatures);
-
-			numTrackedFeatures += (int)prevInlierFeatures.size();
-		}
-
-		if(0 == numTrackedFeatures)
-		{
-			break;
-		}
-
-		// buffer control
-		ptmatCurrGrayFrame = ptmatPrevGrayFrame;
-		currFeatures = newCurrFeatures;
-		featuresDetectionID = newFeaturesDetectionID;
-	}
-	this->m_vecDetection2D = vecDetection2D;
-	return this->m_vecDetection2D.size();
-
-#else
-
 	size_t numDetection = curDetectionResult.size();
 	size_t detectionID = 0;	
 	this->m_vecDetection2D.clear();
@@ -1067,9 +853,7 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 		}
 	}
 
-
 	return this->m_vecDetection2D.size();
-#endif
 }
 
 
@@ -1187,7 +971,8 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 			for (size_t boxIdx = 0; boxIdx < lengthForCompare; boxIdx++, trackerBoxIdx--)
 			{
 				if (!curTracker->boxes[trackerBoxIdx].overlap((*detectionIter).boxes[boxIdx])
-				|| PSN_2D_BOX_MAX_DISTANCE < curTracker->boxes[trackerBoxIdx].distance((*detectionIter).boxes[boxIdx]))
+				|| PSN_2D_BOX_MAX_DISTANCE < curTracker->boxes[trackerBoxIdx].distance((*detectionIter).boxes[boxIdx])
+				|| PSN_2D_MIN_OVERLAPPED_RATIO > curTracker->boxes[trackerBoxIdx].overlappedArea((*detectionIter).boxes[boxIdx]) / std::min(curTracker->boxes[trackerBoxIdx].area(), (*detectionIter).boxes[boxIdx].area()))
 				{
 					boxCost = std::numeric_limits<double>::infinity();
 					break;
@@ -1251,13 +1036,27 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 	//cv::Mat *ptmatCurrGrayFrame = *(this->m_vecPtGrayFrameBuffer.rbegin());
 	//cv::Mat matCurrFrame(*ptmatCurrGrayFrame);
 
+	// handling infinity
+	float maxCost = -1000.0f;
+	for (int costIdx = 0; costIdx < matchingCostArray.size(); costIdx++)
+	{
+		if (!_finitef(matchingCostArray[costIdx])) { continue; }
+		if (maxCost < matchingCostArray[costIdx]) { maxCost = matchingCostArray[costIdx]; }
+	}
+	maxCost = maxCost + 100.0f;
+	for (int costIdx = 0; costIdx < matchingCostArray.size(); costIdx++)
+	{
+		if (_finitef(matchingCostArray[costIdx])) { continue; }
+		matchingCostArray[costIdx] = maxCost;
+	}
+
 	size_t numDetection = this->m_vecDetection2D.size();
 	CPSNWhere_Hungarian cHungarianMatcher;
 	cHungarianMatcher.Initialize(matchingCostArray, (unsigned int)numDetection, (unsigned int)this->m_queueActiveTracker2D.size());
 	stMatchInfo *curMatchInfo = cHungarianMatcher.Match();
 	for (size_t matchIdx = 0; matchIdx < curMatchInfo->rows.size(); matchIdx++)
 	{
-		if (std::numeric_limits<float>::infinity() == curMatchInfo->matchCosts[matchIdx]) { continue; }
+		if (maxCost == curMatchInfo->matchCosts[matchIdx]) { continue; }
 		stDetectedObject *curDetection = &this->m_vecDetection2D[curMatchInfo->rows[matchIdx]];
 		stTracker2D *curTracker = this->m_queueActiveTracker2D[curMatchInfo->cols[matchIdx]];	
 

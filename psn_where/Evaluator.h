@@ -25,6 +25,7 @@ private:
 	bool bInit;
 	int m_nNumObj;
 	int m_nNumTime;
+	int m_nSavedResult;
 
 	cv::Mat matXgt;
 	cv::Mat matYgt;
@@ -52,7 +53,5 @@ private:
 	int m_nPartilalyTracked;
 	int m_nMostLost;	
 	int m_nFragments;
-
-
 };
 

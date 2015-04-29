@@ -172,6 +172,7 @@ private:
 	double ComputeExitProbability(std::vector<PSN_Point2D_CamIdx> &vecPointInfos);
 	static double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, double preSensitivity, double curSensitivity, unsigned int timeGap);
 	double ComputeRGBCost(const cv::Mat *feature1, const cv::Mat *feature2, unsigned int timeGap);
+	double ComputeTrackletLinkCost(PSN_Point3D preLocation, PSN_Point3D curLocation, int timeGap);
 
 	// miscellaneous
 	static bool CheckIncompatibility(Track3D *track1, Track3D *track2);

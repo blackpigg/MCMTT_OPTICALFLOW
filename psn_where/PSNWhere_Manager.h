@@ -12,12 +12,12 @@
 
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
-#define PSN_PRINT_LOG_
+//#define PSN_PRINT_LOG_
 //#define LOAD_SNAPSHOT_
 
 //#define SAVE_SNAPSHOT_
-//#define DO_RECORD
-//#define SHOW_TOPVIEW
+#define DO_RECORD
+#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -227,6 +227,14 @@ public:
 		PSN_Point3D descriptor2 = PSN_Point3D(a.x + a.w/2.0, a.y + a.h/2.0, a.w);
 		return (descriptor1 - descriptor2).norm_L2() / std::min(w, a.w);
 	}
+	double overlappedArea(const PSN_Rect &a)
+	{
+		double overlappedWidth = std::min(x + w, a.x + a.w) - std::max(x, a.x);
+		if (0.0 >= overlappedWidth) { return 0.0; }
+		double overlappedHeight = std::min(y + h, a.y + a.h) - std::max(y, a.y);
+		if (0.0 >= overlappedHeight) { return 0.0; }
+		return overlappedWidth * overlappedHeight;
+	}
 
 	// conversion
 	cv::Rect cv(){ return cv::Rect((int)x, (int)y, (int)w, (int)h); }
@@ -262,6 +270,7 @@ typedef struct _stObject3DInfo
 	std::vector<PSN_Point3D> recentPoints;
 	std::vector<PSN_Point2D> recentPoint2Ds[NUM_CAM];
 	std::vector<PSN_Point2D> point3DBox[NUM_CAM];
+	std::vector<PSN_Point3D> curDetectionPosition;
 	PSN_Rect rectInViews[NUM_CAM];
 	bool bVisibleInViews[NUM_CAM];
 } stObject3DInfo;
@@ -317,12 +326,15 @@ struct stTracklet2D
 	unsigned int timeEnd;
 	unsigned int duration;
 
-	// matching related
-	std::vector<bool> bAssociableNewMeasurement[NUM_CAM];
-
 	// appearance 
 	cv::Mat RGBFeatureHead;
 	cv::Mat RGBFeatureTail;
+
+	// location in 3D
+	PSN_Point3D currentLocation3D;
+
+	// matching related
+	std::vector<bool> bAssociableNewMeasurement[NUM_CAM];
 };
 
 struct stTracklet2DSet
@@ -379,6 +391,7 @@ public:
 	unsigned int id;
 	CTrackletCombination curTracklet2Ds;
 	std::deque<unsigned int> tracklet2DIDs[NUM_CAM];
+	PSN_Point3D trackletLastLocation3D[NUM_CAM];
 	bool bActive;		// for update and branching
 	bool bValid;		// for deletion
 

@@ -640,13 +640,13 @@ PSN_Point2D psn::GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint, bool bZoom
 
 	if (bZoom)
 	{
-		// zoom
-		resultVec.at<double>(0, 0) = 1.5 * (resultVec.at<double>(0, 0) - 150.0);
-		resultVec.at<double>(1, 0) = 1.5 * (resultVec.at<double>(1, 0) - 150.0);
+		//// zoom
+		//resultVec.at<double>(0, 0) = 1.5 * (resultVec.at<double>(0, 0) - 150.0);
+		//resultVec.at<double>(1, 0) = 1.5 * (resultVec.at<double>(1, 0) - 150.0);
 
-		//// zoom2
-		//resultVec.at<double>(0, 0) = 1.5 * (1.5 * (resultVec.at<double>(0, 0) - 150.0) - 100.0);
-		//resultVec.at<double>(1, 0) = 1.5 * (1.5 * (resultVec.at<double>(1, 0) - 150.0) - 100.0);
+		// zoom2
+		resultVec.at<double>(0, 0) = 1.5 * (1.5 * (resultVec.at<double>(0, 0) - 150.0) - 100.0);
+		resultVec.at<double>(1, 0) = 1.5 * (1.5 * (resultVec.at<double>(1, 0) - 150.0) - 100.0);
 	}
 
 	return PSN_Point2D(resultVec.at<double>(0, 0), resultVec.at<double>(1, 0));

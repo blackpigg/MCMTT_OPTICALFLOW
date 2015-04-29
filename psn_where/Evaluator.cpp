@@ -6,6 +6,7 @@
 //#define CROP_ZONE_Y_MIN (-14274.0)
 //#define CROP_ZONE_Y_MAX (1733.5)
 //#define CROP_ZONE_MARGIN (1000.0)
+#define BOUNDARY_PROCESSING_ (true)
 
 CEvaluator::CEvaluator(void)
 	: bInit(false)
@@ -23,6 +24,7 @@ void CEvaluator::Initialize(std::string strFilepath)
 	{
 		return;
 	}
+	this->m_nSavedResult = 0;
 
 	// measures
 	this->m_fMOTA = 0.0;
@@ -132,7 +134,9 @@ void CEvaluator::SetResult(PSN_TrackSet &trackSet, unsigned int timeIdx)
 		if (0 > reconIdx || (int)(*trackIter)->reconstructions.size() <= reconIdx) { continue;	}
 
 		PSN_Point3D curPoint = (*trackIter)->reconstructions[timeIdx - (*trackIter)->timeStart].point;
-		if (!this->m_rectCropZoneMargin.contain(PSN_Point2D(curPoint.x, curPoint.y))) { continue; }
+		if ((BOUNDARY_PROCESSING_ && !this->m_rectCropZoneMargin.contain(PSN_Point2D(curPoint.x, curPoint.y)))
+			|| (!BOUNDARY_PROCESSING_ && !this->m_rectCropZone.contain(PSN_Point2D(curPoint.x, curPoint.y)))) 
+		{ continue; }
 
 		// index management
 		int indexPos = 0;
@@ -148,6 +152,7 @@ void CEvaluator::SetResult(PSN_TrackSet &trackSet, unsigned int timeIdx)
 		}		
 		this->m_queueSavedResult[timeIdx].push_back(std::make_pair(indexPos, curPoint));
 	}
+	this->m_nSavedResult++;
 }
 
 void CEvaluator::LoadResultFromText(std::string strFilepath)
@@ -245,63 +250,89 @@ void CEvaluator::Evaluate(void)
 	}
 
 	// processing for boundary
-	PSN_Point2D curPoint;
-	PSN_Point2D prevPoint, nextPoint;
-	bool bPrevIn, bNextIn;
-	for (int timeIdx = 0; timeIdx < this->m_nNumTime; timeIdx++)
-	{
-		for (int objIdx = 0; objIdx < (int)this->m_queueID.size(); objIdx++)
+	if (BOUNDARY_PROCESSING_)
+	{		
+		PSN_Point2D curPoint;
+		PSN_Point2D prevPoint, nextPoint;
+		bool bPrevIn, bNextIn;
+		for (int timeIdx = 0; timeIdx < this->m_nNumTime; timeIdx++)
 		{
-			curPoint.x = this->matX.at<double>(timeIdx, objIdx);
-			curPoint.y = this->matY.at<double>(timeIdx, objIdx);
+			for (int objIdx = 0; objIdx < (int)this->m_queueID.size(); objIdx++)
+			{
+				curPoint.x = this->matX.at<double>(timeIdx, objIdx);
+				curPoint.y = this->matY.at<double>(timeIdx, objIdx);
 			
-			if (this->m_rectCropZone.contain(curPoint)) { continue; }
+				if (this->m_rectCropZone.contain(curPoint)) { continue; }
 
-			// if point in margin region
-			bPrevIn = false;
-			bNextIn = false;
-			if (timeIdx > 0)
-			{
-				prevPoint.x = this->matX.at<double>(timeIdx-1, objIdx);
-				prevPoint.y = this->matY.at<double>(timeIdx-1, objIdx);
-				if(this->m_rectCropZone.contain(prevPoint))
+				// if point in margin region
+				bPrevIn = false;
+				bNextIn = false;
+				if (timeIdx > 0)
 				{
-					bPrevIn = true;
+					prevPoint.x = this->matX.at<double>(timeIdx-1, objIdx);
+					prevPoint.y = this->matY.at<double>(timeIdx-1, objIdx);
+					if(this->m_rectCropZone.contain(prevPoint))
+					{
+						bPrevIn = true;
+					}
 				}
-			}
 
-			if (timeIdx < this->m_nNumTime - 1)
-			{
-				nextPoint.x = this->matX.at<double>(timeIdx+1, objIdx);
-				nextPoint.y = this->matY.at<double>(timeIdx+1, objIdx);
-				if (this->m_rectCropZone.contain(nextPoint))
+				if (timeIdx < this->m_nNumTime - 1)
 				{
-					bNextIn = true;
+					nextPoint.x = this->matX.at<double>(timeIdx+1, objIdx);
+					nextPoint.y = this->matY.at<double>(timeIdx+1, objIdx);
+					if (this->m_rectCropZone.contain(nextPoint))
+					{
+						bNextIn = true;
+					}
 				}
-			}
 
-			if (bPrevIn && bNextIn)
-			{
-				// 1) in->out->in
+				if (bPrevIn && bNextIn)
+				{
+					// 1) in->out->in
+				}
+				else if (bPrevIn)
+				{
+					// 2) in->out
+				}
+				else if (bNextIn)
+				{
+					// 3) out->in
+				}				
 			}
-			else if (bPrevIn)
-			{
-				// 2) in->out
-			}
-			else if (bNextIn)
-			{
-				// 3) out->in
-			}				
 		}
 	}
 
-
+	//---------------------------------------------------------
+	// CROP GROUND TRUTH BY TIME INDEX
+	//---------------------------------------------------------	
+	int newNumTime = this->m_nSavedResult;
+	cv::Mat newXgtCandidate = this->matXgt(cv::Rect(0, 0, this->matXgt.cols, newNumTime)).clone().t();
+	cv::Mat newYgtCandidate = this->matYgt(cv::Rect(0, 0, this->matYgt.cols, newNumTime)).clone().t();
+	cv::Mat newXgt, newYgt;
+	int newNumObject = 0;
+	for (int objectIdx = 0; objectIdx < this->m_nNumObj; objectIdx++)
+	{
+		if (0 == cv::countNonZero(newXgtCandidate.row(objectIdx)) || 0 == cv::countNonZero(newYgtCandidate.row(objectIdx)))
+		{
+			continue;
+		}
+		newXgt.push_back(newXgtCandidate.row(objectIdx));
+		newYgt.push_back(newYgtCandidate.row(objectIdx));
+		newNumObject++;
+	}
+	this->matXgt = newXgt.t();
+	this->matYgt = newYgt.t();
+	this->m_nNumObj = newNumObject;
+	this->m_nNumTime = newNumTime;
+	
 	//---------------------------------------------------------
 	// EVALUATING (porting from CLEAR_MOT.m)
 	//---------------------------------------------------------	
 	int Fgt = this->m_nNumTime;
 	int Ngt = this->m_nNumObj;
-	int F = (int)this->m_queueSavedResult.size();
+	//int F = (int)this->m_queueSavedResult.size();
+	int F = this->m_nSavedResult;
 	int N = (int)this->m_queueID.size();
 
 	if(0 == N)

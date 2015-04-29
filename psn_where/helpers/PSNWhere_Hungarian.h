@@ -90,19 +90,6 @@ typedef struct _stMatchInfo
 
 class CPSNWhere_Hungarian
 {
-private:
-	bool m_bInit;
-	stMatchInfo m_matchInfo;
-	std::vector<std::vector<float>> m_costMatrix;
-	std::vector<std::vector<float>> m_matMatching;
-	std::vector<std::vector<float>> m_matPCond;
-	//cv::Mat m_costMatrix;
-	//cv::Mat m_matPCond;
-	unsigned int m_numRows;
-	unsigned int m_numCols;
-	unsigned int m_nSquareSize;
-	unsigned int m_nStepNum;
-
 public:
 	CPSNWhere_Hungarian(void);
 	~CPSNWhere_Hungarian(void);
@@ -147,4 +134,20 @@ private:
 		std::vector<float> &cCov);
 
 	unsigned int minLineCover(std::vector<std::vector<float>> &argMatrix);
+	void CostMatrixPreprocessing(void);
+	void MatchResultPostProcessing(void);
+
+	bool m_bInit;
+	stMatchInfo m_matchInfo;
+	std::vector<std::vector<float>> m_costMatrix;	
+	std::vector<std::vector<float>> m_matMatching;
+	std::vector<std::vector<float>> m_matPCond;
+	std::vector<std::vector<bool>> m_matIsFinite;
+	//cv::Mat m_costMatrix;
+	//cv::Mat m_matPCond;
+	unsigned int m_numRows;
+	unsigned int m_numCols;
+	unsigned int m_nSquareSize;
+	unsigned int m_nStepNum;
+	float m_fInfiniteReplacementCost;
 };
