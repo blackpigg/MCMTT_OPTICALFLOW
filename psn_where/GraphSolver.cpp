@@ -472,7 +472,7 @@ void CGraphSolver::RunBLS(void)
 #ifdef PSN_GRAPH_TYPE_MWISP
 	size_t maxIter = this->m_pGraph->Size() * 112;
 #else
-	size_t maxIter = this->m_pGraph->NumEdge() * 20;
+	size_t maxIter = this->m_pGraph->NumEdge() * 100;
 #endif
 	maxIter = std::min(std::max((size_t)BLS_MIN_ITERATION, maxIter), (size_t)BLS_MAX_ITERATION);
 

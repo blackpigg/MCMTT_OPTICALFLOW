@@ -13,11 +13,11 @@
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
 //#define PSN_PRINT_LOG_
-//#define LOAD_SNAPSHOT_
+#define LOAD_SNAPSHOT_
 
 //#define SAVE_SNAPSHOT_
-#define DO_RECORD
-#define SHOW_TOPVIEW
+//#define DO_RECORD
+//#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -61,6 +61,7 @@ const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", 
 // VISUALIZATION SETTTING
 /////////////////////////////////////////////////////////////////////////
 #define DISP_TRAJECTORY3D_LENGTH (40)
+#define DISPLAY_ID_MODE (0) // 0: raw track id, 1: id for visualization
 
 /////////////////////////////////////////////////////////////////////////
 // EVALUATION SETTING

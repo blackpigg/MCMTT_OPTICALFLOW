@@ -45,7 +45,7 @@ NOTES:
 
 #define DEFAULT_HEIGHT (1700.00)
 #define WIDTH_DIFF_RATIO_THRESHOLD (0.5)
-#define CONSIDER_SENSITIVITY (true)
+#define CONSIDER_SENSITIVITY (false)
 
 // linking related
 #define MIN_LINKING_PROBABILITY (1.0E-6)
@@ -91,8 +91,6 @@ NOTES:
 #define IMG_PATCH_WIDTH (20)
 #define NUM_BINS_RGB_HISTOGRAM (16)
 
-// ETC
-#define DISPLAY_ID_MODE (1) // 0: raw track id, 1: id for visualization
 //const unsigned int arrayCamCombination[8] = {0, 2, 2, 1, 1, 3, 3, 0};
 
 /////////////////////////////////////////////////////////////////////////
@@ -4454,7 +4452,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				fscanf_s(fpTracklet, "\t\t\t}\n");
 				vecTracklet2DSet_[camIdx].tracklets.push_back(newTracklet);
 #ifdef PSN_DEBUG_MODE_
-				printf("\r>> Reading 2D tracklet set at cam %d: %3.1f%%", camIdx, 100.0 * (double)trackletIdx / (double)numTrackletSet);
+				printf("\r>> Reading 2D tracklet set at cam %d: %3.1f%%", camIdx, 100.0 * (double)(trackletIdx + 1.0) / (double)numTrackletSet);
 #endif
 			}
 #ifdef PSN_DEBUG_MODE_
@@ -4723,7 +4721,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			childrenTrackIDPair.push_back(std::make_pair(&listTrack3D_.back(), childrenTrackID));
 
 #ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading 3D tracks: %3.1f%%", 100.0 * (double)trackIdx / (double)numTrack);
+			printf("\r>> Reading 3D tracks: %3.1f%%", 100.0 * (double)(trackIdx + 1.0) / (double)numTrack);
 #endif
 		}
 		fscanf_s(fpTrack, "}\n");
@@ -4837,7 +4835,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			listTrackTree_.push_back(newTree);
 
 #ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading 3D tracks: %3.1f%%", 100.0 * (double)treeIdx / (double)numTree);
+			printf("\r>> Reading 3D tracks: %3.1f%%", 100.0 * (double)(treeIdx + 1.0) / (double)numTree);
 #endif
 		}
 		fscanf_s(fpTrack, "}\n");
@@ -5108,7 +5106,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			queueTrackingResult_.push_back(curResult);
 
 #ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading instant results: %3.1f%%", 100.0 * (double)resultIdx / (double)numTrackingResults);
+			printf("\r>> Reading instant results: %3.1f%%", 100.0 * (double)(resultIdx + 1.0) / (double)numTrackingResults);
 #endif
 		}
 		fscanf_s(fpResult, "}\n");
@@ -5209,7 +5207,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			queueDeferredTrackingResult_.push_back(curResult);
 
 #ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading deferred results: %3.1f%%", 100.0 * (double)resultIdx / (double)numTrackingResults);
+			printf("\r>> Reading deferred results: %3.1f%%", 100.0 * (double)(resultIdx + 1.0) / (double)numTrackingResults);
 #endif
 		}
 #ifdef PSN_DEBUG_MODE_
@@ -5286,7 +5284,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			queuePrevGlobalHypotheses_.push_back(newHypothesis);
 
 #ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading previous hypotheses: %3.1f%%", 100.0 * (double)hypothesisIdx / (double)numPrevGH);
+			printf("\r>> Reading previous hypotheses: %3.1f%%", 100.0 * (double)(hypothesisIdx + 1.0) / (double)numPrevGH);
 #endif
 		}
 		fscanf_s(fpHypothesis, "}\n");
@@ -5346,7 +5344,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 
 			queueCurrGlobalHypotheses_.push_back(newHypothesis);
 #ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading current hypotheses: %3.1f%%", 100.0 * (double)hypothesisIdx / (double)numCurrGH);
+			printf("\r>> Reading current hypotheses: %3.1f%%", 100.0 * (double)(hypothesisIdx + 1.0) / (double)numCurrGH);
 #endif
 		}
 		fscanf_s(fpHypothesis, "}\n");

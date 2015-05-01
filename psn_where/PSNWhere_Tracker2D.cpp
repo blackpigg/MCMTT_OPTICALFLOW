@@ -869,6 +869,12 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 ************************************************************************/
 std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingScore(void)
 {
+	// DEBUG
+	if (2 == m_nCamID)
+	{
+		int a = 0;
+	}
+
 	cv::Mat *ptmatCurrGrayFrame = *(this->m_vecPtGrayFrameBuffer.rbegin());
 	cv::Mat *ptmatPrevGrayFrame = *(this->m_vecPtGrayFrameBuffer.rbegin() + 1);
 	size_t numDetection = this->m_vecDetection2D.size();
@@ -955,13 +961,7 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 		for (std::vector<stDetectedObject>::iterator detectionIter = this->m_vecDetection2D.begin();
 			detectionIter != this->m_vecDetection2D.end();
 			detectionIter++, costPos += this->m_queueActiveTracker2D.size())
-		{
-			// validate with distance in 3D space
-			if (((*detectionIter).location - curTracker->lastPosition).norm_L2() > PSN_2D_MAX_DETECTION_DISTANCE) { continue; }
-
-			// validate with height difference
-			if (std::abs((*detectionIter).height - curTracker->height) > PSN_2D_MAX_HEIGHT_DIFFERENCE) { continue; }
-
+		{		
 			// validate with backward tracking result
 			if (!newBox.overlap((*detectionIter).detection.box)) { continue; }
 
@@ -1065,6 +1065,10 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		//---------------------------------------------------
 		//if (PSN_2D_MIN_CONFIDENCE > curTracker->confidence) { continue; }
 		//if (curDetection->bOverlapWithOtherDetection) { continue; }
+		// distance in 3D space
+		if ((curDetection->location - curTracker->lastPosition).norm_L2() > PSN_2D_MAX_DETECTION_DISTANCE) { continue; }
+		// height difference
+		if (std::abs(curDetection->height - curTracker->height) > PSN_2D_MAX_HEIGHT_DIFFERENCE) { continue; }
 		double curConfidence = 1.0;
 
 		//---------------------------------------------------
