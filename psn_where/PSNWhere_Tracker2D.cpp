@@ -21,6 +21,7 @@
 #define PSN_2D_BOX_MAX_DISTANCE (1.0)
 #define PSN_2D_MAX_DETECTION_DISTANCE (600)
 #define PSN_2D_MAX_HEIGHT_DIFFERENCE (400)
+#define PSN_2D_MAX_BOX_CENTER_DIFFERENCE_RATIO (0.2)
 #define PSN_2D_MIN_OVERLAPPED_RATIO (0.3)
 #define PSN_2D_MIN_CONFIDENCE (0.01)
 
@@ -1069,6 +1070,10 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		if ((curDetection->location - curTracker->lastPosition).norm_L2() > PSN_2D_MAX_DETECTION_DISTANCE) { continue; }
 		// height difference
 		if (std::abs(curDetection->height - curTracker->height) > PSN_2D_MAX_HEIGHT_DIFFERENCE) { continue; }
+		// box center difference
+		if ((curDetection->detection.box.center() - curTracker->boxes.back().center()).norm_L2() 
+			> PSN_2D_MAX_BOX_CENTER_DIFFERENCE_RATIO * std::max(curDetection->detection.box.w, curTracker->boxes.back().w)) 
+		{ continue; }
 		double curConfidence = 1.0;
 
 		//---------------------------------------------------
