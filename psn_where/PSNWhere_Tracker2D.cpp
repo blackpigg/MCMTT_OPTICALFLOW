@@ -21,9 +21,10 @@
 #define PSN_2D_BOX_MAX_DISTANCE (1.0)
 #define PSN_2D_MAX_DETECTION_DISTANCE (600)
 #define PSN_2D_MAX_HEIGHT_DIFFERENCE (400)
-#define PSN_2D_MAX_BOX_CENTER_DIFFERENCE_RATIO (0.2)
+#define PSN_2D_MAX_BOX_CENTER_DIFFERENCE_RATIO (0.5)
 #define PSN_2D_MIN_OVERLAPPED_RATIO (0.3)
 #define PSN_2D_MIN_CONFIDENCE (0.01)
+#define PSN_2D_MIN_OPTICAL_FLOW_MAJORITY_RATIO (0.5)
 
 #define PSN_2D_COST_COEF_FEATURE (1.0f)
 #define PSN_2D_COST_COEF_NSSD (1.0f)
@@ -879,6 +880,7 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 	cv::Mat *ptmatCurrGrayFrame = *(this->m_vecPtGrayFrameBuffer.rbegin());
 	cv::Mat *ptmatPrevGrayFrame = *(this->m_vecPtGrayFrameBuffer.rbegin() + 1);
 	size_t numDetection = this->m_vecDetection2D.size();
+	std::vector<std::deque<int>> featuresInDetectionBox(this->m_vecDetection2D.size());
 	std::vector<unsigned char> pointStatus;
 	std::vector<float> pointError;
 	std::vector<float> matchingCostArray(numDetection * this->m_queueActiveTracker2D.size(), std::numeric_limits<float>::infinity());
@@ -959,62 +961,91 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 		// COMPARE WITH DETECTION'S BACKTRACKING RESULT
 		//---------------------------------------------------
 		size_t costPos = trackIdx;
-		for (std::vector<stDetectedObject>::iterator detectionIter = this->m_vecDetection2D.begin();
-			detectionIter != this->m_vecDetection2D.end();
-			detectionIter++, costPos += this->m_queueActiveTracker2D.size())
+		for (int detectIdx = 0; detectIdx < this->m_vecDetection2D.size(); detectIdx++, costPos += this->m_queueActiveTracker2D.size())
 		{		
+			stDetectedObject *curDetection = &this->m_vecDetection2D[detectIdx];
+
 			// validate with backward tracking result
-			if (!newBox.overlap((*detectionIter).detection.box)) { continue; }
+			if (!newBox.overlap(curDetection->detection.box)) { continue; }
+
+			// count feature points inside the detection box
+			for (int featureIdx = 0; featureIdx < curTracker->trackedPoints.size(); featureIdx++)
+			{
+				if (!curDetection->detection.box.contain(curTracker->trackedPoints[featureIdx])) { continue; }
+				featuresInDetectionBox[detectIdx].push_back((int)trackIdx);
+			}
 
 			double boxCost = 0.0;			
-			size_t lengthForCompare = std::min((size_t)PSN_2D_BACKTRACKING_INTERVAL, std::min(curTracker->boxes.size(), (*detectionIter).boxes.size()));
-			size_t trackerBoxIdx = (size_t)curTracker->duration; // duration = # of box - 1			
+			size_t lengthForCompare = std::min((size_t)PSN_2D_BACKTRACKING_INTERVAL, std::min(curTracker->boxes.size(), curDetection->boxes.size()));
+			size_t trackerBoxIdx = (size_t)curTracker->duration; // duration = # of box - 1
+			PSN_Rect detectionBox, trackerBox;
 			for (size_t boxIdx = 0; boxIdx < lengthForCompare; boxIdx++, trackerBoxIdx--)
 			{
-				if (!curTracker->boxes[trackerBoxIdx].overlap((*detectionIter).boxes[boxIdx])
-				|| PSN_2D_BOX_MAX_DISTANCE < curTracker->boxes[trackerBoxIdx].distance((*detectionIter).boxes[boxIdx])
-				|| PSN_2D_MIN_OVERLAPPED_RATIO > curTracker->boxes[trackerBoxIdx].overlappedArea((*detectionIter).boxes[boxIdx]) / std::min(curTracker->boxes[trackerBoxIdx].area(), (*detectionIter).boxes[boxIdx].area()))
+				detectionBox = curDetection->boxes[boxIdx];
+				trackerBox = curTracker->boxes[trackerBoxIdx];
+				if (!detectionBox.overlap(trackerBox)
+				|| PSN_2D_BOX_MAX_DISTANCE < detectionBox.distance(trackerBox)
+				|| PSN_2D_MIN_OVERLAPPED_RATIO > detectionBox.overlappedArea(trackerBox) / std::min(detectionBox.area(), trackerBox.area())
+				|| PSN_2D_MAX_BOX_CENTER_DIFFERENCE_RATIO * std::max(detectionBox.w, trackerBox.w) < (detectionBox.center() - trackerBox.center()).norm_L2())
 				{
 					boxCost = std::numeric_limits<double>::infinity();
 					break;
 				}
-				boxCost += BoxMatchingCost(curTracker->boxes[trackerBoxIdx], (*detectionIter).boxes[boxIdx]);
+				boxCost += BoxMatchingCost(trackerBox, detectionBox);
 			}
 			if (std::numeric_limits<double>::infinity() == boxCost)	{ continue;	}
+			boxCost /= (double)lengthForCompare;
 
-			trackerBoxIdx = curTracker->boxes.size() - lengthForCompare;
-			double forwardConfidence = GetTrackingConfidence((*detectionIter).detection.box.scale(PSN_2D_OPTICALFLOW_SCALE), curTracker->featurePoints);
-			double backwardConfidence = GetTrackingConfidence(curTracker->boxes[trackerBoxIdx].scale(PSN_2D_OPTICALFLOW_SCALE), (*detectionIter).vecvecTrackedFeatures.back());
-			
-			if(PSN_2D_MIN_CONFIDENCE > forwardConfidence || PSN_2D_MIN_CONFIDENCE > backwardConfidence) { continue;	}
-			boxCost = - std::log(forwardConfidence) - std::log(backwardConfidence);
-			//printf("ID: %d, length: %d, back: %lf, forward: %lf\n", curTracker->id, lengthForCompare, backwardConfidence, forwardConfidence);
-
-			//double appearanceCost = 0.0;
-			//double motionCost = 0.0;
+			//trackerBoxIdx = curTracker->boxes.size() - lengthForCompare;
+			//double forwardConfidence = GetTrackingConfidence((*detectionIter).detection.box.scale(PSN_2D_OPTICALFLOW_SCALE), curTracker->featurePoints);
+			//double backwardConfidence = GetTrackingConfidence(curTracker->boxes[trackerBoxIdx].scale(PSN_2D_OPTICALFLOW_SCALE), (*detectionIter).vecvecTrackedFeatures.back());
 			//
-			//
-			//size_t numPointContain = 0;
-			//for(size_t indexIdx = 0; indexIdx < vecInlierIndex.size(); indexIdx++)
-			//{
-			//	if((*detectionIter).detection.box.contain(vecCurrFeatures[vecInlierIndex[indexIdx]]))
-			//	{
-			//		numPointContain++;
-			//	}
-			//}
-			//if(!numPointContain)
-			//{				
-			//	continue;
-			//}
-
-			//// calculate the confidence of forward tracking
-			//float trackedPointRatio = (float)numPointContain / (float)vecInlierIndex.size();
-			//if(PSN_2D_COST_THRESHOLD_FEATURE > trackedPointRatio)
-			//{
-			//	continue;
-			//}
-
+			//if(PSN_2D_MIN_CONFIDENCE > forwardConfidence || PSN_2D_MIN_CONFIDENCE > backwardConfidence) { continue;	}
+			//boxCost = - std::log(forwardConfidence) - std::log(backwardConfidence);
 			matchingCostArray[costPos] = (float)boxCost;
+		}
+	}
+
+	// feature point majority check
+	size_t detCostStartPos = 0;
+	for (int detectIdx = 0; detectIdx < this->m_vecDetection2D.size(); detectIdx++, detCostStartPos += this->m_queueActiveTracker2D.size())
+	{
+		if (0 == featuresInDetectionBox[detectIdx].size()) { continue; }
+
+		int numFeatureFromMajorTracker = 0;
+		int numFeatureFromCurrentTracker = 0;
+		int majorTrackerIdx = featuresInDetectionBox[detectIdx].front();
+		int currentTrackerIdx = featuresInDetectionBox[detectIdx].front();
+		for (int featureIdx = 0; featureIdx < featuresInDetectionBox[detectIdx].size(); featureIdx++)
+		{
+			if (currentTrackerIdx == featuresInDetectionBox[detectIdx][featureIdx])
+			{
+				numFeatureFromCurrentTracker++;
+				continue;
+			}
+
+			// check maximum
+			if (numFeatureFromCurrentTracker > numFeatureFromMajorTracker)
+			{ 
+				majorTrackerIdx = currentTrackerIdx;
+				numFeatureFromMajorTracker = numFeatureFromCurrentTracker;
+			}
+			currentTrackerIdx = featuresInDetectionBox[detectIdx][featureIdx];
+			numFeatureFromCurrentTracker = 0;
+		}
+
+		// handling for sole tracker
+		if (featuresInDetectionBox[detectIdx].front() == currentTrackerIdx)
+		{
+			numFeatureFromMajorTracker = numFeatureFromCurrentTracker;
+		}
+
+		if (numFeatureFromMajorTracker > featuresInDetectionBox[detectIdx].size() * PSN_2D_MIN_OPTICAL_FLOW_MAJORITY_RATIO)
+		{ continue; }
+
+		for (size_t curCostPos = detCostStartPos; curCostPos < detCostStartPos + this->m_queueActiveTracker2D.size(); curCostPos++)
+		{
+			matchingCostArray[curCostPos] = std::numeric_limits<float>::infinity();
 		}
 	}
 
@@ -1070,10 +1101,6 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		if ((curDetection->location - curTracker->lastPosition).norm_L2() > PSN_2D_MAX_DETECTION_DISTANCE) { continue; }
 		// height difference
 		if (std::abs(curDetection->height - curTracker->height) > PSN_2D_MAX_HEIGHT_DIFFERENCE) { continue; }
-		// box center difference
-		if ((curDetection->detection.box.center() - curTracker->boxes.back().center()).norm_L2() 
-			> PSN_2D_MAX_BOX_CENTER_DIFFERENCE_RATIO * std::max(curDetection->detection.box.w, curTracker->boxes.back().w)) 
-		{ continue; }
 		double curConfidence = 1.0;
 
 		//---------------------------------------------------
