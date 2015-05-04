@@ -61,7 +61,7 @@ const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", 
 // VISUALIZATION SETTTING
 /////////////////////////////////////////////////////////////////////////
 #define DISP_TRAJECTORY3D_LENGTH (40)
-#define DISPLAY_ID_MODE (1) // 0: raw track id, 1: id for visualization
+#define DISPLAY_ID_MODE (0) // 0: raw track id, 1: id for visualization
 
 /////////////////////////////////////////////////////////////////////////
 // EVALUATION SETTING

@@ -53,6 +53,9 @@
       <Filter>Graph Solvers</Filter>
     </ClInclude>
     <ClInclude Include="Evaluator.h" />
+    <ClInclude Include="PSNWhere_SGSmooth.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -81,5 +84,8 @@
       <Filter>Graph Solvers</Filter>
     </ClCompile>
     <ClCompile Include="Evaluator.cpp" />
+    <ClCompile Include="PSNWhere_SGSmooth.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
