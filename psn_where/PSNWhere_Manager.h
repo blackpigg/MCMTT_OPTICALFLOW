@@ -316,11 +316,14 @@ typedef std::pair<PSN_Point2D, unsigned int> PSN_Point2D_CamIdx;
 class CPointSmoother
 {
 public:
-	CPointSmoother(int span, int degree);
+	CPointSmoother(void);
 	~CPointSmoother(void);
-	int Smoothing(const PSN_Point3D &point);
-	int Smoothing(const std::vector<PSN_Point3D> &Points);
+	int Insert(PSN_Point3D &point);
+	int Insert(std::vector<PSN_Point3D> &points);
+	PSN_Point3D GetResult(int pos);
+	std::vector<PSN_Point3D> GetResults(int startPos, int endPos = -1);
 private:
+	void Update(int refreshPos, int numPoints);
 	CPSNWhere_SGSmooth smootherX_, smootherY_, smootherZ_;	
 	std::deque<PSN_Point3D> smoothedPoints_;
 };
@@ -423,6 +426,10 @@ public:
 
 	// reconstruction related
 	std::deque<stReconstruction> reconstructions;
+
+	// trajectory related
+	std::deque<PSN_Point3D> smoothedTrajectory;
+	
 
 	// dynamic related
 	//cv::KalmanFilter KF;
