@@ -16,20 +16,26 @@
 class CPSNWhere_SGSmooth
 {
 public:
-	CPSNWhere_SGSmooth(int span, int degree);
+	CPSNWhere_SGSmooth(void);
+	CPSNWhere_SGSmooth(int span, int degree, std::vector<double> *initialData = NULL);
 	~CPSNWhere_SGSmooth(void);
-	void Insert(std::deque<double> &queueNewData);
-	double Insert(double newData);
-	double GetResult(int index);
+	int Insert(double newData);
+	int Insert(std::vector<double> &queueNewData);	
+	double GetResult(int pos);
+	std::vector<double> GetResult(int startPos, int endPos);
 private:
-	void Smoothing(void);
-	void RecalculateQ(int numFrame);
+	int Smoothing(void);
+	bool RecalculateQ(int windowSize);
+	std::vector<double> Filter(std::vector<double> &coefficients, std::deque<double> &data, int startPos = 0);
 
 	std::deque<double> data_;
 	std::deque<double> smoothedData_;
 	int span_;
 	int degree_;
 	std::vector<double> Q_;
+	std::vector<double> Qbegin_;
+	std::vector<double> Qmid_;	
+	std::vector<double> Qend_;
 	int Qcols_;
 	int Qrows_;
 };

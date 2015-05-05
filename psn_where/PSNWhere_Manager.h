@@ -1,14 +1,16 @@
 #pragma once
 
 #include "stdafx.h"
-#include "cv.h"
-#include "opencv2\highgui\highgui.hpp"
-#include "opencv2\imgproc\imgproc.hpp"
-#include "calibration\cameraModel.h"
 #include <queue>
 #include <time.h>
 #include <list>
 #include <deque>
+
+#include "cv.h"
+#include "opencv2\highgui\highgui.hpp"
+#include "opencv2\imgproc\imgproc.hpp"
+#include "calibration\cameraModel.h"
+#include "PSNWhere_SGSmooth.h"
 
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
@@ -310,6 +312,18 @@ typedef struct _stCalibrationInfos
 
 typedef std::pair<PSN_Point3D, PSN_Point3D> PSN_Line;
 typedef std::pair<PSN_Point2D, unsigned int> PSN_Point2D_CamIdx;
+
+class CPointSmoother
+{
+public:
+	CPointSmoother(int span, int degree);
+	~CPointSmoother(void);
+	int Smoothing(const PSN_Point3D &point);
+	int Smoothing(const std::vector<PSN_Point3D> &Points);
+private:
+	CPSNWhere_SGSmooth smootherX_, smootherY_, smootherZ_;	
+	std::deque<PSN_Point3D> smoothedPoints_;
+};
 
 class TrackTree;
 struct stTracklet2D
