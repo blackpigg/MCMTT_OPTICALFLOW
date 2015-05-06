@@ -100,7 +100,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	//smoother.Insert(data);
 
 	CPointSmoother smoother;
-	int numPreData = 51;
+	int numPreData = 2;
 	std::vector<PSN_Point3D> points(numPreData);
 	std::vector<PSN_Point3D> smoothedPoints, results;
 	for (int pos = 0; pos < numPreData; pos++)

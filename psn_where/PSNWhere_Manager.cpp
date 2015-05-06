@@ -771,6 +771,8 @@ void CPointSmoother::Update(int refreshPos, int numPoints)
 	{
 		smoothedPoints_.push_back(PSN_Point3D(smootherX_.GetResult(pos), smootherY_.GetResult(pos), smootherZ_.GetResult(pos)));
 	}
+	size_ = smoothedPoints_.size();
+	back_ = &smoothedPoints_.back();
 }
 
 

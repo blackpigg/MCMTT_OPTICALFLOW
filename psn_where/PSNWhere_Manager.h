@@ -322,8 +322,14 @@ public:
 	int Insert(std::vector<PSN_Point3D> &points);
 	PSN_Point3D GetResult(int pos);
 	std::vector<PSN_Point3D> GetResults(int startPos, int endPos = -1);
+	size_t size(void) const { return size_; }
+	PSN_Point3D back(void) const { return *back_; }
+
 private:
 	void Update(int refreshPos, int numPoints);
+
+	size_t size_;
+	PSN_Point3D *back_;
 	CPSNWhere_SGSmooth smootherX_, smootherY_, smootherZ_;	
 	std::deque<PSN_Point3D> smoothedPoints_;
 };

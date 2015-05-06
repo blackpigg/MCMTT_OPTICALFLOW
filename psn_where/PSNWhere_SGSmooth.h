@@ -13,30 +13,49 @@
 #include <stddef.h>
 #include <queue>
 
+struct Qset
+{
+	int rows;
+	int cols;
+	std::vector<double> Q;
+	std::vector<double> Qbegin;
+	std::vector<double> Qmid;
+	std::vector<double> Qend;
+};
+
 class CPSNWhere_SGSmooth
 {
 public:
 	CPSNWhere_SGSmooth(void);
 	CPSNWhere_SGSmooth(int span, int degree, std::vector<double> *initialData = NULL);
 	~CPSNWhere_SGSmooth(void);
+
+	// setter
 	int Insert(double newData);
-	int Insert(std::vector<double> &queueNewData);	
+	int Insert(std::vector<double> &queueNewData);
+	void SetQ(Qset &Q) { Qset_ = Q; };
+
+	// getter
 	double GetResult(int pos);
 	std::vector<double> GetResult(int startPos, int endPos);
+
+	// others
+	Qset* CalculateQ(int windowSize);
+	
 private:
-	int Smoothing(void);
-	bool RecalculateQ(int windowSize);
+	int Smoothing(void);	
 	std::vector<double> Filter(std::vector<double> &coefficients, std::deque<double> &data, int startPos = 0);
 
-	std::deque<double> data_;
-	std::deque<double> smoothedData_;
 	int span_;
 	int degree_;
-	std::vector<double> Q_;
-	std::vector<double> Qbegin_;
-	std::vector<double> Qmid_;	
-	std::vector<double> Qend_;
-	int Qcols_;
-	int Qrows_;
+	Qset Qset_;
+	std::deque<double> data_;
+	std::deque<double> smoothedData_;	
+	//std::vector<double> Q_;
+	//std::vector<double> Qbegin_;
+	//std::vector<double> Qmid_;	
+	//std::vector<double> Qend_;
+	//int Qcols_;
+	//int Qrows_;
 };
 
