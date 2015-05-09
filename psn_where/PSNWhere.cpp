@@ -250,7 +250,7 @@ void CPSNWhere::Finalize()
 	- 입력 영상에서 물체 탐지
 	- 기 소유한 트래킹 모델 업데이트
 *******************************************************************/
-TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
+TrackInfoVector* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 {
 	clock_t timer_start;
 	clock_t timer_end;
@@ -288,7 +288,7 @@ TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 	//sprintf_s(strLogFilePath, "logs/log.csv");
 	//psn::printLog(strLogFilePath, strLog);
 
-	return (TrackInfoArray *)0;
+	return (TrackInfoVector *)0;
 }
 
 

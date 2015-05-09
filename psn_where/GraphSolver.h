@@ -10,8 +10,9 @@
 
 #pragma once
 
-#include "PSNWhere_Manager.h"
-
+//#include "PSNWhere_Manager.h"
+#include <queue>
+#include <list>
 
 /////////////////////////////////////////////////////////////////////////
 // DEFINES

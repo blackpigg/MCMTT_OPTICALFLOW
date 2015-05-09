@@ -45,7 +45,7 @@ public:
 	void Finalize();
 
 	// tracking
-	TrackInfoArray* TrackPeople(cv::Mat *pDibArray, int frameIdx);
+	TrackInfoVector* TrackPeople(cv::Mat *pDibArray, int frameIdx);
 
 	// display
 	void Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2DResult> &result2D, stTrack3DResult &result3D, int nDispMode);

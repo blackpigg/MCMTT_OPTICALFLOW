@@ -37,9 +37,6 @@
     <ClInclude Include="PSNWhere_Associator3D.h">
       <Filter>PSNWhere</Filter>
     </ClInclude>
-    <ClInclude Include="PSNWhere_defines.h">
-      <Filter>PSNWhere</Filter>
-    </ClInclude>
     <ClInclude Include="calibration\cameraModel.h">
       <Filter>PSNWhere\Calibration</Filter>
     </ClInclude>
@@ -55,6 +52,12 @@
     <ClInclude Include="Evaluator.h" />
     <ClInclude Include="PSNWhere_SGSmooth.h">
       <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="PSNWhere_Types.h">
+      <Filter>PSNWhere</Filter>
+    </ClInclude>
+    <ClInclude Include="PSNWhere_Defines.h">
+      <Filter>PSNWhere</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -86,6 +89,9 @@
     <ClCompile Include="Evaluator.cpp" />
     <ClCompile Include="PSNWhere_SGSmooth.cpp">
       <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="PSNWhere_Types.cpp">
+      <Filter>PSNWhere</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

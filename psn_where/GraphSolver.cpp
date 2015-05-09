@@ -1,5 +1,10 @@
+#define NOMINMAX // for preventing using window's minmax functions
+
 #include "GraphSolver.h"
+#include "stdafx.h"
+#include <algorithm>
 #include <time.h>
+#include "PSNWhere_Defines.h"
 
 // TODO: 티끌이라도 더 빠르게 하려면, delete(v) -> insert(u) 연계 시, OM 진입하는 OC는 u의 neighbor만 있음을 이용
 

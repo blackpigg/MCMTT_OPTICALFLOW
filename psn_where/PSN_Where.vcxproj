@@ -183,10 +183,11 @@
     <ClInclude Include="Helpers\PSNWhere_Hungarian.h" />
     <ClInclude Include="PSNWhere.h" />
     <ClInclude Include="PSNWhere_Associator3D.h" />
-    <ClInclude Include="PSNWhere_defines.h" />
+    <ClInclude Include="PSNWhere_Defines.h" />
     <ClInclude Include="PSNWhere_Manager.h" />
     <ClInclude Include="PSNWhere_SGSmooth.h" />
     <ClInclude Include="PSNWhere_Tracker2D.h" />
+    <ClInclude Include="PSNWhere_Types.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
@@ -201,6 +202,7 @@
     <ClCompile Include="PSNWhere_Manager.cpp" />
     <ClCompile Include="PSNWhere_SGSmooth.cpp" />
     <ClCompile Include="PSNWhere_Tracker2D.cpp" />
+    <ClCompile Include="PSNWhere_Types.cpp" />
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

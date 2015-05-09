@@ -81,22 +81,14 @@
 
 #pragma once
 
-#include "PSNWhere_Manager.h"
+//#include "PSNWhere_Manager.h"
+#include "PSNWhere_Types.h"
 #include "GraphSolver.h"
 #include "Evaluator.h"
 
 /////////////////////////////////////////////////////////////////////////
 // DEFINES
 /////////////////////////////////////////////////////////////////////////
-
-//struct stGraphSolution
-//{
-//	PSN_TrackSet tracks;
-//	double logLikelihood; // = weight sum
-//	double probability;
-//	//double weightSum;
-//	bool bValid;
-//};
 
 struct stGlobalHypothesis
 {
@@ -141,7 +133,7 @@ private:
 	bool CheckVisibility(PSN_Point3D testPoint, unsigned int camIdx);
 	bool CheckHeadWidth(PSN_Point3D midPoint3D, PSN_Rect rect1, PSN_Rect rect2, unsigned int camIdx1, unsigned int camIdx2);
 
-	stReconstruction PointReconstruction(CTrackletCombination &tracklet2Ds);
+	stReconstruction PointReconstruction(CTrackletSet &tracklet2Ds);
 	double NViewPointReconstruction(std::vector<PSN_Line> &vecLines, PSN_Point3D &outputPoint);
 	double NViewGroundingPointReconstruction(std::vector<PSN_Point2D_CamIdx> &vecPointInfos, PSN_Point3D &outputPoint);
 	PSN_Line GetBackProjectionLine(PSN_Point2D point2D, unsigned int camIdx);	
@@ -150,7 +142,7 @@ private:
 	// 2D tracklet related
 	//----------------------------------------------------------------
 	void Tracklet2D_UpdateTracklets(std::vector<stTrack2DResult> &curTrack2DResult, unsigned int frameIdx);	
-	void GenerateTrackletCombinations(std::vector<bool> *vecBAssociationMap, CTrackletCombination combination, std::deque<CTrackletCombination> &combinationQueue, unsigned int camIdx);
+	void GenerateTrackletCombinations(std::vector<bool> *vecBAssociationMap, CTrackletSet combination, std::deque<CTrackletSet> &combinationQueue, unsigned int camIdx);
 
 	//----------------------------------------------------------------
 	// 3D track related
@@ -176,7 +168,7 @@ private:
 
 	// miscellaneous
 	static bool CheckIncompatibility(Track3D *track1, Track3D *track2);
-	static bool CheckIncompatibility(CTrackletCombination &combi1, CTrackletCombination &combi2);
+	static bool CheckIncompatibility(CTrackletSet &combi1, CTrackletSet &combi2);
 	cv::Mat GetRGBFeature(const cv::Mat *patch, int numBins);
 	
 	//----------------------------------------------------------------
@@ -283,6 +275,7 @@ private:
 	int nCountTrackInOptimization_;
 	int nCountUCTrackInOptimization_;
 };
+
 
 //()()
 //('')HAANJU.YOO
