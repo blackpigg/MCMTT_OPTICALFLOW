@@ -10,7 +10,6 @@
  *
  ******************************************************************************/
 #pragma once
-#include <stddef.h>
 #include <queue>
 
 struct Qset

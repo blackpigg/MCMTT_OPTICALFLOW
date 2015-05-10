@@ -2,6 +2,7 @@
 #include <fstream>
 #include <limits>
 #include <omp.h>
+#include "PSNWhere_Utils.h"
 #include "PSNWhere_Tracker2D.h"
 #include "PSNWhere_Associator3D.h"
 
@@ -265,7 +266,7 @@ TrackInfoVector* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{			
 		// TODO: receive detection result(밑의 예시는 file로 읽어오는 것)	
-		detectionResult = CPSNWhere_Manager::ReadDetectionResultWithTxt(this->m_strDatasetPath, CAM_ID[camIdx], frameIdx);
+		detectionResult = psn::ReadDetectionResultWithTxt(this->m_strDatasetPath, CAM_ID[camIdx], frameIdx);
 		
 		// 2D tracklet
 		result2D.push_back(this->m_cTracker2D[camIdx]->Run(detectionResult, &pDibArray[camIdx], frameIdx));
@@ -367,7 +368,7 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 		this->m_matResultFrames[camIdx].release();
 	}
 	// tiling images
-	cv::Mat displayMat = CPSNWhere_Manager::MakeMatTile(&tileInputArray, 2, 2);		
+	cv::Mat displayMat = psn::MakeMatTile(&tileInputArray, 2, 2);		
 	// writing frame info
 	char strFrameInfo[100];
 	sprintf_s(strFrameInfo, "Frame: %04d", frameIdx);
@@ -531,9 +532,9 @@ bool CPSNWhere::ReadProjectionSensitivity(cv::Mat &matSensitivity, unsigned int 
 		fclose(fp);
 		return true;
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR] cannot open projection sensitivity matrix of camera %d! error code %d\n", CAM_ID[camIdx], dwError);
+		printf("[ERROR] cannot open projection sensitivity matrix of camera %d! error code %d\n", CAM_ID[camIdx], error);
 	}
 	return false;
 }
@@ -580,9 +581,9 @@ bool CPSNWhere::ReadDistanceFromBoundary(cv::Mat &matDistance, unsigned int camI
 		fclose(fp);
 		return true;
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR] cannot open distance from boundary matrix of camera %d! error code %d\n", CAM_ID[camIdx], dwError);
+		printf("[ERROR] cannot open distance from boundary matrix of camera %d! error code %d\n", CAM_ID[camIdx], error);
 	}
 	return false;
 }

@@ -1,8 +1,13 @@
+//#include "stdafx.h"
+#define NOMINMAX // for preventing using window's minmax functions
+
 #include "PSNWhere_Tracker2D.h"
 #include <limits>
-#include "opencv2\imgproc\imgproc.hpp"
-#include "opencv2\opencv.hpp"
-#include "helpers\PSNWhere_Hungarian.h"
+#include "PSNWhere_Utils.h"
+//#include "opencv2/opencv.hpp"
+//#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/features2d/features2d.hpp"
+#include "helpers/PSNWhere_Hungarian.h"
 
 /////////////////////////////////////////////////////////////////////////
 // PARAMETERS
@@ -1260,7 +1265,7 @@ double CPSNWhere_Tracker2D::EstimateDetectionHeight(PSN_Point2D bottomCenter, PS
 	}
 
 	PSN_Point3D topPoint(0.0, 0.0, 0.0);
-	CPSNWhere_Manager::Triangulation(PSN_Line(P11, P12), PSN_Line(P21, P22), topPoint);
+	psn::Triangulation(PSN_Line(P11, P12), PSN_Line(P21, P22), topPoint);
 
 	return (topPoint - P21).norm_L2();
 }
@@ -1296,9 +1301,9 @@ void CPSNWhere_Tracker2D::FilePrintTracklet(void)
 		
 		fclose(fp);
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR](FilePrintTracklet) cannot open file! error code %d\n", dwError);
+		printf("[ERROR](FilePrintTracklet) cannot open file! error code %d\n", error);
 		return;
 	}
 }
@@ -1392,9 +1397,9 @@ void CPSNWhere_Tracker2D::SaveSnapshot(const char *strFilepath)
 
 		fclose(fp);
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR](PrintTracks) cannot open file! error code %d\n", dwError);
+		printf("[ERROR](PrintTracks) cannot open file! error code %d\n", error);
 		return;
 	}
 }
@@ -1515,9 +1520,9 @@ bool CPSNWhere_Tracker2D::LoadSnapshot(const char *strFilepath)
 
 		fclose(fp);
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR](PrintTracks) cannot open file! error code %d\n", dwError);
+		printf("[ERROR](PrintTracks) cannot open file! error code %d\n", error);
 		return false;
 	}
 

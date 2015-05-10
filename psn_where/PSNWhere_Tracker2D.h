@@ -80,14 +80,8 @@
 
 #pragma once
 
-#include "stdafx.h"
-#include "PSNWhere_Manager.h"
-#include "opencv2/features2d/features2d.hpp"
-#include <deque>
 #include <list>
-
-// display for 2D tracking
-//#define PSN_2D_DEBUG_DISPLAY_
+#include "PSNWhere_Types.h"
 
 /////////////////////////////////////////////////////////////////////////
 // TYPEDEFS

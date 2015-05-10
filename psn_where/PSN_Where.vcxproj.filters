@@ -43,13 +43,9 @@
     <ClInclude Include="Helpers\PSNWhere_Hungarian.h">
       <Filter>Helpers</Filter>
     </ClInclude>
-    <ClInclude Include="PSNWhere_Manager.h">
-      <Filter>PSNWhere</Filter>
-    </ClInclude>
     <ClInclude Include="GraphSolver.h">
       <Filter>Graph Solvers</Filter>
     </ClInclude>
-    <ClInclude Include="Evaluator.h" />
     <ClInclude Include="PSNWhere_SGSmooth.h">
       <Filter>Helpers</Filter>
     </ClInclude>
@@ -58,6 +54,12 @@
     </ClInclude>
     <ClInclude Include="PSNWhere_Defines.h">
       <Filter>PSNWhere</Filter>
+    </ClInclude>
+    <ClInclude Include="PSNWhere_Utils.h">
+      <Filter>PSNWhere</Filter>
+    </ClInclude>
+    <ClInclude Include="Evaluator.h">
+      <Filter>Helpers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -80,18 +82,20 @@
     <ClCompile Include="Helpers\PSNWhere_Hungarian.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
-    <ClCompile Include="PSNWhere_Manager.cpp">
-      <Filter>PSNWhere</Filter>
-    </ClCompile>
     <ClCompile Include="GraphSolver.cpp">
       <Filter>Graph Solvers</Filter>
     </ClCompile>
-    <ClCompile Include="Evaluator.cpp" />
     <ClCompile Include="PSNWhere_SGSmooth.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="PSNWhere_Types.cpp">
       <Filter>PSNWhere</Filter>
+    </ClCompile>
+    <ClCompile Include="PSNWhere_Utils.cpp">
+      <Filter>PSNWhere</Filter>
+    </ClCompile>
+    <ClCompile Include="Evaluator.cpp">
+      <Filter>Helpers</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

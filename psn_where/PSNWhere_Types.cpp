@@ -1,3 +1,5 @@
+#define NOMINMAX // for preventing using window's minmax functions
+
 #include "PSNWhere_Types.h"
 #include "stdafx.h"
 
@@ -20,26 +22,17 @@ CTrackletSet& CTrackletSet::operator=(const CTrackletSet &a)
 
 bool CTrackletSet::operator==(const CTrackletSet &a)
 { 
-	if(this->numTracklets != a.numTracklets)
+	if (this->numTracklets != a.numTracklets) { return false; }
+	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{
-		return false;
-	}
-	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-	{
-		if(this->tracklets[camIdx] != a.tracklets[camIdx])
-		{
-			return false;
-		}
+		if(this->tracklets[camIdx] != a.tracklets[camIdx]) { return false; }
 	}
 	return true;
 }
 
 void CTrackletSet::set(unsigned int camIdx, stTracklet2D *tracklet)
 { 
-	if(this->tracklets[camIdx] == tracklet)
-	{
-		return;
-	}
+	if (this->tracklets[camIdx] == tracklet) { return; }
 	if(NULL == this->tracklets[camIdx])
 	{
 		numTracklets++;
@@ -86,14 +79,85 @@ unsigned int CTrackletSet::size()
 	return this->numTracklets;
 }
 
+/////////////////////////////////////////////////////////////////////////
+// CPointSmoother MEMBER FUNCTIONS
+/////////////////////////////////////////////////////////////////////////
+CPointSmoother::CPointSmoother(void)
+{
+}
+
+CPointSmoother::~CPointSmoother(void)
+{
+}
+
+int CPointSmoother::Insert(PSN_Point3D &point)
+{
+	int refreshPos = smootherX_.Insert(point.x);
+	smootherY_.Insert(point.y);
+	smootherZ_.Insert(point.z);
+
+	// smoothing
+	this->Update(refreshPos, 1);
+
+	return refreshPos;
+}
+
+int CPointSmoother::Insert(std::vector<PSN_Point3D> &points)
+{
+	std::vector<double> pointsX(points.size(), 0.0), pointsY(points.size(), 0.0), pointsZ(points.size(), 0.0);
+	for (int pointIdx = 0; pointIdx < points.size(); pointIdx++)
+	{
+		pointsX[pointIdx] = points[pointIdx].x;
+		pointsY[pointIdx] = points[pointIdx].y;
+		pointsZ[pointIdx] = points[pointIdx].z;
+	}
+	int refreshPos = smootherX_.Insert(pointsX);
+	smootherY_.Insert(pointsY);
+	smootherZ_.Insert(pointsZ);
+
+	// smoothing
+	this->Update(refreshPos, (int)points.size());
+
+	return refreshPos;
+}
+
+PSN_Point3D CPointSmoother::GetResult(int pos)
+{
+	assert(pos < smoothedPoints_.size());
+	return smoothedPoints_[pos];
+}
+
+std::vector<PSN_Point3D> CPointSmoother::GetResults(int startPos, int endPos)
+{
+	if (endPos < 0) { endPos = (int)smoothedPoints_.size(); }
+	assert(endPos <= smoothedPoints_.size() && startPos <= endPos);
+	std::vector<PSN_Point3D> results;
+	results.insert(results.end(), smoothedPoints_.begin() + startPos, smoothedPoints_.begin() + endPos);
+	return results;
+}
+
+void CPointSmoother::Update(int refreshPos, int numPoints)
+{
+	int endPos = (int)smoothedPoints_.size() + numPoints;
+	smoothedPoints_.erase(smoothedPoints_.begin() + refreshPos, smoothedPoints_.end());
+	for (int pos = refreshPos; pos < endPos; pos++)
+	{
+		smoothedPoints_.push_back(PSN_Point3D(smootherX_.GetResult(pos), smootherY_.GetResult(pos), smootherZ_.GetResult(pos)));
+	}
+	size_ = smoothedPoints_.size();
+	back_ = &smoothedPoints_.back();
+}
 
 /////////////////////////////////////////////////////////////////////////
 // Track3D MEMBER FUNCTIONS
 /////////////////////////////////////////////////////////////////////////
-Track3D::Track3D(unsigned int id, Track3D *parentTrack, unsigned int timeGeneration, CTrackletSet &trackletCombination)
-	: id(id)
+Track3D::Track3D()
+	: id(0)
 	, bActive(true)
 	, bValid(true)
+	, bNewTrack(true)
+	, bWasBestSolution(true)
+	, bCurrentBestSolution(false)
 	, tree(NULL)
 	, parentTrack(parentTrack)
 	, timeStart(0)
@@ -108,67 +172,75 @@ Track3D::Track3D(unsigned int id, Track3D *parentTrack, unsigned int timeGenerat
 	, costRGB(0.0)
 	, loglikelihood(0.0)
 	, GTProb(0.0)
-	, BranchGTProb(0.0)
-	, bWasBestSolution(true)
-	, bCurrentBestSolution(false)
-	, bNewTrack(true)
+{
+}
+
+Track3D::~Track3D()
+{
+}
+
+void Track3D::Initialize(unsigned int id, Track3D *parentTrack, unsigned int timeGeneration, CTrackletSet &trackletSet)
 {
 	this->id = id;
-	if(NULL == parentTrack)
+	this->curTracklet2Ds = trackletSet;
+	this->timeEnd = timeGeneration;
+	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{
-		// new seed track
-		this->curTracklet2Ds = trackletCombination;
-		this->timeStart = timeGeneration;
-		this->timeEnd = timeGeneration;
+		if (NULL == trackletSet.get(camIdx)) { continue; }
+		this->trackletLastLocation3D[camIdx] = trackletSet.get(camIdx)->currentLocation3D;
+		this->timeTrackletEnded[camIdx] = timeGeneration;
+		if (NULL == parentTrack)
+		{
+			this->tracklet2DIDs[camIdx].push_back(trackletSet.get(camIdx)->id);
+		}
+		else
+		{
+			this->tracklet2DIDs[camIdx] = parentTrack->tracklet2DIDs[camIdx];
+			if (trackletSet.get(camIdx)->id != this->tracklet2DIDs[camIdx].back())
+			{
+				this->tracklet2DIDs[camIdx].push_back(trackletSet.get(camIdx)->id);
+			}			
+		}
+		
+	}
+	if (NULL == parentTrack)
+	{
+		// new seed track		
+		this->timeStart = timeGeneration;		
 		this->duration = 1;
 		return;
 	}
-
 	// branch track
-	this->curTracklet2Ds = trackletCombination;
+	this->curTracklet2Ds = trackletSet;
 	this->tree = parentTrack->tree;
 	this->parentTrack = parentTrack;
 	this->timeStart = parentTrack->timeStart;
 	this->timeEnd = timeGeneration;
 	this->timeGeneration = timeGeneration;
 	this->duration = this->timeEnd - this->timeStart + 1;
+	this->costTotal = parentTrack->costTotal;
+	this->costReconstruction = parentTrack->costReconstruction;
+	this->costLink = parentTrack->costLink;	
 	this->costEnter = parentTrack->costEnter;
+	this->costExit = 0.0;
+	this->costRGB = 0.0;
 	this->loglikelihood = parentTrack->loglikelihood;
-	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-	{
-		this->timeTrackletEnded[camIdx] = 0;
-	}
+	this->GTProb = parentTrack->GTProb;
 }
 
-Track3D::~Track3D()
+int Track3D::InsertReconstruction(stReconstruction &reconstruction)
 {
-
+	this->reconstructions.push_back(reconstruction);
+	stReconstruction *curReconstruction = &this->reconstructions.back();
+	this->bActive = curReconstruction->bIsMeasurement;
+	// smoothing
+	int refreshStartPosition = pointSmoother.Insert(curReconstruction->point);
+	for (int pos = refreshStartPosition; pos < this->reconstructions.size(); pos++)
+	{
+		this->reconstructions[pos].smoothedPoint = pointSmoother.GetResult(pos);
+	}
+	return refreshStartPosition;
 }
-
-//void Track3D::Initialize(unsigned int id, Track3D *parentTrack, unsigned int timeGeneration, CTrackletSet &trackletCombination)
-//{
-//	this->id = id;
-//	this->curTracklet2Ds = trackletCombination;
-//	if(NULL == parentTrack)
-//	{
-//		this->timeStart = timeGeneration;
-//		this->timeEnd = timeGeneration;
-//		this->duration = 1;
-//		return;
-//	}
-//	this->tree = parentTrack->tree;
-//	this->parentTrack = parentTrack;
-//	this->timeStart = parentTrack->timeStart;
-//	this->timeEnd = timeGeneration;
-//	this->timeGeneration = timeGeneration;
-//	this->duration = this->timeEnd - this->timeStart + 1;
-//	this->costEnter = parentTrack->costEnter;
-//	this->loglikelihood = parentTrack->loglikelihood;
-//	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-//	{
-//		this->timeTrackletEnded[camIdx] = 0;
-//	}
-//}
 
 void Track3D::RemoveFromTree()
 {
@@ -271,6 +343,12 @@ void TrackTree::Initialize(unsigned int id, Track3D *seedTrack, unsigned int tim
 		seedTrack->tree->numMeasurements++;
 	}
 	//this->m_queueActiveTrees.push_back(seedTrack->tree);
+}
+
+void TrackTree::InsertTrack(Track3D *track)
+{
+	tracks.push_back(track);
+	track->tree = this;
 }
 
 /************************************************************************
@@ -430,32 +508,32 @@ double TrackTree::GTProbOfBrach(Track3D *rootOfBranch)
 }
 
 
-/************************************************************************
- Method Name: MaxGTProbOfBrach
- Description: 
-	- find the maximum global track probability in the branch and set
-	that value into 'BranchGTProb' property
- Input Arguments:
-	- rootOfBranch: a pointer of the seed track of the branch
- Return Values:
-	- double: maximum value of global track probability in the branch
-************************************************************************/
-double TrackTree::MaxGTProbOfBrach(Track3D *rootOfBranch)
-{
-	double MaxGTProb = rootOfBranch->GTProb;
-	for(std::deque<Track3D*>::iterator trackIter = rootOfBranch->childrenTrack.begin();
-		trackIter != rootOfBranch->childrenTrack.end();
-		trackIter++)
-	{
-		double curGTProb = MaxGTProbOfBrach(*trackIter);
-		if(MaxGTProb < curGTProb)
-		{
-			MaxGTProb = curGTProb;
-		}
-	}
-	rootOfBranch->BranchGTProb = MaxGTProb;
-	return MaxGTProb;
-}
+///************************************************************************
+// Method Name: MaxGTProbOfBrach
+// Description: 
+//	- find the maximum global track probability in the branch and set
+//	that value into 'BranchGTProb' property
+// Input Arguments:
+//	- rootOfBranch: a pointer of the seed track of the branch
+// Return Values:
+//	- double: maximum value of global track probability in the branch
+//************************************************************************/
+//double TrackTree::MaxGTProbOfBrach(Track3D *rootOfBranch)
+//{
+//	double MaxGTProb = rootOfBranch->GTProb;
+//	for(std::deque<Track3D*>::iterator trackIter = rootOfBranch->childrenTrack.begin();
+//		trackIter != rootOfBranch->childrenTrack.end();
+//		trackIter++)
+//	{
+//		double curGTProb = MaxGTProbOfBrach(*trackIter);
+//		if(MaxGTProb < curGTProb)
+//		{
+//			MaxGTProb = curGTProb;
+//		}
+//	}
+//	rootOfBranch->BranchGTProb = MaxGTProb;
+//	return MaxGTProb;
+//}
 
 
 /************************************************************************
@@ -481,7 +559,6 @@ void TrackTree::InvalidateBranchWithMinGTProb(Track3D *rootOfBranch, double minG
 		InvalidateBranchWithMinGTProb(*trackIter, minGTProb);
 	}
 }
-
 
 /************************************************************************
  Method Name: FindMaxGTProbBranch

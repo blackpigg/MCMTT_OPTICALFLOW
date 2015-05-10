@@ -1,4 +1,7 @@
-#include "PSNWhere_Manager.h"
+#include "PSNWhere_Utils.h"
+
+#define NUM_DETECTION_PART (8)
+const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", "GR", "S2", "A1", "A2", "F2"};
 
 /////////////////////////////////////////////////////////////////////////
 // PREDEFINE
@@ -83,6 +86,65 @@ psn_sb7 = -2.24409524465858183362e+01; /* 0xC03670E2, 0x42712D62 */
 /////////////////////////////////////////////////////////////////////////
 // OPERATOR
 /////////////////////////////////////////////////////////////////////////
+template<typename _Tp> _Tp psn::MatTotalSum(cv::Mat &inputMat)
+{
+	_Tp resultSum = 0;
+	for(int rowIdx = 0; rowIdx < inputMat.rows; rowIdx++)
+	{
+		for(int colIdx = 0; colIdx < inputMat.cols; colIdx++)
+		{
+			resultSum += inputMat.at<_Tp>(rowIdx, colIdx);
+		}
+	}
+	return resultSum;
+}
+
+template<typename _Tp> bool psn::MatLowerThan(cv::Mat &inputMat, _Tp compValue)
+{
+	//_Tp maxValue = std::max_element(inputMat.begin(), inputMat.end());
+	//for(int rowIdx = 0; rowIdx < inputMat.rows; rowIdx++)
+	//{
+	//	for(int colIdx = 0; colIdx < inputMat.cols; colIdx++)
+	//	{
+	//		if(inputMat.at<_Tp>(rowIdx, colIdx) >= compValue)
+	//		{
+	//			return false;
+	//		}
+	//	}
+	//}
+	return (std::max_element(inputMat.begin(), inputMat.end()) < compValue) ? true : false;
+}
+
+template<typename _Tp> bool psn::MatContainLowerThan(cv::Mat &inputMat, _Tp compValue)
+{
+	for(int rowIdx = 0; rowIdx < inputMat.rows; rowIdx++)
+	{
+		for(int colIdx = 0; colIdx < inputMat.cols; colIdx++)
+		{
+			if(inputMat.at<_Tp>(rowIdx, colIdx) < compValue)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+template<typename _Tp> std::vector<_Tp> psn::mat2vec_C1(cv::Mat &inputMat)
+{
+	std::vector<_Tp> vecResult;
+
+	for(int rowIdx = 0; rowIdx < inputMat.rows; rowIdx++)
+	{
+		for(int colIdx = 0; colIdx < inputMat.cols; colIdx++)
+		{
+			vecResult.push_back(inputMat.at<_Tp>(rowIdx, colIdx));
+		}
+	}
+	
+	return vecResult;
+}
+
 void psn::appendRow(cv::Mat &dstMat, cv::Mat &row)
 {
 	// append with empty matrix
@@ -419,6 +481,140 @@ cv::Mat psn::histogram(cv::Mat singleChannelImage, int numBin)
 	return vecHistogram;
 }
 
+/************************************************************************
+ Method Name: Triangulation
+ Description: 
+	- 
+ Input Arguments:
+	- 
+ Return Values:
+	- 
+************************************************************************/
+double psn::Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoint3D)
+{
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Associator3D](DistanceBackProjectionLine) start\n");
+#endif
+	
+	PSN_Point3D line1Direct = line1.first - line1.second;
+	PSN_Point3D line2Direct = line2.first - line2.second;
+	PSN_Point3D lineOffset = line2.second - line1.second;
+
+	cv::Mat matA(2, 2, CV_32FC1);
+	matA.at<float>(0, 0) = (float)line1Direct.dot(line1Direct);
+	matA.at<float>(0, 1) = (float)line1Direct.dot(-line2Direct);
+	matA.at<float>(1, 0) = (float)line2Direct.dot(line1Direct);
+	matA.at<float>(1, 1) = (float)line2Direct.dot(-line2Direct);
+	
+	cv::Mat vecB(2, 1, CV_32FC1);
+	vecB.at<float>(0, 0) = (float)line1Direct.dot(lineOffset);
+	vecB.at<float>(1, 0) = (float)line2Direct.dot(lineOffset);
+
+	cv::Mat vecT = matA.inv() * vecB;
+
+	line1Direct *= (double)vecT.at<float>(0, 0);
+	line2Direct *= (double)vecT.at<float>(1, 0);
+	PSN_Point3D closePoint1 = line1.second + line1Direct;
+	PSN_Point3D closePoint2 = line2.second + line2Direct;
+
+	midPoint3D = (closePoint1 + closePoint2) / 2;
+
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Associator3D](DistanceBackProjectionLine) return:%f\n", fDistance);
+#endif
+	return (closePoint1 - closePoint2).norm_L2();
+}
+
+/************************************************************************
+ Method Name: MakeMatTile
+ Description: 
+	- Make one result image for multi-camera input for visualization
+ Input Arguments:
+	- imageArray: 
+	- numRows: number of rows in tile image
+	- numCols: number of colums in tile image
+ Return Values:
+	- cv::Mat: result image
+************************************************************************/
+cv::Mat psn::MakeMatTile(std::vector<cv::Mat> *imageArray, unsigned int numRows, unsigned int numCols)
+{
+
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Manager](MakeMatTile) start\n");
+#endif
+	// column first arrangement
+	unsigned int numImage = (unsigned int)imageArray->size();	
+	unsigned int acturalNumCols = numImage < numCols ? numImage : numCols;
+	unsigned int acturalNumRows = (0 == numImage % numCols) ? numImage / numCols : numImage / numCols + 1;
+
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Manager](MakeMatTile) numImage:%d, numRows:%d, numCols:%d\n", numImage, acturalNumRows, acturalNumCols);
+#endif
+
+	// find maximum size image
+	cv::Size maxSize = (*imageArray)[0].size();
+	for(unsigned int imageIdx = 0; imageIdx < numImage; imageIdx++)
+	{
+		if((*imageArray)[imageIdx].rows > maxSize.height){ maxSize.height = (*imageArray)[imageIdx].rows; }
+		if((*imageArray)[imageIdx].cols > maxSize.width){ maxSize.width = (*imageArray)[imageIdx].cols; }
+	}
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Manager](MakeMatTile) maxWidth:%d, maxHeight:%d\n", maxSize.width, maxSize.height);
+#endif
+
+	// make augmenting matrix
+	std::vector<cv::Mat> augMats;
+	cv::Mat baseMat;
+	if(1 == (*imageArray)[0].channels()){	baseMat = cv::Mat::zeros(maxSize, CV_8UC1); }
+	else{ baseMat = cv::Mat::zeros(maxSize, CV_8UC3); }	
+	//for(unsigned int imageIdx = 0; imageIdx < numImage; imageIdx++)
+	//{
+	//	cv::Mat augMat = baseMat.clone();
+	//	(*imageArray)[imageIdx].copyTo(augMat(cv::Rect(0, 0, (*imageArray)[imageIdx].cols, (*imageArray)[imageIdx].rows)));
+	//	augMats.push_back(augMat);
+	//}
+	unsigned int numAugMats = acturalNumRows * acturalNumCols;
+	for(unsigned int imageIdx = 0; imageIdx < numAugMats; imageIdx++)
+	{
+		cv::Mat augMat = baseMat.clone();
+		if(imageIdx < numImage)
+		{
+			(*imageArray)[imageIdx].copyTo(augMat(cv::Rect(0, 0, (*imageArray)[imageIdx].cols, (*imageArray)[imageIdx].rows)));
+		}
+		augMats.push_back(augMat);
+	}
+
+	// matrix concatenation
+	cv::Mat hConcatMat;
+	cv::Mat resultMat;
+	for(unsigned int rowIdx = 0; rowIdx < acturalNumRows; rowIdx++)
+	{
+		unsigned int startIdx = rowIdx * acturalNumCols;		
+		for(unsigned int colIdx = 0; colIdx < acturalNumCols; colIdx++)
+		{
+			if(0 == colIdx)
+			{
+				hConcatMat = augMats[startIdx].clone();
+				continue;
+			}
+			cv::hconcat(hConcatMat, augMats[startIdx + colIdx], hConcatMat);
+		}
+
+		if(0 == rowIdx)
+		{
+			resultMat = hConcatMat.clone();
+			continue;
+		}
+		cv::vconcat(resultMat, hConcatMat, resultMat);
+	}
+
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Manager](MakeMatTile) end\n");
+#endif
+
+	return resultMat;
+}
+
 std::vector<cv::Scalar> psn::GenerateColors(unsigned int numColor)
 {
 	// refer: http://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
@@ -674,9 +870,9 @@ void psn::printLog(const char *filename, const char *strLog)
 		fprintf(fp, strPrint);
 		fclose(fp);
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR] cannot open logging file! error code %d\n", dwError);
+		printf("[ERROR] cannot open logging file! error code %d\n", error);
 		return;
 	}
 }
@@ -706,275 +902,7 @@ std::string psn::MakeTrackIDList(PSN_TrackSet *tracks)
 	return strResult;
 }
 
-/////////////////////////////////////////////////////////////////////////
-// CPointSmoother MEMBER FUNCTIONS
-/////////////////////////////////////////////////////////////////////////
-CPointSmoother::CPointSmoother(void)
-{
-}
-
-CPointSmoother::~CPointSmoother(void)
-{
-}
-
-int CPointSmoother::Insert(PSN_Point3D &point)
-{
-	int refreshPos = smootherX_.Insert(point.x);
-	smootherY_.Insert(point.y);
-	smootherZ_.Insert(point.z);
-
-	// smoothing
-	this->Update(refreshPos, 1);
-
-	return refreshPos;
-}
-
-int CPointSmoother::Insert(std::vector<PSN_Point3D> &points)
-{
-	std::vector<double> pointsX(points.size(), 0.0), pointsY(points.size(), 0.0), pointsZ(points.size(), 0.0);
-	for (int pointIdx = 0; pointIdx < points.size(); pointIdx++)
-	{
-		pointsX[pointIdx] = points[pointIdx].x;
-		pointsY[pointIdx] = points[pointIdx].y;
-		pointsZ[pointIdx] = points[pointIdx].z;
-	}
-	int refreshPos = smootherX_.Insert(pointsX);
-	smootherY_.Insert(pointsY);
-	smootherZ_.Insert(pointsZ);
-
-	// smoothing
-	this->Update(refreshPos, (int)points.size());
-
-	return refreshPos;
-}
-
-PSN_Point3D CPointSmoother::GetResult(int pos)
-{
-	assert(pos < smoothedPoints_.size());
-	return smoothedPoints_[pos];
-}
-
-std::vector<PSN_Point3D> CPointSmoother::GetResults(int startPos, int endPos)
-{
-	if (endPos < 0) { endPos = (int)smoothedPoints_.size(); }
-	assert(endPos <= smoothedPoints_.size() && startPos <= endPos);
-	std::vector<PSN_Point3D> results;
-	results.insert(results.end(), smoothedPoints_.begin() + startPos, smoothedPoints_.begin() + endPos);
-	return results;
-}
-
-void CPointSmoother::Update(int refreshPos, int numPoints)
-{
-	int endPos = (int)smoothedPoints_.size() + numPoints;
-	smoothedPoints_.erase(smoothedPoints_.begin() + refreshPos, smoothedPoints_.end());
-	for (int pos = refreshPos; pos < endPos; pos++)
-	{
-		smoothedPoints_.push_back(PSN_Point3D(smootherX_.GetResult(pos), smootherY_.GetResult(pos), smootherZ_.GetResult(pos)));
-	}
-	size_ = smoothedPoints_.size();
-	back_ = &smoothedPoints_.back();
-}
-
-/////////////////////////////////////////////////////////////////////////
-// CPSNWhere_Manager
-/////////////////////////////////////////////////////////////////////////
-
-/************************************************************************
- Method Name: CPSNWhere_Manager
- Description: 
-	- 클래스 생성자
- Input Arguments:
-	-
-	-
- Return Values:
-	- class instance
-************************************************************************/
-CPSNWhere_Manager::CPSNWhere_Manager(void)
-{
-}
-
-
-/************************************************************************
- Method Name: ~CPSNWhere_Manager
- Description: 
-	- 클래스 종료자
- Input Arguments:
-	-
-	-
- Return Values:
-	- none
-************************************************************************/
-CPSNWhere_Manager::~CPSNWhere_Manager(void)
-{
-}
-
-
-/************************************************************************
- Method Name: printLog
- Description: 
-	- print out log file
- Input Arguments:
-	- filename: file path
-	- strLog: log string
- Return Values:
-	- none
-************************************************************************/
-void CPSNWhere_Manager::printLog(const char *filename, const char *strLog)
-{
-	char strPrint[128];
-	sprintf_s(strPrint, "%s\n", strLog);
-		
-	try
-	{
-		FILE *fp;
-		fopen_s(&fp, filename, "a");
-		fprintf(fp, strPrint);
-		fclose(fp);
-	}
-	catch(DWORD dwError)
-	{
-		printf("[ERROR] cannot open logging file! error code %d\n", dwError);
-		return;
-	}
-}
-
-
-/************************************************************************
- Method Name: Triangulation
- Description: 
-	- 
- Input Arguments:
-	- 
- Return Values:
-	- 
-************************************************************************/
-double CPSNWhere_Manager::Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoint3D)
-{
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Associator3D](DistanceBackProjectionLine) start\n");
-#endif
-	
-	PSN_Point3D line1Direct = line1.first - line1.second;
-	PSN_Point3D line2Direct = line2.first - line2.second;
-	PSN_Point3D lineOffset = line2.second - line1.second;
-
-	cv::Mat matA(2, 2, CV_32FC1);
-	matA.at<float>(0, 0) = (float)line1Direct.dot(line1Direct);
-	matA.at<float>(0, 1) = (float)line1Direct.dot(-line2Direct);
-	matA.at<float>(1, 0) = (float)line2Direct.dot(line1Direct);
-	matA.at<float>(1, 1) = (float)line2Direct.dot(-line2Direct);
-	
-	cv::Mat vecB(2, 1, CV_32FC1);
-	vecB.at<float>(0, 0) = (float)line1Direct.dot(lineOffset);
-	vecB.at<float>(1, 0) = (float)line2Direct.dot(lineOffset);
-
-	cv::Mat vecT = matA.inv() * vecB;
-
-	line1Direct *= (double)vecT.at<float>(0, 0);
-	line2Direct *= (double)vecT.at<float>(1, 0);
-	PSN_Point3D closePoint1 = line1.second + line1Direct;
-	PSN_Point3D closePoint2 = line2.second + line2Direct;
-
-	midPoint3D = (closePoint1 + closePoint2) / 2;
-
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Associator3D](DistanceBackProjectionLine) return:%f\n", fDistance);
-#endif
-	return (closePoint1 - closePoint2).norm_L2();
-}
-
-
-/************************************************************************
- Method Name: MakeMatTile
- Description: 
-	- Make one result image for multi-camera input for visualization
- Input Arguments:
-	- imageArray: 
-	- numRows: number of rows in tile image
-	- numCols: number of colums in tile image
- Return Values:
-	- cv::Mat: result image
-************************************************************************/
-cv::Mat CPSNWhere_Manager::MakeMatTile(std::vector<cv::Mat> *imageArray, unsigned int numRows, unsigned int numCols)
-{
-
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Manager](MakeMatTile) start\n");
-#endif
-	// column first arrangement
-	unsigned int numImage = (unsigned int)imageArray->size();	
-	unsigned int acturalNumCols = numImage < numCols ? numImage : numCols;
-	unsigned int acturalNumRows = (0 == numImage % numCols) ? numImage / numCols : numImage / numCols + 1;
-
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Manager](MakeMatTile) numImage:%d, numRows:%d, numCols:%d\n", numImage, acturalNumRows, acturalNumCols);
-#endif
-
-	// find maximum size image
-	cv::Size maxSize = (*imageArray)[0].size();
-	for(unsigned int imageIdx = 0; imageIdx < numImage; imageIdx++)
-	{
-		if((*imageArray)[imageIdx].rows > maxSize.height){ maxSize.height = (*imageArray)[imageIdx].rows; }
-		if((*imageArray)[imageIdx].cols > maxSize.width){ maxSize.width = (*imageArray)[imageIdx].cols; }
-	}
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Manager](MakeMatTile) maxWidth:%d, maxHeight:%d\n", maxSize.width, maxSize.height);
-#endif
-
-	// make augmenting matrix
-	std::vector<cv::Mat> augMats;
-	cv::Mat baseMat;
-	if(1 == (*imageArray)[0].channels()){	baseMat = cv::Mat::zeros(maxSize, CV_8UC1); }
-	else{ baseMat = cv::Mat::zeros(maxSize, CV_8UC3); }	
-	//for(unsigned int imageIdx = 0; imageIdx < numImage; imageIdx++)
-	//{
-	//	cv::Mat augMat = baseMat.clone();
-	//	(*imageArray)[imageIdx].copyTo(augMat(cv::Rect(0, 0, (*imageArray)[imageIdx].cols, (*imageArray)[imageIdx].rows)));
-	//	augMats.push_back(augMat);
-	//}
-	unsigned int numAugMats = acturalNumRows * acturalNumCols;
-	for(unsigned int imageIdx = 0; imageIdx < numAugMats; imageIdx++)
-	{
-		cv::Mat augMat = baseMat.clone();
-		if(imageIdx < numImage)
-		{
-			(*imageArray)[imageIdx].copyTo(augMat(cv::Rect(0, 0, (*imageArray)[imageIdx].cols, (*imageArray)[imageIdx].rows)));
-		}
-		augMats.push_back(augMat);
-	}
-
-	// matrix concatenation
-	cv::Mat hConcatMat;
-	cv::Mat resultMat;
-	for(unsigned int rowIdx = 0; rowIdx < acturalNumRows; rowIdx++)
-	{
-		unsigned int startIdx = rowIdx * acturalNumCols;		
-		for(unsigned int colIdx = 0; colIdx < acturalNumCols; colIdx++)
-		{
-			if(0 == colIdx)
-			{
-				hConcatMat = augMats[startIdx].clone();
-				continue;
-			}
-			cv::hconcat(hConcatMat, augMats[startIdx + colIdx], hConcatMat);
-		}
-
-		if(0 == rowIdx)
-		{
-			resultMat = hConcatMat.clone();
-			continue;
-		}
-		cv::vconcat(resultMat, hConcatMat, resultMat);
-	}
-
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Manager](MakeMatTile) end\n");
-#endif
-
-	return resultMat;
-}
-
-std::vector<stDetection> CPSNWhere_Manager::ReadDetectionResultWithTxt(std::string strDatasetPath, unsigned int camIdx, unsigned int frameIdx) {
+std::vector<stDetection> psn::ReadDetectionResultWithTxt(std::string strDatasetPath, unsigned int camIdx, unsigned int frameIdx) {
 	std::vector<stDetection> vec_result;
 	char textfile_path[128];
 	int num_detection = 0;
@@ -1073,13 +1001,13 @@ std::vector<stDetection> CPSNWhere_Manager::ReadDetectionResultWithTxt(std::stri
 		default:
 			break;
 		}
-	} catch(DWORD dwError) {
-		printf("[ERROR] file open error with detection result reading: %d\n", dwError);
+	} catch(int error) {
+		printf("[ERROR] file open error with detection result reading: %d\n", error);
 	}
 	return vec_result;
 }
 
-std::vector<stTrack2DResult> CPSNWhere_Manager::Read2DTrackResultWithTxt(std::string strDatasetPath, unsigned int frameIdx)
+std::vector<stTrack2DResult> psn::Read2DTrackResultWithTxt(std::string strDatasetPath, unsigned int frameIdx)
 {
 	std::vector<stTrack2DResult> resultSet;
 	unsigned int inCamIdx = 0, inFrameIdx = 0;

@@ -1,4 +1,5 @@
 #include "Evaluator.h"
+#include <iostream>
 #include <numeric>
 
 //#define CROP_ZONE_X_MIN (-14069.6)
@@ -84,9 +85,9 @@ void CEvaluator::Initialize(std::string strFilepath)
 
 		fclose(fp);
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR] cannot open data. error code %d\n", dwError);
+		printf("[ERROR] cannot open data. error code %d\n", error);
 	}
 
 	// cropzone setting
@@ -222,9 +223,9 @@ void CEvaluator::LoadResultFromText(std::string strFilepath)
 
 		fclose(fp);
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR] cannot open data. error code %d\n", dwError);
+		printf("[ERROR] cannot open data. error code %d\n", error);
 	}
 }
 
@@ -641,9 +642,9 @@ void CEvaluator::PrintResultToFile(const char *strFilepathAndName)
 			this->m_fMOTP * 100, 
 			this->m_fMOTAL * 100);
 	}
-	catch (DWORD dwError)
+	catch (int error)
 	{
-		printf("[ERROR](PrintResultToFile) cannot open file! error code %d\n", dwError);
+		printf("[ERROR](PrintResultToFile) cannot open file! error code %d\n", error);
 		return;
 	}
 }
@@ -679,9 +680,9 @@ void CEvaluator::PrintResultMatrix(const char *strFilepathAndName)
 
 		fclose(fp);
 	}
-	catch (DWORD dwError)
+	catch (int error)
 	{
-		printf("[ERROR](PrintResultMatrix) cannot open file! error code %d\n", dwError);
+		printf("[ERROR](PrintResultMatrix) cannot open file! error code %d\n", error);
 		return;
 	}
 }

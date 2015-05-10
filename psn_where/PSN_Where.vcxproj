@@ -184,7 +184,7 @@
     <ClInclude Include="PSNWhere.h" />
     <ClInclude Include="PSNWhere_Associator3D.h" />
     <ClInclude Include="PSNWhere_Defines.h" />
-    <ClInclude Include="PSNWhere_Manager.h" />
+    <ClInclude Include="PSNWhere_Utils.h" />
     <ClInclude Include="PSNWhere_SGSmooth.h" />
     <ClInclude Include="PSNWhere_Tracker2D.h" />
     <ClInclude Include="PSNWhere_Types.h" />
@@ -199,7 +199,7 @@
     <ClCompile Include="PSNWhere.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="PSNWhere_Associator3D.cpp" />
-    <ClCompile Include="PSNWhere_Manager.cpp" />
+    <ClCompile Include="PSNWhere_Utils.cpp" />
     <ClCompile Include="PSNWhere_SGSmooth.cpp" />
     <ClCompile Include="PSNWhere_Tracker2D.cpp" />
     <ClCompile Include="PSNWhere_Types.cpp" />

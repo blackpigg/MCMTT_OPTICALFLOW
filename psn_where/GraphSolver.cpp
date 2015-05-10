@@ -1,7 +1,7 @@
 #define NOMINMAX // for preventing using window's minmax functions
 
+//#include "stdafx.h"
 #include "GraphSolver.h"
-#include "stdafx.h"
 #include <algorithm>
 #include <time.h>
 #include "PSNWhere_Defines.h"
@@ -72,9 +72,9 @@ bool PSN_Graph::Clear()
 		this->m_nNewID = 0;
 		return true;
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR] Error is occured at Clear!!: %d\n", dwError);
+		printf("[ERROR] Error is occured at Clear!!: %d\n", error);
 	}
 	return false;
 }
@@ -111,9 +111,9 @@ bool PSN_Graph::AddEdge(PSN_GraphVertex* vertex1, PSN_GraphVertex* vertex2)
 			return true;
 		}
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR] Error is occured at AddEdge!!: %d\n", dwError);
+		printf("[ERROR] Error is occured at AddEdge!!: %d\n", error);
 	}
 	return false;
 }
@@ -156,9 +156,9 @@ bool PSN_Graph::Update(void)
 			this->m_nNumVertex--;
 		}
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR] Error is occured at Update!!: %d\n", dwError);
+		printf("[ERROR] Error is occured at Update!!: %d\n", error);
 		return false;
 	}
 
@@ -193,9 +193,9 @@ bool PSN_Graph::SetWeight(PSN_GraphVertex* vertex, double weight)
 			return true;
 		}
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR] Error is occured at SetWeight!!: %d\n", dwError);
+		printf("[ERROR] Error is occured at SetWeight!!: %d\n", error);
 	}
 	return false;
 }
@@ -209,9 +209,9 @@ double PSN_Graph::GetWeight(PSN_GraphVertex* vertex)
 			return vertex->weight;
 		}
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR] Error is occured at GetWeight!!: %d\n", dwError);
+		printf("[ERROR] Error is occured at GetWeight!!: %d\n", error);
 	}
 	return 0.0;
 }
@@ -1364,9 +1364,9 @@ void CGraphSolver::LoadGraphResult(size_t frameIdx, PSN_Graph *pGraph, std::dequ
 
 		fclose(fp);
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR] error is occured at \"PrintfGraphResult\": %d\n", dwError);
+		printf("[ERROR] error is occured at \"PrintfGraphResult\": %d\n", error);
 	}
 }
 

@@ -77,8 +77,6 @@
  *                                                        ""?????""
  *
  ******************************************************************************/
-
-
 #pragma once
 
 //#include "PSNWhere_Manager.h"
@@ -151,6 +149,7 @@ private:
 	void Track3D_UpdateTracks(void);
 	void Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeedTracks);
 	void Track3D_BranchTracks(PSN_TrackSet *seedTracks);
+	void InsertReconstruction(Track3D *track, stReconstruction &reconstruction);
 	PSN_TrackSet Track3D_GetWholeCandidateTracks(void);
 
 	//void Track3D_SolveHOMHT(void);
@@ -162,9 +161,10 @@ private:
 	// cost calculation
 	double ComputeEnterProbability(std::vector<PSN_Point2D_CamIdx> &vecPointInfos);
 	double ComputeExitProbability(std::vector<PSN_Point2D_CamIdx> &vecPointInfos);
-	static double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, double preSensitivity, double curSensitivity, unsigned int timeGap);
+	static double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, unsigned int timeGap);
 	double ComputeRGBCost(const cv::Mat *feature1, const cv::Mat *feature2, unsigned int timeGap);
 	double ComputeTrackletLinkCost(PSN_Point3D preLocation, PSN_Point3D curLocation, int timeGap);
+	//double ComputeReconstructionCost(double fDistance, int numPoints, double maxError, double detectionProbabilityRatio);
 
 	// miscellaneous
 	static bool CheckIncompatibility(Track3D *track1, Track3D *track2);

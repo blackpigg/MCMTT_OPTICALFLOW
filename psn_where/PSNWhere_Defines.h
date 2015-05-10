@@ -15,8 +15,11 @@
 //#define LOAD_SNAPSHOT_
 
 //#define SAVE_SNAPSHOT_
-#define DO_RECORD
+//#define DO_RECORD
 #define SHOW_TOPVIEW
+
+// display for 2D tracking
+//#define PSN_2D_DEBUG_DISPLAY_
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -43,9 +46,6 @@
 	#define NUM_CAM (3)
 	const unsigned int CAM_ID[NUM_CAM] = {1, 5, 7};
 #endif
-
-#define NUM_DETECTION_PART (8)
-const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", "GR", "S2", "A1", "A2", "F2"};
 
 /////////////////////////////////////////////////////////////////////////
 // PREDEFINED VALUES

@@ -9,9 +9,10 @@
 #pragma once
 
 #include <list>
-#include "cv.h"
 #include "PSNWhere_Defines.h"
+#include "PSNWhere_SGSmooth.h"
 #include "calibration\cameraModel.h"
+#include "cv.h"
 
 class PSN_Point2D
 {
@@ -250,27 +251,6 @@ typedef struct _stCalibrationInfos
 typedef std::pair<PSN_Point3D, PSN_Point3D> PSN_Line;
 typedef std::pair<PSN_Point2D, unsigned int> PSN_Point2D_CamIdx;
 
-//class CPointSmoother
-//{
-//public:
-//	CPointSmoother(void);
-//	~CPointSmoother(void);
-//	int Insert(PSN_Point3D &point);
-//	int Insert(std::vector<PSN_Point3D> &points);
-//	PSN_Point3D GetResult(int pos);
-//	std::vector<PSN_Point3D> GetResults(int startPos, int endPos = -1);
-//	size_t size(void) const { return size_; }
-//	PSN_Point3D back(void) const { return *back_; }
-//
-//private:
-//	void Update(int refreshPos, int numPoints);
-//
-//	size_t size_;
-//	PSN_Point3D *back_;
-//	CPSNWhere_SGSmooth smootherX_, smootherY_, smootherZ_;	
-//	std::deque<PSN_Point3D> smoothedPoints_;
-//};
-
 class TrackTree;
 struct stTracklet2D
 {
@@ -330,21 +310,45 @@ struct stReconstruction
 {
 	bool bIsMeasurement;
 	CTrackletSet tracklet2Ds;
+	std::vector<PSN_Point3D> rawPoints;
 	PSN_Point3D point;
+	PSN_Point3D smoothedPoint;
 	PSN_Point3D velocity;
-	double averageSensitivity;
+	double detectionProbabilityRatio;
 	double costReconstruction;
+	double costSmoothedPoint;
 	double costLink;
+};
+
+class CPointSmoother
+{
+public:
+	CPointSmoother(void);
+	~CPointSmoother(void);
+	int Insert(PSN_Point3D &point);
+	int Insert(std::vector<PSN_Point3D> &points);
+	PSN_Point3D GetResult(int pos);
+	std::vector<PSN_Point3D> GetResults(int startPos, int endPos = -1);
+	size_t size(void) const { return size_; }
+	PSN_Point3D back(void) const { return *back_; }
+
+private:
+	void Update(int refreshPos, int numPoints);
+
+	size_t size_;
+	PSN_Point3D *back_;
+	CPSNWhere_SGSmooth smootherX_, smootherY_, smootherZ_;	
+	std::deque<PSN_Point3D> smoothedPoints_;
 };
 
 struct stTrackIndexElement;
 class Track3D
 {
 public:
-	Track3D(unsigned int id, Track3D *parentTrack, unsigned int timeGeneration, CTrackletSet &trackletCombination);
+	Track3D();
 	~Track3D();
-
-	//void Initialize(unsigned int id, Track3D *parentTrack, unsigned int timeGeneration, CTrackletSet &trackletCombination);
+	void Initialize(unsigned int id, Track3D *parentTrack, unsigned int timeGeneration, CTrackletSet &trackletSet);
+	int InsertReconstruction(stReconstruction &reconstruction);
 	void RemoveFromTree();
 	static std::deque<Track3D*> GatherValidChildrenTracks(Track3D* validParentTrack, std::deque<Track3D*> &targetChildrenTracks);
 	double GetCost(void);
@@ -353,26 +357,24 @@ public:
 	CTrackletSet curTracklet2Ds;
 	std::deque<unsigned int> tracklet2DIDs[NUM_CAM];
 	PSN_Point3D trackletLastLocation3D[NUM_CAM];
-	bool bActive;		// for update and branching
-	bool bValid;		// for deletion
-
+	bool bActive;	// for update and branching
+	bool bValid;	// for deletion
+	bool bNewTrack; // for HO-MHT
+	bool bWasBestSolution;
+	bool bCurrentBestSolution;	
 	// for tree
 	TrackTree *tree;
 	Track3D *parentTrack;
-	std::deque<Track3D*> childrenTrack;
-	
+	std::deque<Track3D*> childrenTrack;	
 	// temporal information
 	unsigned int timeStart;
 	unsigned int timeEnd;
 	unsigned int timeGeneration;
 	unsigned int duration;
-
 	// reconstruction related
 	std::deque<stReconstruction> reconstructions;
-
-	// trajectory related
-	std::deque<PSN_Point3D> smoothedTrajectory;
-
+	// trajectory related	
+	CPointSmoother pointSmoother;
 	// cost
 	double costTotal;
 	double costReconstruction;
@@ -380,19 +382,10 @@ public:
 	double costEnter;
 	double costExit;
 	double costRGB;
-
 	// loglikelihood
 	double loglikelihood;
-
 	// global track probability
 	double GTProb;
-	double BranchGTProb;
-	bool bWasBestSolution;
-	bool bCurrentBestSolution;
-
-	// HO-HMT
-	bool bNewTrack;	
-
 	// appearance
 	cv::Mat lastRGBFeature[NUM_CAM];
 	unsigned int timeTrackletEnded[NUM_CAM];
@@ -421,20 +414,14 @@ public:
 	unsigned int timeGeneration;
 	bool bValid;
 	std::deque<Track3D*> tracks; // seed at the first
-
 	unsigned int numMeasurements;
 	std::deque<stTracklet2DInfo> tracklet2Ds[NUM_CAM];
-
-	// pruning related
-	//double maxGTProb;
-
 public:
 	TrackTree();
 	~TrackTree();
-
 	void Initialize(unsigned int id, Track3D *seedTrack, unsigned int timeGeneration, std::list<TrackTree> &treeList);
+	void InsertTrack(Track3D *track);
 	void ResetGlobalTrackProbInTree();
-
 	Track3D* FindPruningPoint(unsigned int timeWindowStart, Track3D *rootOfBranch = NULL);
 	static bool CheckBranchContainsBestSolution(Track3D *rootOfBranch);
 	static void SetValidityFlagInTrackBranch(Track3D* rootOfBranch, bool bValid);	

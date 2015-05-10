@@ -1,5 +1,7 @@
-#include "PSNWhere_Manager.h"
 #pragma once
+
+#include <string>
+#include "PSNWhere_Types.h"
 
 typedef std::pair<unsigned int, PSN_Point3D> pointInfo;
 typedef std::deque<pointInfo> pointInfoSet;

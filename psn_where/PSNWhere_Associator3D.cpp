@@ -3,12 +3,15 @@ NOTES:
  - There are some inaccurate calculations in 3D point reconstruction and vision prior
  at branching stage for conveniency for computing.
 **************************************************************************************/
+#define NOMINMAX // for preventing using window's minmax functions
+
+#include "PSNWhere_Associator3D.h"
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <omp.h>
-#include "PSNWhere_Associator3D.h"
-#include "Helpers\PSNWhere_Hungarian.h"
+#include "PSNWhere_Utils.h"
+#include "Helpers/PSNWhere_Hungarian.h"
 
 /////////////////////////////////////////////////////////////////////////
 // PARAMETERS (unit: mm)
@@ -709,9 +712,9 @@ bool CPSNWhere_Associator3D::ReadProjectionSensitivity(cv::Mat &matSensitivity, 
 		fclose(fp);
 		return true;
 	}
-	catch (DWORD dwError)
+	catch (int error)
 	{
-		printf("[ERROR] cannot open projection sensitivity matrix of camera %d! error code %d\n", CAM_ID[camIdx], dwError);
+		printf("[ERROR] cannot open projection sensitivity matrix of camera %d! error code %d\n", CAM_ID[camIdx], error);
 	}
 	return false;
 }
@@ -757,9 +760,9 @@ bool CPSNWhere_Associator3D::ReadDistanceFromBoundary(cv::Mat &matDistance, unsi
 		fclose(fp);
 		return true;
 	}
-	catch (DWORD dwError)
+	catch (int error)
 	{
-		printf("[ERROR] cannot open distance from boundary matrix of camera %d! error code %d\n", CAM_ID[camIdx], dwError);
+		printf("[ERROR] cannot open distance from boundary matrix of camera %d! error code %d\n", CAM_ID[camIdx], error);
 	}
 	return false;
 }
@@ -830,8 +833,9 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletSet &track
 	stReconstruction resultReconstruction;
 	resultReconstruction.bIsMeasurement = false;
 	resultReconstruction.point = PSN_Point3D(0.0, 0.0, 0.0);
-	resultReconstruction.averageSensitivity = 0.0;
+	resultReconstruction.smoothedPoint = PSN_Point3D(0.0, 0.0, 0.0);
 	resultReconstruction.costReconstruction = DBL_MAX;
+	resultReconstruction.costSmoothedPoint = DBL_MAX;
 	resultReconstruction.costLink = 0.0;
 	resultReconstruction.velocity = PSN_Point3D(0.0, 0.0, 0.0);
 	
@@ -851,26 +855,46 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletSet &track
 	{
 	case 1:
 		// Full-body
-		{						
-			std::vector<PSN_Point2D_CamIdx> vecPointInfos;
+		{		
 			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
 				stTracklet2D *curTracklet = resultReconstruction.tracklet2Ds.get(camIdx);
 				if (NULL == curTracklet) { continue; }
-
 				curPoint = curTracklet->rects.back().reconstructionPoint();
-				vecPointInfos.push_back(PSN_Point2D_CamIdx(curPoint, camIdx));
-				//maxError += E_DET * matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
-
-				// sensitivity
-				resultReconstruction.averageSensitivity += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+				PSN_Point3D curPoint3D = this->ImageToWorld(curPoint, 0.0, camIdx);
+				resultReconstruction.rawPoints.push_back(curPoint3D);
+				resultReconstruction.point += curPoint3D;
 			}
-			if (CONSIDER_SENSITIVITY)
-				maxError = MAX_TRACKLET_SENSITIVITY_ERROR;
-			else
-				maxError = (double)MAX_BODY_WIDHT / 2.0;
-			fDistance = this->NViewGroundingPointReconstruction(vecPointInfos, resultReconstruction.point);
+			resultReconstruction.point /= (double)resultReconstruction.rawPoints.size();
+			fDistance = 0.0;
+			for (int pointIdx = 0; pointIdx < resultReconstruction.rawPoints.size(); pointIdx++)
+			{
+				fDistance += (resultReconstruction.rawPoints[pointIdx] - resultReconstruction.point).norm_L2();
+			}
+			fDistance /= (double)resultReconstruction.rawPoints.size();
+			maxError = (double)MAX_BODY_WIDHT / 2.0;
 		}		
+		//// Full-body
+		//{						
+		//	std::vector<PSN_Point2D_CamIdx> vecPointInfos;
+		//	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+		//	{
+		//		stTracklet2D *curTracklet = resultReconstruction.tracklet2Ds.get(camIdx);
+		//		if (NULL == curTracklet) { continue; }
+
+		//		curPoint = curTracklet->rects.back().reconstructionPoint();
+		//		vecPointInfos.push_back(PSN_Point2D_CamIdx(curPoint, camIdx));
+		//		//maxError += E_DET * matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+
+		//		//// sensitivity
+		//		//resultReconstruction.averageSensitivity += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+		//	}
+		//	if (CONSIDER_SENSITIVITY)
+		//		maxError = MAX_TRACKLET_SENSITIVITY_ERROR;
+		//	else
+		//		maxError = (double)MAX_BODY_WIDHT / 2.0;
+		//	fDistance = this->NViewGroundingPointReconstruction(vecPointInfos, resultReconstruction.point);
+		//}		
 		break;
 	default:
 		// Head
@@ -887,15 +911,15 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletSet &track
 				vecBackprojectionLines.push_back(curLine);
 				maxError += E_DET * matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 
-				// sensitivity
-				resultReconstruction.averageSensitivity += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+				//// sensitivity
+				//resultReconstruction.averageSensitivity += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 			}
 			fDistance = this->NViewPointReconstruction(vecBackprojectionLines, resultReconstruction.point);
 		}
 		break;
 	}
-	// sensitivity
-	resultReconstruction.averageSensitivity /= (double)tracklet2Ds.size();
+	//// sensitivity
+	//resultReconstruction.averageSensitivity /= (double)tracklet2Ds.size();
 
 	if (2 > tracklet2Ds.size())
 	{
@@ -923,6 +947,7 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletSet &track
 		// positive
 		fDetectionProbabilityRatio *= (1 - FP_RATE) / FP_RATE;
 	}
+	resultReconstruction.detectionProbabilityRatio = fDetectionProbabilityRatio;
 	// reconstruction cost
 	resultReconstruction.costReconstruction = log(1 - probabilityReconstruction) - log(probabilityReconstruction) - log(fDetectionProbabilityRatio);
 
@@ -1483,42 +1508,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 
 		// point reconstruction and cost update
 		stReconstruction curReconstruction = this->PointReconstruction(curTrack->curTracklet2Ds);
-
-		//double curLinkProbability = ComputeLinkProbability(curTrack->reconstructions.back().point + curTrack->reconstructions.back().velocity, curReconstruction.point, 1);
-		double curLinkProbability = ComputeLinkProbability(
-			curTrack->reconstructions.back().point, 
-			curReconstruction.point, 
-			curTrack->reconstructions.back().averageSensitivity, 
-			curReconstruction.averageSensitivity, 
-			1);
-		if (DBL_MAX == curReconstruction.costReconstruction || MIN_LINKING_PROBABILITY > curLinkProbability)
-		{
-			// invalidate track			
-			curTrack->bValid = false;			
-			//this->SetValidityFlagInTrackBranch(curTrack, false);
-			continue;
-		}
-		curReconstruction.costLink = -log(curLinkProbability);
-		curTrack->costReconstruction += curReconstruction.costReconstruction;
-		curTrack->costLink += curReconstruction.costLink;
-
-		// velocity update
-		curReconstruction.velocity = curTrack->reconstructions.back().velocity * (1 - VELOCITY_LEARNING_RATE) + (curReconstruction.point - curTrack->reconstructions.back().point) * VELOCITY_LEARNING_RATE;
-
-		//// update Kalman Filter
-		//PSN_Point3D curPoint = curReconstruction.point;	
-		//cv::Mat curPrediction = curTrack->KF.predict();
-		//curTrack->KFMeasurement.at<float>(0, 0) = (float)curPoint.x;
-		//curTrack->KFMeasurement.at<float>(1, 0) = (float)curPoint.y;
-		//curTrack->KFMeasurement.at<float>(2, 0) = (float)curPoint.z;
-		//curTrack->KF.correct(curTrack->KFMeasurement);
-
-		//// refinement with Kalman filter estimation
-		//curPoint.x = (double)curTrack->KF.statePost.at<float>(0, 0);
-		//curPoint.y = (double)curTrack->KF.statePost.at<float>(1, 0);
-		//curPoint.z = (double)curTrack->KF.statePost.at<float>(2, 0);
-		//curReconstruction.point = curPoint;
-		curTrack->reconstructions.push_back(curReconstruction);
+		InsertReconstruction(curTrack, curReconstruction);
 
 		// increase iterator
 		queueNewTracks.push_back(curTrack);
@@ -1568,7 +1558,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		dummyReconstruction.point = (*trackIter)->reconstructions.back().point;
 		dummyReconstruction.costLink = 0.0;
 		dummyReconstruction.costReconstruction = 0.0;
-		dummyReconstruction.averageSensitivity = 0.0;
+		//dummyReconstruction.averageSensitivity = 0.0;
 		dummyReconstruction.velocity = PSN_Point3D(0.0, 0.0, 0.0);
 		(*trackIter)->reconstructions.push_back(dummyReconstruction);
 						
@@ -1621,7 +1611,6 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		{
 			GTPSum += (*trackIter)->GTProb;
 			// reset fields for optimization
-			(*trackIter)->BranchGTProb = 0.0;
 			(*trackIter)->GTProb = 0.0;
 			(*trackIter)->bCurrentBestSolution = false;
 
@@ -1930,7 +1919,8 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 
 			// generate a new track with branching combination
 			Track3D newTrack;
-			newTrack.id = nNewTrackID_;
+			newTrack.Initialize(nNewTrackID_, *trackIter, nCurrentFrameIdx_, curCombination);
+			//newTrack.id = nNewTrackID_;
 			newTrack.curTracklet2Ds = *branchIter;			
 
 			// reconstruction
@@ -1943,12 +1933,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			stReconstruction oldReconstruction = (*trackIter)->reconstructions.back();
 			stReconstruction preReconstruction = (*trackIter)->reconstructions[(*trackIter)->reconstructions.size()-2];
 			//double curLinkProbability = ComputeLinkProbability(preReconstruction.point + preReconstruction.velocity, curReconstruction.point, 1);
-			double curLinkProbability = ComputeLinkProbability(
-				preReconstruction.point, 
-				curReconstruction.point,
-				preReconstruction.averageSensitivity,
-				curReconstruction.averageSensitivity,
-				1);
+			double curLinkProbability = ComputeLinkProbability(preReconstruction.point, curReconstruction.point, 1);
 			if (MIN_LINKING_PROBABILITY > curLinkProbability) {	continue; }
 			curReconstruction.costLink = -log(curLinkProbability);
 			costReconstructionIncrease += curReconstruction.costReconstruction - oldReconstruction.costReconstruction;
@@ -2069,12 +2054,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			////////////////////////////////////////////////////////////////////////
 			unsigned int timeGap = seedTrack->timeStart - curTrack->timeEnd;
 			stReconstruction lastMeasurementReconstruction = curTrack->reconstructions[curTrack->timeEnd - curTrack->timeStart];
-			double curLinkProbability = ComputeLinkProbability(
-				lastMeasurementReconstruction.point, 
-				seedTrack->reconstructions.front().point, 
-				lastMeasurementReconstruction.averageSensitivity,
-				seedTrack->reconstructions.front().averageSensitivity,
-				timeGap);
+			double curLinkProbability = ComputeLinkProbability(lastMeasurementReconstruction.point, seedTrack->reconstructions.front().point, timeGap);
 			if (MIN_LINKING_PROBABILITY > curLinkProbability) { continue; }
 			lengthValidReconstructions += timeGap - 1;
 
@@ -2219,6 +2199,90 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
  Return Values:
 	- PSN_TrackSet: selected tracks
 ************************************************************************/
+void CPSNWhere_Associator3D::InsertReconstruction(Track3D *track, stReconstruction &reconstruction)
+{
+	int refreshPosition = track->InsertReconstruction(reconstruction);
+	double maxError = (double)MAX_BODY_WIDHT / 2.0;
+	track->timeEnd = nCurrentFrameIdx_;
+	track->duration = (unsigned int)track->reconstructions.size();
+	for (int pos = refreshPosition; pos < (int)track->duration; pos++)
+	{
+		// reconstruction cost update
+		double fDistance = 0.0;
+		int numPoints = (int)track->reconstructions[pos].rawPoints.size();
+		for (int pointIdx = 0; pointIdx < numPoints; pointIdx++)
+		{
+			fDistance += (track->reconstructions[pos].rawPoints[pointIdx] - track->reconstructions[pos].smoothedPoint).norm_L2();
+		}
+		fDistance /= (double)numPoints;
+		double probabilityReconstruction = 1 == numPoints? 0.5 : 0.5 * psn::erfc(4.0 * fDistance / maxError - 2.0);
+	
+		// detection probability
+		double fDetectionProbabilityRatio = 1.0;
+		for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+		{
+			if (!this->CheckVisibility(track->reconstructions[pos].smoothedPoint, camIdx)) { continue; }
+			if (NULL == track->reconstructions[pos].tracklet2Ds.get(camIdx))
+			{
+				// false negative
+				fDetectionProbabilityRatio *= FN_RATE / (1 - FN_RATE);
+				continue;
+			}
+			// positive
+			fDetectionProbabilityRatio *= (1 - FP_RATE) / FP_RATE;
+		}
+		track->reconstructions[pos].costSmoothedPoint = log(1 - probabilityReconstruction) - log(probabilityReconstruction) - log(fDetectionProbabilityRatio);	
+		track->costReconstruction += track->reconstructions[pos].costSmoothedPoint - track->reconstructions[pos].costReconstruction;
+		
+		// linking cost update
+		double linkCost = track->reconstructions[pos].costLink;
+		if (0 == pos)
+	}
+
+
+
+
+		//double curLinkProbability = ComputeLinkProbability(curTrack->reconstructions.back().point + curTrack->reconstructions.back().velocity, curReconstruction.point, 1);
+		double curLinkProbability = ComputeLinkProbability(curTrack->reconstructions.back().point, curReconstruction.point, 1);
+		if (DBL_MAX == curReconstruction.costReconstruction || MIN_LINKING_PROBABILITY > curLinkProbability)
+		{
+			// invalidate track			
+			curTrack->bValid = false;			
+			//this->SetValidityFlagInTrackBranch(curTrack, false);
+			continue;
+		}
+		curReconstruction.costLink = -log(curLinkProbability);
+		curTrack->costReconstruction += curReconstruction.costReconstruction;
+		curTrack->costLink += curReconstruction.costLink;
+
+		// velocity update
+		curReconstruction.velocity = curTrack->reconstructions.back().velocity * (1 - VELOCITY_LEARNING_RATE) + (curReconstruction.point - curTrack->reconstructions.back().point) * VELOCITY_LEARNING_RATE;
+
+		//// update Kalman Filter
+		//PSN_Point3D curPoint = curReconstruction.point;	
+		//cv::Mat curPrediction = curTrack->KF.predict();
+		//curTrack->KFMeasurement.at<float>(0, 0) = (float)curPoint.x;
+		//curTrack->KFMeasurement.at<float>(1, 0) = (float)curPoint.y;
+		//curTrack->KFMeasurement.at<float>(2, 0) = (float)curPoint.z;
+		//curTrack->KF.correct(curTrack->KFMeasurement);
+
+		//// refinement with Kalman filter estimation
+		//curPoint.x = (double)curTrack->KF.statePost.at<float>(0, 0);
+		//curPoint.y = (double)curTrack->KF.statePost.at<float>(1, 0);
+		//curPoint.z = (double)curTrack->KF.statePost.at<float>(2, 0);
+		//curReconstruction.point = curPoint;
+		curTrack->reconstructions.push_back(curReconstruction);
+}
+
+/************************************************************************
+ Method Name: Track3D_GetWholeCandidateTracks
+ Description: 
+	- 
+ Input Arguments:
+	- 
+ Return Values:
+	- PSN_TrackSet: selected tracks
+************************************************************************/
 PSN_TrackSet CPSNWhere_Associator3D::Track3D_GetWholeCandidateTracks(void)
 {
 	return queueTracksInWindow_;
@@ -2280,12 +2344,10 @@ double CPSNWhere_Associator3D::ComputeExitProbability(std::vector<PSN_Point2D_Ca
  Return Values:
 	- 
 ************************************************************************/
-double CPSNWhere_Associator3D::ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, double preSensitivity, double curSensitivity, unsigned int timeGap)
+double CPSNWhere_Associator3D::ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, unsigned int timeGap)
 {
 	double distance = (prePoint - curPoint).norm_L2();
 	double maxDistance = MAX_MOVING_SPEED * timeGap;
-	//double maxDistance = MAX_MOVING_SPEED * timeGap + E_DET * (preSensitivity + curSensitivity) / 2.0;
-	//return distance > maxDistance ? 0.0 : 0.5 * psn::erfc(4.0 * distance / maxDistance - 2.0);
 	return 0.5 * psn::erfc(4.0 * distance / maxDistance - 2.0);
 }
 
@@ -2304,6 +2366,20 @@ double CPSNWhere_Associator3D::ComputeTrackletLinkCost(PSN_Point3D preLocation, 
 	double norm2 = (preLocation - curLocation).norm_L2();
 	return norm2 > COST_TRACKLET_LINK_MIN_DIST? COST_TRACKLET_LINK_COEF * (norm2 - COST_TRACKLET_LINK_MIN_DIST) : 0.0;
 }
+
+///************************************************************************
+// Method Name: ComputeReconstructionCost
+// Description: 
+//	- 
+// Input Arguments:
+//	- 
+// Return Values:
+//	- 
+//************************************************************************/
+//double CPSNWhere_Associator3D::ComputeReconstructionCost(double fDistance, int numPoints, double maxError, double detectionProbabilityRatio)
+//{
+//	
+//}
 
 /************************************************************************
  Method Name: ComputeRGBCost
@@ -3099,9 +3175,9 @@ void CPSNWhere_Associator3D::PrintTracks(std::deque<Track3D*> &queueTracks, char
 		
 		fclose(fp);
 	}
-	catch (DWORD dwError)
+	catch (int error)
 	{
-		printf("[ERROR](PrintTracks) cannot open file! error code %d\n", dwError);
+		printf("[ERROR](PrintTracks) cannot open file! error code %d\n", error);
 		return;
 	}
 }
@@ -3161,9 +3237,9 @@ void CPSNWhere_Associator3D::PrintHypotheses(PSN_HypothesisSet &queueHypotheses,
 		}		
 		fclose(fp);
 	}
-	catch (DWORD dwError)
+	catch (int error)
 	{
-		printf("[ERROR](PrintHypotheses) cannot open file! error code %d\n", dwError);
+		printf("[ERROR](PrintHypotheses) cannot open file! error code %d\n", error);
 		return;
 	}
 }
@@ -3219,9 +3295,9 @@ void CPSNWhere_Associator3D::PrintCurrentTrackTrees(const char *strFilePath)
 		
 		fclose(fp);
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR](PrintCurrentTrackTrees) cannot open file! error code %d\n", dwError);
+		printf("[ERROR](PrintCurrentTrackTrees) cannot open file! error code %d\n", error);
 		return;
 	}
 }
@@ -3261,9 +3337,9 @@ void CPSNWhere_Associator3D::PrintResult(const char *strFilepath, std::deque<stT
 		
 		fclose(fp);
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR](PrintResult) cannot open file! error code %d\n", dwError);
+		printf("[ERROR](PrintResult) cannot open file! error code %d\n", error);
 		return;
 	}
 }
@@ -3597,10 +3673,10 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 				pointIter != curTrack->reconstructions.end();
 				pointIter++)
 			{
-				fprintf_s(fpTrack3D, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),averageSensitivity:%e,costReconstruction:%e,costLink:%e,", (int)(*pointIter).bIsMeasurement, 
+				fprintf_s(fpTrack3D, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", (int)(*pointIter).bIsMeasurement, 
 					(*pointIter).point.x, (*pointIter).point.y, (*pointIter).point.z, 
 					(*pointIter).velocity.x, (*pointIter).velocity.y, (*pointIter).velocity.z,
-					(*pointIter).averageSensitivity, (*pointIter).costReconstruction, (*pointIter).costLink);
+					(*pointIter).costReconstruction, (*pointIter).costLink);
 				fprintf_s(fpTrack3D, "tracklet2Ds:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
@@ -3634,7 +3710,7 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 
 			// GTP
 			fprintf_s(fpTrack3D, "\t\tGTProb:%e\n", curTrack->GTProb);
-			fprintf_s(fpTrack3D, "\t\tBranchGTProb:%e\n", curTrack->BranchGTProb);
+			//fprintf_s(fpTrack3D, "\t\tBranchGTProb:%e\n", curTrack->BranchGTProb);
 			fprintf_s(fpTrack3D, "\t\tbWasBestSolution:%d\n", (int)curTrack->bWasBestSolution);
 			fprintf_s(fpTrack3D, "\t\tbCurrentBestSolution:%d\n", (int)curTrack->bCurrentBestSolution);
 
@@ -3985,9 +4061,9 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 
 		fclose(fpInfo);
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR](SaveSnapShot) cannot open file! error code %d\n", dwError);
+		printf("[ERROR](SaveSnapShot) cannot open file! error code %d\n", error);
 		return;
 	}
 }
@@ -4287,12 +4363,11 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			{
 				stReconstruction newReconstruction;
 				float x, y, z, vx, vy, vz, averageSensitivity, costReconstruction, costLink;
-				fscanf_s(fpTrack, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),averageSensitivity:%e,costReconstruction:%e,costLink:%e,", 
+				fscanf_s(fpTrack, "\t\t\t%d,point:(%f,%f,%f),velocity:(%f,%f,%f),costReconstruction:%e,costLink:%e,", 
 					&readingInt, &x, &y, &z, &vx, &vy, &vz, &averageSensitivity, &costReconstruction, &costLink);
 				newReconstruction.bIsMeasurement = 0 < readingInt ? true : false;
 				newReconstruction.point = PSN_Point3D((double)x, (double)y, (double)z);
-				newReconstruction.velocity = PSN_Point3D((double)vx, (double)vy, (double)vz);
-				newReconstruction.averageSensitivity = (double)averageSensitivity;
+				newReconstruction.velocity = PSN_Point3D((double)vx, (double)vy, (double)vz);				
 				newReconstruction.costLink = (double)costLink;
 				newReconstruction.costReconstruction = (double)costReconstruction;
 
@@ -4345,8 +4420,8 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			// GTP
 			fscanf_s(fpTrack, "\t\tGTProb:%e\n", &readingFloat);
 			newTrack.GTProb = (double)readingFloat;
-			fscanf_s(fpTrack, "\t\tBranchGTProb:%e\n", &readingFloat);
-			newTrack.BranchGTProb = (double)readingFloat;
+			//fscanf_s(fpTrack, "\t\tBranchGTProb:%e\n", &readingFloat);
+			//newTrack.BranchGTProb = (double)readingFloat;
 			fscanf_s(fpTrack, "\t\tbWasBestSolution:%d\n", &readingInt);
 			newTrack.bWasBestSolution = 0 < readingInt ? true: false;
 			fscanf_s(fpTrack, "\t\tbCurrentBestSolution:%d\n", &readingInt);
@@ -5046,9 +5121,9 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 
 		fclose(fpInfo);
 	}
-	catch(DWORD dwError)
+	catch(int error)
 	{
-		printf("[ERROR](LoadSnapShot) cannot open file! error code %d\n", dwError);
+		printf("[ERROR](LoadSnapShot) cannot open file! error code %d\n", error);
 		return false;
 	}
 
@@ -5155,9 +5230,9 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 //		
 //		fclose(fp);
 //	}
-//	catch(DWORD dwError)
+//	catch(int error)
 //	{
-//		printf("[ERROR](FilePrintForAnalysis) cannot open file! error code %d\n", dwError);
+//		printf("[ERROR](FilePrintForAnalysis) cannot open file! error code %d\n", error);
 //		return;
 //	}
 //}

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "PSNWhere_Manager.h"
+#include "PSNWhere_Types.h"
+#include "opencv2\highgui\highgui.hpp"
 
 class CPSNWhere_Tracker2D;
 class CPSNWhere_Associator3D;

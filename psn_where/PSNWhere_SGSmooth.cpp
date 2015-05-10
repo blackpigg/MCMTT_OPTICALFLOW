@@ -1,8 +1,8 @@
 #include "PSNWhere_SGSmooth.h"
 #include <stdio.h>
+#include <stddef.h>
 #include <math.h>
 #include <assert.h>
-#include <cv.h>
 
 #define SGS_DEFAULT_SPAN (9)
 #define SGS_DEFAULT_DEGREE (1)
