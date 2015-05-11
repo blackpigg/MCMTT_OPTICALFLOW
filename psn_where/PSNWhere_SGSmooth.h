@@ -32,6 +32,8 @@ public:
 	// setter
 	int Insert(double newData);
 	int Insert(std::vector<double> &queueNewData);
+	int ReplaceBack(double replaceData);
+	void PopBack(void);
 	void SetQ(Qset &Q) { Qset_ = Q; };
 
 	// getter

@@ -29,7 +29,6 @@ NOTES:
 #define DO_BRANCH_CUT (false)
 
 // reconstruction related
-#define MIN_TRACKLET_LENGTH (1)
 #define MAX_TRACKLET_LENGTH (15)
 #define MAX_TRACKLET_DISTANCE (3000)
 #define MAX_TRACKLET_SENSITIVITY_ERROR (20)
@@ -1438,7 +1437,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 	printf("[CPSNWhere_Associator3D](UpdateTracks) start\n");
 	time_t timer_start = clock();
 #endif
-	std::deque<Track3D*> queueNewTracks;
+	std::deque<Track3D*> queueTracksUpdated;
 
 	//---------------------------------------------------------
 	// UPDATE ACTIVE TRACKS
@@ -1456,33 +1455,22 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 			if (NULL == curTrack->curTracklet2Ds.get(camIdx)) { continue; }
 			if (!curTrack->curTracklet2Ds.get(camIdx)->bActivated)
 			{
-				if (MIN_TRACKLET_LENGTH > curTrack->curTracklet2Ds.get(camIdx)->duration)
-				{
-					// invalidate track with 2D tracklet which has duration 1
-					TrackTree::SetValidityFlagInTrackBranch(curTrack, false);
-					break;
-				}
 				curTrack->curTracklet2Ds.set(camIdx, NULL);
-			}
-			else
-			{
-				// tracklet location in 3D
-				curTrack->trackletLastLocation3D[camIdx] = curTrack->curTracklet2Ds.get(camIdx)->currentLocation3D;
-
-				// RGB update
-				curTrack->lastRGBFeature[camIdx].release();
-				curTrack->lastRGBFeature[camIdx] = curTrack->curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
-				curTrack->timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
-			}
+				continue;
+			}			
+			// tracklet location in 3D
+			curTrack->trackletLastLocation3D[camIdx] = curTrack->curTracklet2Ds.get(camIdx)->currentLocation3D;
+			// RGB update
+			curTrack->lastRGBFeature[camIdx].release();
+			curTrack->lastRGBFeature[camIdx] = curTrack->curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
+			curTrack->timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
 		}
-		if (!curTrack->bValid) { continue; }	
 
 		// activation check and expiration
 		if (0 == curTrack->curTracklet2Ds.size())
-		{ 		
+		{
 			// de-activating
 			curTrack->bActive = false;
-
 			// cost update (with exit cost)
 			std::vector<PSN_Point2D_CamIdx> vecLastPointInfo;
 			stReconstruction lastReconstruction = curTrack->reconstructions.back();
@@ -1493,28 +1481,20 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 			}
 			curTrack->costExit = std::min(COST_EX_MAX, -std::log(this->ComputeExitProbability(vecLastPointInfo)));
 			curTrack->costTotal = curTrack->GetCost();
-
 			// move to time jump track list
 			queuePausedTrack_.push_back(curTrack);
 			continue;
-		}
-
-		// cost update (not essential, for just debuging)
-		curTrack->costTotal = curTrack->GetCost();
-		
-		// time related information
-		curTrack->duration++;
-		curTrack->timeEnd++;
-
+		}		
 		// point reconstruction and cost update
 		stReconstruction curReconstruction = this->PointReconstruction(curTrack->curTracklet2Ds);
 		InsertReconstruction(curTrack, curReconstruction);
+		curTrack->costTotal = curTrack->GetCost();
 
 		// increase iterator
-		queueNewTracks.push_back(curTrack);
+		queueTracksUpdated.push_back(curTrack);
 	}
-	queueActiveTrack_ = queueNewTracks;
-	queueNewTracks.clear();
+	queueActiveTrack_ = queueTracksUpdated;
+	queueTracksUpdated.clear();
 
 
 	//---------------------------------------------------------
@@ -1526,7 +1506,6 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		trackIter++)
 	{
 		if (!(*trackIter)->bValid) { continue; }
-
 		// handling expired track
 		if ((*trackIter)->timeEnd + MAX_TIME_JUMP < nCurrentFrameIdx_)
 		{
@@ -1541,31 +1520,20 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 				queueTerminatedTracks.push_back(*trackIter);
 			}
 			continue;
-		}
-
-		//// update Kalman Filter
-		//cv::Mat curPrediction = (*trackIter)->KF.predict();
-		//PSN_Point3D curPredictedPoint(
-		//	(double)curPrediction.at<float>(0, 0), 
-		//	(double)curPrediction.at<float>(1, 0), 
-		//	(double)curPrediction.at<float>(2, 0));
-		////(*trackIter)->KFPrediction.push_back(curPredictedPoint);
-
+		}		
 		// insert dummy reconstruction with Kalman prediction
 		stReconstruction dummyReconstruction = this->PointReconstruction((*trackIter)->curTracklet2Ds);
 		dummyReconstruction.bIsMeasurement = false;
-		//dummyReconstruction.point = curPredictedPoint;
 		dummyReconstruction.point = (*trackIter)->reconstructions.back().point;
 		dummyReconstruction.costLink = 0.0;
 		dummyReconstruction.costReconstruction = 0.0;
-		//dummyReconstruction.averageSensitivity = 0.0;
 		dummyReconstruction.velocity = PSN_Point3D(0.0, 0.0, 0.0);
-		(*trackIter)->reconstructions.push_back(dummyReconstruction);
+		InsertReconstruction(*trackIter, dummyReconstruction);
 						
-		queueNewTracks.push_back(*trackIter);
+		queueTracksUpdated.push_back(*trackIter);
 	}
-	queuePausedTrack_ = queueNewTracks;
-	queueNewTracks.clear();
+	queuePausedTrack_ = queueTracksUpdated;
+	queueTracksUpdated.clear();
 
 	// print out
 #ifdef PSN_PRINT_LOG_
@@ -1584,14 +1552,14 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 			|| (*trackIter)->timeEnd + PROC_WINDOW_SIZE <= nCurrentFrameIdx_)
 		{ continue; }
 
-		queueNewTracks.push_back(*trackIter);
+		queueTracksUpdated.push_back(*trackIter);
 		//if ((*trackIter)->tree->maxGTProb < (*trackIter)->GTProb)
 		//{
 		//	(*trackIter)->tree->maxGTProb = (*trackIter)->GTProb;
 		//}
 	}
-	queueTracksInWindow_ = queueNewTracks;
-	queueNewTracks.clear();
+	queueTracksInWindow_ = queueTracksUpdated;
+	queueTracksUpdated.clear();
 	
 	//---------------------------------------------------------
 	// UPDATE TRACK TREES
@@ -1819,11 +1787,9 @@ void CPSNWhere_Associator3D::Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeed
 		// point reconstruction
 		stReconstruction curReconstruction = this->PointReconstruction(newTrack.curTracklet2Ds);
 		if (DBL_MAX == curReconstruction.costReconstruction) { continue; }
-		newTrack.costReconstruction = curReconstruction.costReconstruction;		
-		newTrack.reconstructions.push_back(curReconstruction);
-
-		// Kalman filter
-		//newTrack.SetKalmanFilter(curReconstruction.point);
+		newTrack.costReconstruction = curReconstruction.costReconstruction;
+		InsertReconstruction(&newTrack, curReconstruction);
+		//newTrack.reconstructions.push_back(curReconstruction);
 		
 		// generate a track instance
 		listTrack3D_.push_back(newTrack);
@@ -1867,14 +1833,15 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 
 	/////////////////////////////////////////////////////////////////////
 	// SPATIAL BRANCHING
-	/////////////////////////////////////////////////////////////////////
-	PSN_TrackSet queueBranchTracks;
+	/////////////////////////////////////////////////////////////////////	
 	std::sort(queueActiveTrack_.begin(), queueActiveTrack_.end(), psnTrackGTPandLLDescend);
-	for(std::deque<Track3D*>::iterator trackIter = queueActiveTrack_.begin();
-		trackIter != queueActiveTrack_.end();
+	PSN_TrackSet currentActiveTracks = queueActiveTrack_;
+	nNumSpatialBranches_ = 0;
+	for(std::deque<Track3D*>::iterator trackIter = currentActiveTracks.begin();
+		trackIter != currentActiveTracks.end();
 		trackIter++)
 	{		
-		if(DO_BRANCH_CUT && MAX_TRACK_IN_OPTIMIZATION <= queueBranchTracks.size()) { break; }
+		if(DO_BRANCH_CUT && MAX_TRACK_IN_OPTIMIZATION <= nNumSpatialBranches_) { break; }
 
 		//---------------------------------------------------------
 		// FIND SPATIAL ASSOCIATION
@@ -1916,265 +1883,267 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			branchIter++)
 		{
 			if (*branchIter == curCombination){ continue; }
+			if (this->GenerateChildTrack(*trackIter, *branchIter)) { nNumSpatialBranches_++; }
 
-			// generate a new track with branching combination
-			Track3D newTrack;
-			newTrack.Initialize(nNewTrackID_, *trackIter, nCurrentFrameIdx_, curCombination);
-			//newTrack.id = nNewTrackID_;
-			newTrack.curTracklet2Ds = *branchIter;			
+			//// generate a new track with branching combination
+			//Track3D newTrack;
+			//newTrack.Initialize(nNewTrackID_, *trackIter, nCurrentFrameIdx_, curCombination);
+			////newTrack.id = nNewTrackID_;
+			//newTrack.curTracklet2Ds = *branchIter;			
 
-			// reconstruction
-			double costReconstructionIncrease = 0.0;
-			double costLinkIncrease = 0.0;
+			//// reconstruction
+			//double costReconstructionIncrease = 0.0;
+			//double costLinkIncrease = 0.0;
 
-			stReconstruction curReconstruction = this->PointReconstruction(newTrack.curTracklet2Ds);
-			if (DBL_MAX == curReconstruction.costReconstruction) { continue; }
+			//stReconstruction curReconstruction = this->PointReconstruction(newTrack.curTracklet2Ds);
+			//if (DBL_MAX == curReconstruction.costReconstruction) { continue; }
 
-			stReconstruction oldReconstruction = (*trackIter)->reconstructions.back();
-			stReconstruction preReconstruction = (*trackIter)->reconstructions[(*trackIter)->reconstructions.size()-2];
-			//double curLinkProbability = ComputeLinkProbability(preReconstruction.point + preReconstruction.velocity, curReconstruction.point, 1);
-			double curLinkProbability = ComputeLinkProbability(preReconstruction.point, curReconstruction.point, 1);
-			if (MIN_LINKING_PROBABILITY > curLinkProbability) {	continue; }
-			curReconstruction.costLink = -log(curLinkProbability);
-			costReconstructionIncrease += curReconstruction.costReconstruction - oldReconstruction.costReconstruction;
-			costLinkIncrease += curReconstruction.costLink - oldReconstruction.costLink;
-			curReconstruction.velocity = preReconstruction.velocity * (1 - VELOCITY_LEARNING_RATE) + (curReconstruction.point - preReconstruction.point) * VELOCITY_LEARNING_RATE;
+			//stReconstruction oldReconstruction = (*trackIter)->reconstructions.back();
+			//stReconstruction preReconstruction = (*trackIter)->reconstructions[(*trackIter)->reconstructions.size()-2];			
+			//double curLinkProbability = ComputeLinkProbability(preReconstruction.point, curReconstruction.point, 1);
+			//if (MIN_LINKING_PROBABILITY > curLinkProbability) {	continue; }
 
-			newTrack.reconstructions = (*trackIter)->reconstructions;
-			newTrack.reconstructions.pop_back();
-			newTrack.reconstructions.push_back(curReconstruction);
+			//// cost			
+			//newTrack.costReconstruction = (*trackIter)->costReconstruction - oldReconstruction.costReconstruction;
+			//newTrack.costLink = (*trackIter)->costLink - oldReconstruction.costLink;
+			//newTrack.costEnter = (*trackIter)->costEnter;
+			//newTrack.costExit = 0.0;
+			//newTrack.costRGB = (*trackIter)->costRGB;		
 
-			// cost			
-			newTrack.costReconstruction = (*trackIter)->costReconstruction + costReconstructionIncrease;
-			newTrack.costLink = (*trackIter)->costLink + costLinkIncrease;
-			newTrack.costEnter = (*trackIter)->costEnter;
-			newTrack.costExit = 0.0;
-			newTrack.costRGB = 0.0;
-			newTrack.costTotal = newTrack.GetCost();;
+			//// reconstruction
+			//newTrack.reconstructions.insert(newTrack.reconstructions.begin(), (*trackIter)->reconstructions.begin(), (*trackIter)->reconstructions.end() - 1);
+			//InsertReconstruction(&newTrack, curReconstruction);
 
-			// copy 2D tracklet history and appearance
-			newTrack.costRGB = 0.0;
-			std::deque<stTracklet2D*> queueNewlyInsertedTracklet2D;
-			for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-			{
-				// location in 3D
-				newTrack.trackletLastLocation3D[camIdx] = (*trackIter)->trackletLastLocation3D[camIdx];
+			////curReconstruction.costLink = -log(curLinkProbability);
+			////costReconstructionIncrease += curReconstruction.costReconstruction - oldReconstruction.costReconstruction;
+			////costLinkIncrease += curReconstruction.costLink - oldReconstruction.costLink;
+			////curReconstruction.velocity = preReconstruction.velocity * (1 - VELOCITY_LEARNING_RATE) + (curReconstruction.point - preReconstruction.point) * VELOCITY_LEARNING_RATE;
 
-				// appearance
-				newTrack.lastRGBFeature[camIdx] = (*trackIter)->lastRGBFeature[camIdx].clone();
-				newTrack.timeTrackletEnded[camIdx] = (*trackIter)->timeTrackletEnded[camIdx];
+			////newTrack.reconstructions = (*trackIter)->reconstructions;
+			////newTrack.reconstructions.pop_back();
+			////newTrack.reconstructions.push_back(curReconstruction);
 
-				// tracklet info
-				newTrack.tracklet2DIDs[camIdx] = (*trackIter)->tracklet2DIDs[camIdx];
-				if (NULL == newTrack.curTracklet2Ds.get(camIdx)) { continue; }
-				if (0 == newTrack.tracklet2DIDs[camIdx].size() || newTrack.tracklet2DIDs[camIdx].back() != newTrack.curTracklet2Ds.get(camIdx)->id)
-				{
-					newTrack.tracklet2DIDs[camIdx].push_back(newTrack.curTracklet2Ds.get(camIdx)->id);
-					queueNewlyInsertedTracklet2D.push_back(newTrack.curTracklet2Ds.get(camIdx));
+			//// copy 2D tracklet history and appearance
+			//for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+			//{
+			//	// location in 3D
+			//	newTrack.trackletLastLocation3D[camIdx] = (*trackIter)->trackletLastLocation3D[camIdx];
 
-					// when a newly inserted tracklet is not the most front tracklet
-					if (newTrack.tracklet2DIDs[camIdx].size() > 1)
-					{
-						int timeGap = nCurrentFrameIdx_ - newTrack.timeTrackletEnded[camIdx];
+			//	// appearance
+			//	newTrack.lastRGBFeature[camIdx] = (*trackIter)->lastRGBFeature[camIdx].clone();
+			//	newTrack.timeTrackletEnded[camIdx] = (*trackIter)->timeTrackletEnded[camIdx];
 
-						// tracklet location
-						newTrack.costLink += ComputeTrackletLinkCost(
-							newTrack.trackletLastLocation3D[camIdx], 
-							newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
-							timeGap);
+			//	// tracklet info
+			//	newTrack.tracklet2DIDs[camIdx] = (*trackIter)->tracklet2DIDs[camIdx];
+			//	if (NULL == newTrack.curTracklet2Ds.get(camIdx)) { continue; }
+			//	if (0 == newTrack.tracklet2DIDs[camIdx].size() || newTrack.tracklet2DIDs[camIdx].back() != newTrack.curTracklet2Ds.get(camIdx)->id)
+			//	{
+			//		newTrack.tracklet2DIDs[camIdx].push_back(newTrack.curTracklet2Ds.get(camIdx)->id);
+			//		// when a newly inserted tracklet is not the most front tracklet
+			//		if (newTrack.tracklet2DIDs[camIdx].size() > 1)
+			//		{
+			//			int timeGap = nCurrentFrameIdx_ - newTrack.timeTrackletEnded[camIdx];
 
-						// RGB cost
-						newTrack.costRGB += ComputeRGBCost(
-							&newTrack.lastRGBFeature[camIdx], 
-							&newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureHead, 
-							timeGap);						
-					}
-				}
-				// appearance
-				newTrack.lastRGBFeature[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
-				newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
-			}
-			newTrack.costTotal += newTrack.costRGB;
+			//			// tracklet location
+			//			newTrack.costLink += ComputeTrackletLinkCost(
+			//				newTrack.trackletLastLocation3D[camIdx], 
+			//				newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
+			//				timeGap);
 
-			newTrack.bActive = true;
-			newTrack.bValid = true;
-			newTrack.tree = (*trackIter)->tree;
-			newTrack.parentTrack = *trackIter;
-			newTrack.childrenTrack.clear();
-			newTrack.timeStart = (*trackIter)->timeStart;
-			newTrack.timeEnd = (*trackIter)->timeEnd;
-			newTrack.timeGeneration = nCurrentFrameIdx_;
-			newTrack.duration = (*trackIter)->duration;	
-			newTrack.bWasBestSolution = true;
-			newTrack.GTProb = (*trackIter)->GTProb;
+			//			// RGB cost
+			//			newTrack.costRGB += ComputeRGBCost(
+			//				&newTrack.lastRGBFeature[camIdx], 
+			//				&newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureHead, 
+			//				timeGap);						
+			//		}
+			//	}
+			//	// appearance
+			//	newTrack.lastRGBFeature[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
+			//	newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
+			//}
+			//newTrack.costTotal = newTrack.GetCost();
 
-			// generate track instance
-			listTrack3D_.push_back(newTrack);
-			nNewTrackID_++;
-					
-			// insert to the track tree and related lists
-			Track3D *branchTrack = &listTrack3D_.back();
-			(*trackIter)->tree->tracks.push_back(branchTrack);
-			(*trackIter)->childrenTrack.push_back(branchTrack);
-			queueTracksInWindow_.push_back(branchTrack);
+			//newTrack.bActive = true;
+			//newTrack.bValid = true;
+			//newTrack.tree = (*trackIter)->tree;
+			//newTrack.parentTrack = *trackIter;
+			//newTrack.childrenTrack.clear();
+			//newTrack.timeStart = (*trackIter)->timeStart;
+			//newTrack.timeEnd = (*trackIter)->timeEnd;
+			//newTrack.timeGeneration = nCurrentFrameIdx_;
+			//newTrack.duration = (*trackIter)->duration;	
+			//newTrack.bWasBestSolution = true;
+			//newTrack.GTProb = (*trackIter)->GTProb;
+			//newTrack.pointSmoother = (*trackIter)->pointSmoother;
 
-			// insert to global queue
-			queueBranchTracks.push_back(branchTrack);
+			//// generate track instance
+			//listTrack3D_.push_back(newTrack);
+			//nNewTrackID_++;
+			//		
+			//// insert to the track tree and related lists
+			//Track3D *branchTrack = &listTrack3D_.back();
+			//(*trackIter)->tree->tracks.push_back(branchTrack);
+			//(*trackIter)->childrenTrack.push_back(branchTrack);
+			//queueTracksInWindow_.push_back(branchTrack);
+
+			//// insert to global queue
+			//queueActiveTrack_.push_back(branchTrack);
+			//nNumSpatialBranches_++;
 		}
 	}
-
-	// insert branches to the active track list
-	size_t numBranches = queueActiveTrack_.size();
-	queueActiveTrack_.insert(queueActiveTrack_.end(), queueBranchTracks.begin(), queueBranchTracks.end());
 
 	/////////////////////////////////////////////////////////////////////
 	// TEMPORAL BRANCHING
 	/////////////////////////////////////////////////////////////////////
-	int numTemporalBranch = 0;
+	nNumTemporalBranches_ = 0;
 	std::sort(queuePausedTrack_.begin(), queuePausedTrack_.end(), psnTrackGTPandLLDescend);
 	for (std::deque<Track3D*>::iterator trackIter = queuePausedTrack_.begin();
 		trackIter != queuePausedTrack_.end();
 		trackIter++)
 	{
-		if (DO_BRANCH_CUT && MAX_TRACK_IN_OPTIMIZATION <= numTemporalBranch) { break; }
+		if (DO_BRANCH_CUT && MAX_TRACK_IN_OPTIMIZATION <= nNumTemporalBranches_) { break; }
 		Track3D *curTrack = *trackIter;
 
 		for (std::deque<Track3D*>::iterator seedTrackIter = seedTracks->begin();
 			seedTrackIter != seedTracks->end();
 			seedTrackIter++)
 		{
-			Track3D *seedTrack = *seedTrackIter;
-			std::deque<stReconstruction> queueSeedReconstruction = (*seedTrackIter)->reconstructions;			
-			unsigned int lengthValidReconstructions = curTrack->duration;
-			double costReconstructionIncrease = 0.0;
-			double costLinkIncrease = 0.0;
-			unsigned int seedTrackReconIdx = 0;
+			if (this->GenerateChildTrack(*trackIter, (*seedTrackIter)->curTracklet2Ds)) { nNumTemporalBranches_++; }
+			//
+			//Track3D *seedTrack = *seedTrackIter;
 
 
-			////////////////////////////////////////////////////////////////////////
-			unsigned int timeGap = seedTrack->timeStart - curTrack->timeEnd;
-			stReconstruction lastMeasurementReconstruction = curTrack->reconstructions[curTrack->timeEnd - curTrack->timeStart];
-			double curLinkProbability = ComputeLinkProbability(lastMeasurementReconstruction.point, seedTrack->reconstructions.front().point, timeGap);
-			if (MIN_LINKING_PROBABILITY > curLinkProbability) { continue; }
-			lengthValidReconstructions += timeGap - 1;
+			//std::deque<stReconstruction> queueSeedReconstruction = (*seedTrackIter)->reconstructions;			
+			//unsigned int lengthValidReconstructions = curTrack->duration;
+			//double costReconstructionIncrease = 0.0;
+			//double costLinkIncrease = 0.0;
+			//unsigned int seedTrackReconIdx = 0;
 
-			// for linking prior, interpolation
-			PSN_Point3D delta = (seedTrack->reconstructions.front().point - lastMeasurementReconstruction.point) / (double)timeGap;
-			PSN_Point3D lastPosition = lastMeasurementReconstruction.point;
-			if (timeGap > 1)
-			{					
-				double linkingPrior = 1.0;
-				for (unsigned int reconIdx = curTrack->duration; reconIdx < lengthValidReconstructions; reconIdx++)
-				{
-					// interpolation
-					curTrack->reconstructions[reconIdx].point = lastPosition;
-					lastPosition += delta;
 
-					// linking probability
-					double probDetection = 1.0;
-					for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-					{
-						if (this->CheckVisibility(curTrack->reconstructions[reconIdx].point, camIdx))
-						{
-							probDetection *= FN_RATE;
-						}
-					}
-					linkingPrior *= probDetection;
-				}
-				
-				curLinkProbability *= linkingPrior;
-				if (MIN_LINKING_PROBABILITY > curLinkProbability) { continue; }
-			}
-			queueSeedReconstruction[0].costLink = -log(curLinkProbability);
-			costLinkIncrease = queueSeedReconstruction[0].costLink;		
+			//////////////////////////////////////////////////////////////////////////
+			//unsigned int timeGap = seedTrack->timeStart - curTrack->timeEnd;
+			//stReconstruction lastMeasurementReconstruction = curTrack->reconstructions[curTrack->timeEnd - curTrack->timeStart];
+			//double curLinkProbability = ComputeLinkProbability(lastMeasurementReconstruction.point, seedTrack->reconstructions.front().point, timeGap);
+			//if (MIN_LINKING_PROBABILITY > curLinkProbability) { continue; }
+			//lengthValidReconstructions += timeGap - 1;
 
-			////////////////////////////////////////////////////////////////////////
+			//// for linking prior, interpolation
+			//PSN_Point3D delta = (seedTrack->reconstructions.front().point - lastMeasurementReconstruction.point) / (double)timeGap;
+			//PSN_Point3D lastPosition = lastMeasurementReconstruction.point;
+			//if (timeGap > 1)
+			//{					
+			//	double linkingPrior = 1.0;
+			//	for (unsigned int reconIdx = curTrack->duration; reconIdx < lengthValidReconstructions; reconIdx++)
+			//	{
+			//		// interpolation
+			//		curTrack->reconstructions[reconIdx].point = lastPosition;
+			//		lastPosition += delta;
 
-			// generate a new track with branching combination
-			Track3D newTrack;
-			newTrack.id = nNewTrackID_;
-			newTrack.curTracklet2Ds = seedTrack->curTracklet2Ds;
-			newTrack.bActive = true;
-			newTrack.bValid = true;
-			newTrack.tree = curTrack->tree;
-			newTrack.parentTrack = curTrack;
-			newTrack.childrenTrack.clear();
-			newTrack.timeStart = curTrack->timeStart;
-			newTrack.timeEnd = seedTrack->timeEnd;
-			newTrack.timeGeneration = nCurrentFrameIdx_;
-			newTrack.duration = newTrack.timeEnd - newTrack.timeStart + 1;
-			newTrack.bWasBestSolution = true;
-			newTrack.GTProb = (*trackIter)->GTProb;
+			//		// linking probability
+			//		double probDetection = 1.0;
+			//		for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+			//		{
+			//			if (this->CheckVisibility(curTrack->reconstructions[reconIdx].point, camIdx))
+			//			{
+			//				probDetection *= FN_RATE;
+			//			}
+			//		}
+			//		linkingPrior *= probDetection;
+			//	}
+			//	
+			//	curLinkProbability *= linkingPrior;
+			//	if (MIN_LINKING_PROBABILITY > curLinkProbability) { continue; }
+			//}
+			//queueSeedReconstruction[0].costLink = -log(curLinkProbability);
+			//costLinkIncrease = queueSeedReconstruction[0].costLink;		
 
-			// tracklet history
-			newTrack.costRGB = 0.0;
-			for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-			{
-				// location in 3D
-				newTrack.trackletLastLocation3D[camIdx] = (*trackIter)->trackletLastLocation3D[camIdx];
+			//////////////////////////////////////////////////////////////////////////
 
-				// appearance
-				newTrack.lastRGBFeature[camIdx] = (*trackIter)->lastRGBFeature[camIdx].clone();
-				newTrack.timeTrackletEnded[camIdx] = (*trackIter)->timeTrackletEnded[camIdx];
+			//// generate a new track with branching combination
+			//Track3D newTrack;
+			//newTrack.id = nNewTrackID_;
+			//newTrack.curTracklet2Ds = seedTrack->curTracklet2Ds;
+			//newTrack.bActive = true;
+			//newTrack.bValid = true;
+			//newTrack.tree = curTrack->tree;
+			//newTrack.parentTrack = curTrack;
+			//newTrack.childrenTrack.clear();
+			//newTrack.timeStart = curTrack->timeStart;
+			//newTrack.timeEnd = seedTrack->timeEnd;
+			//newTrack.timeGeneration = nCurrentFrameIdx_;
+			//newTrack.duration = newTrack.timeEnd - newTrack.timeStart + 1;
+			//newTrack.bWasBestSolution = true;
+			//newTrack.GTProb = curTrack->GTProb;
 
-				// tracklet info
-				newTrack.tracklet2DIDs[camIdx] = curTrack->tracklet2DIDs[camIdx];
-				if (NULL == seedTrack->curTracklet2Ds.get(camIdx)) { continue; }
-				if (0 == newTrack.tracklet2DIDs[camIdx].size() || newTrack.tracklet2DIDs[camIdx].back() != seedTrack->tracklet2DIDs[camIdx].back())
-				{
-					newTrack.tracklet2DIDs[camIdx].push_back(seedTrack->tracklet2DIDs[camIdx].back());
+			//// tracklet history
+			//newTrack.costRGB = 0.0;
+			//for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+			//{
+			//	// location in 3D
+			//	newTrack.trackletLastLocation3D[camIdx] = (*trackIter)->trackletLastLocation3D[camIdx];
 
-					// when a newly inserted tracklet is not the most front tracklet
-					if (newTrack.tracklet2DIDs[camIdx].size() > 1)
-					{
-						int timeGap = nCurrentFrameIdx_ - newTrack.timeTrackletEnded[camIdx];
+			//	// appearance
+			//	newTrack.lastRGBFeature[camIdx] = (*trackIter)->lastRGBFeature[camIdx].clone();
+			//	newTrack.timeTrackletEnded[camIdx] = (*trackIter)->timeTrackletEnded[camIdx];
 
-						// tracklet location
-						costLinkIncrease += ComputeTrackletLinkCost(
-							newTrack.trackletLastLocation3D[camIdx], 
-							newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
-							timeGap);
+			//	// tracklet info
+			//	newTrack.tracklet2DIDs[camIdx] = curTrack->tracklet2DIDs[camIdx];
+			//	if (NULL == seedTrack->curTracklet2Ds.get(camIdx)) { continue; }
+			//	if (0 == newTrack.tracklet2DIDs[camIdx].size() || newTrack.tracklet2DIDs[camIdx].back() != seedTrack->tracklet2DIDs[camIdx].back())
+			//	{
+			//		newTrack.tracklet2DIDs[camIdx].push_back(seedTrack->tracklet2DIDs[camIdx].back());
 
-						// RGB cost
-						newTrack.costRGB += ComputeRGBCost(
-							&newTrack.lastRGBFeature[camIdx], 
-							&newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureHead, 
-							timeGap);
-					}
-				}
-				// appearance
-				newTrack.lastRGBFeature[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
-				newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
-			}
+			//		// when a newly inserted tracklet is not the most front tracklet
+			//		if (newTrack.tracklet2DIDs[camIdx].size() > 1)
+			//		{
+			//			int timeGap = nCurrentFrameIdx_ - newTrack.timeTrackletEnded[camIdx];
 
-			// cost			
-			newTrack.costReconstruction = curTrack->costReconstruction + seedTrack->costReconstruction + costReconstructionIncrease;
-			newTrack.costLink = curTrack->costLink + seedTrack->costLink + costLinkIncrease;
-			newTrack.costEnter = curTrack->costEnter;
-			newTrack.costExit = 0.0;
-			newTrack.costTotal = newTrack.costReconstruction + newTrack.costLink + newTrack.costEnter + newTrack.costExit + newTrack.costRGB;
+			//			// tracklet location
+			//			costLinkIncrease += ComputeTrackletLinkCost(
+			//				newTrack.trackletLastLocation3D[camIdx], 
+			//				newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
+			//				timeGap);
 
-			// reconstruction
-			newTrack.reconstructions.insert(
-				newTrack.reconstructions.begin(), 
-				curTrack->reconstructions.begin(), 
-				curTrack->reconstructions.begin() + lengthValidReconstructions);
-			newTrack.reconstructions.insert(
-				newTrack.reconstructions.end(), 
-				queueSeedReconstruction.begin() + seedTrackReconIdx, 
-				queueSeedReconstruction.end());
+			//			// RGB cost
+			//			newTrack.costRGB += ComputeRGBCost(
+			//				&newTrack.lastRGBFeature[camIdx], 
+			//				&newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureHead, 
+			//				timeGap);
+			//		}
+			//	}
+			//	// appearance
+			//	newTrack.lastRGBFeature[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
+			//	newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
+			//}
+
+			//// cost			
+			//newTrack.costReconstruction = curTrack->costReconstruction + seedTrack->costReconstruction + costReconstructionIncrease;
+			//newTrack.costLink = curTrack->costLink + seedTrack->costLink + costLinkIncrease;
+			//newTrack.costEnter = curTrack->costEnter;
+			//newTrack.costExit = 0.0;
+			//newTrack.costTotal = newTrack.costReconstruction + newTrack.costLink + newTrack.costEnter + newTrack.costExit + newTrack.costRGB;
+
+			//// reconstruction
+			//newTrack.reconstructions.insert(
+			//	newTrack.reconstructions.begin(), 
+			//	curTrack->reconstructions.begin(), 
+			//	curTrack->reconstructions.begin() + lengthValidReconstructions);
+			//newTrack.reconstructions.insert(
+			//	newTrack.reconstructions.end(), 
+			//	queueSeedReconstruction.begin() + seedTrackReconIdx, 
+			//	queueSeedReconstruction.end());
 		
-			// insert to the list of track instances
-			listTrack3D_.push_back(newTrack);
-			nNewTrackID_++;
-					
-			// insert to the track tree and related lists
-			Track3D *branchTrack = &listTrack3D_.back();
-			curTrack->tree->tracks.push_back(branchTrack);
-			curTrack->childrenTrack.push_back(branchTrack);
-			queueActiveTrack_.push_back(branchTrack);
-			queueTracksInWindow_.push_back(branchTrack);
-			numTemporalBranch++;
+			//// insert to the list of track instances
+			//listTrack3D_.push_back(newTrack);
+			//nNewTrackID_++;
+			//		
+			//// insert to the track tree and related lists
+			//Track3D *branchTrack = &listTrack3D_.back();
+			//curTrack->tree->tracks.push_back(branchTrack);
+			//curTrack->childrenTrack.push_back(branchTrack);
+			//queueActiveTrack_.push_back(branchTrack);
+			//queueTracksInWindow_.push_back(branchTrack);
+			//nNumTemporalBranches_++;
 		}
 	}
 
@@ -2185,23 +2154,28 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 #ifdef PSN_DEBUG_MODE_
 	time_t timer_end = clock();
 	double processingTime = (double)(timer_end - timer_start) / CLOCKS_PER_SEC;
-	numBranches = queueActiveTrack_.size() - numBranches;
-	printf("[CPSNWhere_Associator3D](BranchTracks) new branches: %d, time: %fs\n", numBranches, processingTime);
+	printf("[CPSNWhere_Associator3D](BranchTracks) new branches: %d, time: %fs\n", nNumSpatialBranches_ + nNumTemporalBranches_, processingTime);
 #endif
 }
 
 /************************************************************************
- Method Name: Track3D_GetWholeCandidateTracks
+ Method Name: InsertReconstruction
  Description: 
-	- 
+	- insert reconstruction into the track. when a new reconstruction is
+	inserted, 1)smoothing -> 2)update cost(because the points are changed
+	by smoothing) are needed.
  Input Arguments:
-	- 
+	- track: where the reconstruction inserted into
+	- reconstruction: which is inserted into the track
  Return Values:
-	- PSN_TrackSet: selected tracks
+	- none
 ************************************************************************/
 void CPSNWhere_Associator3D::InsertReconstruction(Track3D *track, stReconstruction &reconstruction)
 {
 	int refreshPosition = track->InsertReconstruction(reconstruction);
+	track->costReconstruction += reconstruction.costReconstruction;
+	if (0 > refreshPosition || 2 > track->reconstructions.size()) { return; }	// dummy reconstruction or seed track
+
 	double maxError = (double)MAX_BODY_WIDHT / 2.0;
 	track->timeEnd = nCurrentFrameIdx_;
 	track->duration = (unsigned int)track->reconstructions.size();
@@ -2235,43 +2209,233 @@ void CPSNWhere_Associator3D::InsertReconstruction(Track3D *track, stReconstructi
 		track->costReconstruction += track->reconstructions[pos].costSmoothedPoint - track->reconstructions[pos].costReconstruction;
 		
 		// linking cost update
+		if (0 == pos) { continue; }
 		double linkCost = track->reconstructions[pos].costLink;
-		if (0 == pos)
+		double newLinkProbability = ComputeLinkProbability(track->reconstructions[pos-1].smoothedPoint, track->reconstructions[pos].smoothedPoint, 1);
+		if (MIN_LINKING_PROBABILITY > newLinkProbability)
+		{
+			track->bValid = false;
+			break;
+		}
+		track->costLink += -log(newLinkProbability) - linkCost;
+
+		// velocity
+		track->reconstructions[pos].velocity = track->reconstructions[pos-1].velocity * (1 - VELOCITY_LEARNING_RATE) + (track->reconstructions[pos].smoothedPoint - track->reconstructions[pos-1].smoothedPoint) * VELOCITY_LEARNING_RATE;
+	}
+}
+
+/************************************************************************
+ Method Name: InsertReconstructions
+ Description: 
+	- insert reconstruction into the track. when a new reconstruction is
+	inserted, 1)smoothing -> 2)update cost(because the points are changed
+	by smoothing) are needed.
+ Input Arguments:
+	- track: where the reconstruction inserted into
+	- reconstructions: which is inserted into the track
+ Return Values:
+	- none
+************************************************************************/
+void CPSNWhere_Associator3D::InsertReconstructions(Track3D *track, std::vector<stReconstruction> &reconstructions)
+{
+	int refreshPosition = track->InsertReconstructions(reconstructions);
+
+	double maxError = (double)MAX_BODY_WIDHT / 2.0;
+	track->timeEnd = nCurrentFrameIdx_;
+	track->duration = (unsigned int)track->reconstructions.size();
+	for (int pos = refreshPosition; pos < (int)track->duration; pos++)
+	{
+		// reconstruction cost update
+		double fDistance = 0.0;
+		int numPoints = (int)track->reconstructions[pos].rawPoints.size();
+		for (int pointIdx = 0; pointIdx < numPoints; pointIdx++)
+		{
+			fDistance += (track->reconstructions[pos].rawPoints[pointIdx] - track->reconstructions[pos].smoothedPoint).norm_L2();
+		}
+		fDistance /= (double)numPoints;
+		double probabilityReconstruction = 1 == numPoints? 0.5 : 0.5 * psn::erfc(4.0 * fDistance / maxError - 2.0);
+	
+		// detection probability
+		double fDetectionProbabilityRatio = 1.0;
+		for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+		{
+			if (!this->CheckVisibility(track->reconstructions[pos].smoothedPoint, camIdx)) { continue; }
+			if (NULL == track->reconstructions[pos].tracklet2Ds.get(camIdx))
+			{
+				// false negative
+				fDetectionProbabilityRatio *= FN_RATE / (1 - FN_RATE);
+				continue;
+			}
+			// positive
+			fDetectionProbabilityRatio *= (1 - FP_RATE) / FP_RATE;
+		}
+		track->reconstructions[pos].costSmoothedPoint = log(1 - probabilityReconstruction) - log(probabilityReconstruction) - log(fDetectionProbabilityRatio);	
+		track->costReconstruction += track->reconstructions[pos].costSmoothedPoint - track->reconstructions[pos].costReconstruction;
+		
+		// linking cost update
+		if (0 == pos) { continue; }
+		double linkCost = track->reconstructions[pos].costLink;
+		double newLinkCost = ComputeLinkProbability(track->reconstructions[pos-1].smoothedPoint, track->reconstructions[pos].smoothedPoint, 1);
+		if (MIN_LINKING_PROBABILITY > newLinkCost)
+		{
+			track->bValid = false;
+			break;
+		}
+		track->costLink += -log(newLinkCost) - linkCost;
+
+		// velocity
+		track->reconstructions[pos].velocity = track->reconstructions[pos-1].velocity * (1 - VELOCITY_LEARNING_RATE) + (track->reconstructions[pos].smoothedPoint - track->reconstructions[pos-1].smoothedPoint) * VELOCITY_LEARNING_RATE;
+	}
+}
+
+/************************************************************************
+ Method Name: GenerateChildTrack
+ Description: 
+	- generate child track with parent track information
+ Input Arguments:
+	- parentTrack: pointer of parent track
+ Return Values:
+	- bool: suceess or fail
+************************************************************************/
+bool CPSNWhere_Associator3D::GenerateChildTrack(Track3D *parentTrack, const CTrackletSet trackletSet)
+{
+	Track3D childTrack;
+	childTrack.id = nNewTrackID_;
+	childTrack.curTracklet2Ds = trackletSet;
+	childTrack.bActive = true;		
+	childTrack.bValid = true;
+	childTrack.tree = parentTrack->tree;
+	childTrack.parentTrack = parentTrack;
+	childTrack.childrenTrack.clear();
+	childTrack.timeStart = parentTrack->timeStart;
+	childTrack.timeEnd = parentTrack->timeEnd;
+	childTrack.timeGeneration = nCurrentFrameIdx_;
+	childTrack.duration = parentTrack->duration;	
+	childTrack.bWasBestSolution = true;
+	childTrack.GTProb = parentTrack->GTProb;
+	childTrack.pointSmoother = parentTrack->pointSmoother;
+
+	// costs
+	childTrack.costTotal = parentTrack->costTotal;
+	childTrack.costEnter = parentTrack->costEnter;
+	childTrack.costReconstruction = parentTrack->costReconstruction;
+	childTrack.costLink = parentTrack->costLink;
+	childTrack.costExit = 0.0;
+	childTrack.costRGB = parentTrack->costRGB;
+
+	/////////////////////////////////////////////////////////////////////
+	// RECONSTRUCTION
+	/////////////////////////////////////////////////////////////////////
+	stReconstruction curReconstruction = this->PointReconstruction(childTrack.curTracklet2Ds);
+	if (DBL_MAX == curReconstruction.costReconstruction) { return false; }
+
+	unsigned int timeGap = nCurrentFrameIdx_ - parentTrack->timeEnd;
+	if (timeGap <= 1)
+	{
+		stReconstruction preReconstruction = parentTrack->reconstructions[parentTrack->reconstructions.size()-2];			
+		double curLinkProbability = ComputeLinkProbability(preReconstruction.point, curReconstruction.point, 1);
+		if (MIN_LINKING_PROBABILITY > curLinkProbability) {	return false; }
+
+		childTrack.reconstructions.insert(childTrack.reconstructions.begin(), parentTrack->reconstructions.begin(), parentTrack->reconstructions.end() - 1);
+		if (parentTrack->bActive)
+		{
+			childTrack.costReconstruction -= parentTrack->reconstructions.back().costSmoothedPoint;
+			childTrack.costLink -= parentTrack->reconstructions.back().costLink;
+			childTrack.pointSmoother.PopBack();
+			childTrack.timeEnd--;
+			childTrack.duration--;
+		}
+		InsertReconstruction(&childTrack, curReconstruction);
+	}
+	else
+	{
+		stReconstruction lastMeasurementReconstruction = parentTrack->reconstructions[parentTrack->duration - 1];
+		double curLinkProbability = ComputeLinkProbability(lastMeasurementReconstruction.point, curReconstruction.point, timeGap);
+		if (MIN_LINKING_PROBABILITY > curLinkProbability) { return false; }	
+
+		// interpolation
+		std::vector<stReconstruction> interpolatedReconstructions;
+		interpolatedReconstructions.insert(interpolatedReconstructions.begin(), parentTrack->reconstructions.begin() + parentTrack->duration, parentTrack->reconstructions.end() - 1);
+		interpolatedReconstructions.push_back(curReconstruction);
+		
+		double linkingPrior = 1.0;
+		PSN_Point3D delta = (curReconstruction.point - lastMeasurementReconstruction.point) / (double)timeGap;
+		PSN_Point3D lastPosition = lastMeasurementReconstruction.point;		
+		for (unsigned int reconIdx = 0; reconIdx < interpolatedReconstructions.size() - 1; reconIdx++)
+		{
+			// interpolation
+			interpolatedReconstructions[reconIdx].point = lastPosition;
+			lastPosition += delta;
+
+			// linking probability
+			double probDetection = 1.0;
+			for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+			{
+				if (this->CheckVisibility(interpolatedReconstructions[reconIdx].point, camIdx)) { probDetection *= FN_RATE; }
+			}
+			linkingPrior *= probDetection;
+		}
+		curLinkProbability *= linkingPrior;
+		if (MIN_LINKING_PROBABILITY > curLinkProbability) { return false; }
+
+		// smoothing
+		childTrack.reconstructions.insert(childTrack.reconstructions.begin(), parentTrack->reconstructions.begin(), parentTrack->reconstructions.begin() + parentTrack->duration);
+		InsertReconstructions(&childTrack, interpolatedReconstructions);
 	}
 
+	// copy 2D tracklet history and appearance
+	for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+	{
+		// location in 3D
+		childTrack.trackletLastLocation3D[camIdx] = parentTrack->trackletLastLocation3D[camIdx];
 
+		// appearance
+		childTrack.lastRGBFeature[camIdx] = parentTrack->lastRGBFeature[camIdx].clone();
+		childTrack.timeTrackletEnded[camIdx] = parentTrack->timeTrackletEnded[camIdx];
 
-
-		//double curLinkProbability = ComputeLinkProbability(curTrack->reconstructions.back().point + curTrack->reconstructions.back().velocity, curReconstruction.point, 1);
-		double curLinkProbability = ComputeLinkProbability(curTrack->reconstructions.back().point, curReconstruction.point, 1);
-		if (DBL_MAX == curReconstruction.costReconstruction || MIN_LINKING_PROBABILITY > curLinkProbability)
+		// tracklet info
+		childTrack.tracklet2DIDs[camIdx] = parentTrack->tracklet2DIDs[camIdx];
+		if (NULL == childTrack.curTracklet2Ds.get(camIdx)) { continue; }
+		if (0 == childTrack.tracklet2DIDs[camIdx].size() || childTrack.tracklet2DIDs[camIdx].back() != childTrack.curTracklet2Ds.get(camIdx)->id)
 		{
-			// invalidate track			
-			curTrack->bValid = false;			
-			//this->SetValidityFlagInTrackBranch(curTrack, false);
-			continue;
+			childTrack.tracklet2DIDs[camIdx].push_back(childTrack.curTracklet2Ds.get(camIdx)->id);
+
+			// when a newly inserted tracklet is not the most front tracklet
+			if (childTrack.tracklet2DIDs[camIdx].size() > 1)
+			{
+				int timeGap = nCurrentFrameIdx_ - parentTrack->timeTrackletEnded[camIdx];
+
+				// tracklet location
+				childTrack.costLink += ComputeTrackletLinkCost(
+					childTrack.trackletLastLocation3D[camIdx], 
+					childTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
+					timeGap);
+
+				// RGB cost
+				childTrack.costRGB += ComputeRGBCost(
+					&childTrack.lastRGBFeature[camIdx],
+					&childTrack.curTracklet2Ds.get(camIdx)->RGBFeatureHead, 
+					timeGap);						
+			}
 		}
-		curReconstruction.costLink = -log(curLinkProbability);
-		curTrack->costReconstruction += curReconstruction.costReconstruction;
-		curTrack->costLink += curReconstruction.costLink;
+		// appearance
+		childTrack.lastRGBFeature[camIdx] = childTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
+		childTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
+	}
+	childTrack.costTotal = childTrack.GetCost();
 
-		// velocity update
-		curReconstruction.velocity = curTrack->reconstructions.back().velocity * (1 - VELOCITY_LEARNING_RATE) + (curReconstruction.point - curTrack->reconstructions.back().point) * VELOCITY_LEARNING_RATE;
+	// generate track instance
+	listTrack3D_.push_back(childTrack);
+	nNewTrackID_++;
+					
+	// insert to the track tree and related lists
+	Track3D *branchTrack = &listTrack3D_.back();
+	parentTrack->tree->tracks.push_back(branchTrack);
+	parentTrack->childrenTrack.push_back(branchTrack);
+	queueTracksInWindow_.push_back(branchTrack);
+	queueActiveTrack_.push_back(branchTrack);
 
-		//// update Kalman Filter
-		//PSN_Point3D curPoint = curReconstruction.point;	
-		//cv::Mat curPrediction = curTrack->KF.predict();
-		//curTrack->KFMeasurement.at<float>(0, 0) = (float)curPoint.x;
-		//curTrack->KFMeasurement.at<float>(1, 0) = (float)curPoint.y;
-		//curTrack->KFMeasurement.at<float>(2, 0) = (float)curPoint.z;
-		//curTrack->KF.correct(curTrack->KFMeasurement);
-
-		//// refinement with Kalman filter estimation
-		//curPoint.x = (double)curTrack->KF.statePost.at<float>(0, 0);
-		//curPoint.y = (double)curTrack->KF.statePost.at<float>(1, 0);
-		//curPoint.z = (double)curTrack->KF.statePost.at<float>(2, 0);
-		//curReconstruction.point = curPoint;
-		curTrack->reconstructions.push_back(curReconstruction);
+	return true;
 }
 
 /************************************************************************

@@ -876,12 +876,6 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 ************************************************************************/
 std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingScore(void)
 {
-	// DEBUG
-	if (2 == m_nCamID)
-	{
-		int a = 0;
-	}
-
 	cv::Mat *ptmatCurrGrayFrame = *(this->m_vecPtGrayFrameBuffer.rbegin());
 	cv::Mat *ptmatPrevGrayFrame = *(this->m_vecPtGrayFrameBuffer.rbegin() + 1);
 	size_t numDetection = this->m_vecDetection2D.size();

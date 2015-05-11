@@ -327,6 +327,8 @@ public:
 	~CPointSmoother(void);
 	int Insert(PSN_Point3D &point);
 	int Insert(std::vector<PSN_Point3D> &points);
+	int ReplaceBack(PSN_Point3D &point);
+	void PopBack(void);
 	PSN_Point3D GetResult(int pos);
 	std::vector<PSN_Point3D> GetResults(int startPos, int endPos = -1);
 	size_t size(void) const { return size_; }
@@ -349,6 +351,8 @@ public:
 	~Track3D();
 	void Initialize(unsigned int id, Track3D *parentTrack, unsigned int timeGeneration, CTrackletSet &trackletSet);
 	int InsertReconstruction(stReconstruction &reconstruction);
+	int InsertReconstructions(std::vector<stReconstruction> &reconstructions);
+	int ReplaceBackReconstruction(stReconstruction &reconstruction);
 	void RemoveFromTree();
 	static std::deque<Track3D*> GatherValidChildrenTracks(Track3D* validParentTrack, std::deque<Track3D*> &targetChildrenTracks);
 	double GetCost(void);

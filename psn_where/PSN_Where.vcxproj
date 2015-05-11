@@ -184,10 +184,10 @@
     <ClInclude Include="PSNWhere.h" />
     <ClInclude Include="PSNWhere_Associator3D.h" />
     <ClInclude Include="PSNWhere_Defines.h" />
-    <ClInclude Include="PSNWhere_Utils.h" />
     <ClInclude Include="PSNWhere_SGSmooth.h" />
     <ClInclude Include="PSNWhere_Tracker2D.h" />
     <ClInclude Include="PSNWhere_Types.h" />
+    <ClInclude Include="PSNWhere_Utils.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>

@@ -43,6 +43,19 @@ int CPSNWhere_SGSmooth::Insert(std::vector<double> &queueNewData)
 	return Smoothing();
 }
 
+int CPSNWhere_SGSmooth::ReplaceBack(double replaceData)
+{
+	data_.back() = replaceData;
+	smoothedData_.pop_back();
+	return Smoothing();
+}
+
+void CPSNWhere_SGSmooth::PopBack(void)
+{
+	data_.pop_back();
+	smoothedData_.pop_back();
+}
+
 double CPSNWhere_SGSmooth::GetResult(int pos)
 {
 	assert(pos < smoothedData_.size());

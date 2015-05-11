@@ -150,10 +150,11 @@ private:
 	void Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeedTracks);
 	void Track3D_BranchTracks(PSN_TrackSet *seedTracks);
 	void InsertReconstruction(Track3D *track, stReconstruction &reconstruction);
+	void InsertReconstructions(Track3D *track, std::vector<stReconstruction> &reconstructions);
+	bool GenerateChildTrack(Track3D *parentTrack, const CTrackletSet trackletSet);
 	PSN_TrackSet Track3D_GetWholeCandidateTracks(void);
 
 	//void Track3D_SolveHOMHT(void);
-
 	//void Track3D_Pruning_GTP(void);
 	//void Track3D_Pruning_KBest(void);
 	//void Track3D_RepairDataStructure(void);
@@ -241,6 +242,8 @@ private:
 	bool bInitiationPenaltyFree_;
 	unsigned int nNewTrackID_;
 	unsigned int nNewTreeID_;
+	unsigned int nNumSpatialBranches_;
+	unsigned int nNumTemporalBranches_;	
 	std::list<TrackTree> listTrackTree_;
 	std::list<Track3D> listTrack3D_;
 

@@ -121,10 +121,32 @@ int CPointSmoother::Insert(std::vector<PSN_Point3D> &points)
 	return refreshPos;
 }
 
+int CPointSmoother::ReplaceBack(PSN_Point3D &point)
+{
+	int refreshPos = smootherX_.ReplaceBack(point.x);
+	smootherY_.ReplaceBack(point.y);
+	smootherZ_.ReplaceBack(point.z);
+	smoothedPoints_.pop_back();
+
+	// smoothing
+	this->Update(refreshPos, 1);
+
+	return refreshPos;
+}
+
 PSN_Point3D CPointSmoother::GetResult(int pos)
 {
 	assert(pos < smoothedPoints_.size());
 	return smoothedPoints_[pos];
+}
+
+void CPointSmoother::PopBack(void)
+{
+	assert(0 < smoothedPoints_.size());
+	smoothedPoints_.pop_back();
+	smootherX_.PopBack();
+	smootherY_.PopBack();
+	smootherZ_.PopBack();	
 }
 
 std::vector<PSN_Point3D> CPointSmoother::GetResults(int startPos, int endPos)
@@ -233,11 +255,44 @@ int Track3D::InsertReconstruction(stReconstruction &reconstruction)
 	this->reconstructions.push_back(reconstruction);
 	stReconstruction *curReconstruction = &this->reconstructions.back();
 	this->bActive = curReconstruction->bIsMeasurement;
+	if (!this->bActive) { return -1; }
+
 	// smoothing
 	int refreshStartPosition = pointSmoother.Insert(curReconstruction->point);
 	for (int pos = refreshStartPosition; pos < this->reconstructions.size(); pos++)
 	{
-		this->reconstructions[pos].smoothedPoint = pointSmoother.GetResult(pos);
+		this->reconstructions[pos].smoothedPoint = this->pointSmoother.GetResult(pos);
+	}
+	return refreshStartPosition;
+}
+
+int Track3D::InsertReconstructions(std::vector<stReconstruction> &reconstructions)
+{
+	this->reconstructions.insert(this->reconstructions.end(), reconstructions.begin(), reconstructions.end());
+	std::vector<PSN_Point3D> points(reconstructions.size());
+	for (int pos = 0; pos < points.size(); pos++) { points[pos] = reconstructions[pos].point; }
+
+	// smoothing
+	int refreshStartPosition = pointSmoother.Insert(points);
+	for (int pos = refreshStartPosition; pos < this->reconstructions.size(); pos++)
+	{
+		this->reconstructions[pos].smoothedPoint = this->pointSmoother.GetResult(pos);
+	}
+	return refreshStartPosition;
+}
+
+int Track3D::ReplaceBackReconstruction(stReconstruction &reconstruction)
+{
+	this->reconstructions.back() = reconstruction;
+	stReconstruction *curReconstruction = &this->reconstructions.back();
+	this->bActive = curReconstruction->bIsMeasurement;
+	if (!this->bActive) { return -1; }
+
+	// smoothing
+	int refreshStartPosition = pointSmoother.ReplaceBack(curReconstruction->point);
+	for (int pos = refreshStartPosition; pos < this->reconstructions.size(); pos++)
+	{
+		this->reconstructions[pos].smoothedPoint = this->pointSmoother.GetResult(pos);
 	}
 	return refreshStartPosition;
 }

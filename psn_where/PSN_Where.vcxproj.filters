@@ -55,11 +55,11 @@
     <ClInclude Include="PSNWhere_Defines.h">
       <Filter>PSNWhere</Filter>
     </ClInclude>
-    <ClInclude Include="PSNWhere_Utils.h">
-      <Filter>PSNWhere</Filter>
-    </ClInclude>
     <ClInclude Include="Evaluator.h">
       <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="PSNWhere_Utils.h">
+      <Filter>PSNWhere</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
