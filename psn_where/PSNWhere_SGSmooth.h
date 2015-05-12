@@ -10,8 +10,10 @@
  *
  ******************************************************************************/
 #pragma once
-#include <stddef.h>
 #include <queue>
+
+#define SGS_DEFAULT_SPAN (9)
+#define SGS_DEFAULT_DEGREE (1)
 
 struct Qset
 {
@@ -33,14 +35,20 @@ public:
 	// setter
 	int Insert(double newData);
 	int Insert(std::vector<double> &queueNewData);
+	int ReplaceBack(double replaceData);
+	void PopBack(void);
 	void SetQ(Qset &Q) { Qset_ = Q; };
+	void SetPrecomputedQsets(std::vector<Qset> *Qsets) { precomputedQsets_ = Qsets; }
+	void SetSmoother(std::deque<double> &data, std::deque<double> &smoothedData, int span, int degree);
 
 	// getter
 	double GetResult(int pos);
-	std::vector<double> GetResult(int startPos, int endPos);
+	std::vector<double> GetResults(int startPos, int endPos);
+	void GetSmoother(std::deque<double> &data, std::deque<double> &smoothedData, int &span, int &degree);
 
 	// others
-	Qset* CalculateQ(int windowSize);
+	bool UpdateQ(int windowSize);
+	static Qset CalculateQ(int windowSize, int degree = SGS_DEFAULT_DEGREE);
 	
 private:
 	int Smoothing(void);	
@@ -51,11 +59,6 @@ private:
 	Qset Qset_;
 	std::deque<double> data_;
 	std::deque<double> smoothedData_;	
-	//std::vector<double> Q_;
-	//std::vector<double> Qbegin_;
-	//std::vector<double> Qmid_;	
-	//std::vector<double> Qend_;
-	//int Qcols_;
-	//int Qrows_;
+	std::vector<Qset> *precomputedQsets_;
 };
 

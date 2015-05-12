@@ -707,76 +707,6 @@ std::string psn::MakeTrackIDList(PSN_TrackSet *tracks)
 }
 
 /////////////////////////////////////////////////////////////////////////
-// CPointSmoother MEMBER FUNCTIONS
-/////////////////////////////////////////////////////////////////////////
-CPointSmoother::CPointSmoother(void)
-{
-}
-
-CPointSmoother::~CPointSmoother(void)
-{
-}
-
-int CPointSmoother::Insert(PSN_Point3D &point)
-{
-	int refreshPos = smootherX_.Insert(point.x);
-	smootherY_.Insert(point.y);
-	smootherZ_.Insert(point.z);
-
-	// smoothing
-	this->Update(refreshPos, 1);
-
-	return refreshPos;
-}
-
-int CPointSmoother::Insert(std::vector<PSN_Point3D> &points)
-{
-	std::vector<double> pointsX(points.size(), 0.0), pointsY(points.size(), 0.0), pointsZ(points.size(), 0.0);
-	for (int pointIdx = 0; pointIdx < points.size(); pointIdx++)
-	{
-		pointsX[pointIdx] = points[pointIdx].x;
-		pointsY[pointIdx] = points[pointIdx].y;
-		pointsZ[pointIdx] = points[pointIdx].z;
-	}
-	int refreshPos = smootherX_.Insert(pointsX);
-	smootherY_.Insert(pointsY);
-	smootherZ_.Insert(pointsZ);
-
-	// smoothing
-	this->Update(refreshPos, (int)points.size());
-
-	return refreshPos;
-}
-
-PSN_Point3D CPointSmoother::GetResult(int pos)
-{
-	assert(pos < smoothedPoints_.size());
-	return smoothedPoints_[pos];
-}
-
-std::vector<PSN_Point3D> CPointSmoother::GetResults(int startPos, int endPos)
-{
-	if (endPos < 0) { endPos = (int)smoothedPoints_.size(); }
-	assert(endPos <= smoothedPoints_.size() && startPos <= endPos);
-	std::vector<PSN_Point3D> results;
-	results.insert(results.end(), smoothedPoints_.begin() + startPos, smoothedPoints_.begin() + endPos);
-	return results;
-}
-
-void CPointSmoother::Update(int refreshPos, int numPoints)
-{
-	int endPos = (int)smoothedPoints_.size() + numPoints;
-	smoothedPoints_.erase(smoothedPoints_.begin() + refreshPos, smoothedPoints_.end());
-	for (int pos = refreshPos; pos < endPos; pos++)
-	{
-		smoothedPoints_.push_back(PSN_Point3D(smootherX_.GetResult(pos), smootherY_.GetResult(pos), smootherZ_.GetResult(pos)));
-	}
-	size_ = smoothedPoints_.size();
-	back_ = &smoothedPoints_.back();
-}
-
-
-/////////////////////////////////////////////////////////////////////////
 // CTrackletCombination MEMBER FUNCTIONS
 /////////////////////////////////////////////////////////////////////////
 
@@ -861,6 +791,137 @@ unsigned int CTrackletCombination::size()
 	return this->numTracklets;
 }
 
+/////////////////////////////////////////////////////////////////////////
+// CPointSmoother MEMBER FUNCTIONS
+/////////////////////////////////////////////////////////////////////////
+CPointSmoother::CPointSmoother(void)
+{
+}
+
+CPointSmoother::~CPointSmoother(void)
+{
+}
+
+int CPointSmoother::Insert(PSN_Point3D &point)
+{
+	int refreshPos = smootherX_.Insert(point.x);
+	smootherY_.Insert(point.y);
+	smootherZ_.Insert(point.z);
+
+	// smoothing
+	this->Update(refreshPos, 1);
+
+	return refreshPos;
+}
+
+int CPointSmoother::Insert(std::vector<PSN_Point3D> &points)
+{
+	std::vector<double> pointsX(points.size(), 0.0), pointsY(points.size(), 0.0), pointsZ(points.size(), 0.0);
+	for (int pointIdx = 0; pointIdx < points.size(); pointIdx++)
+	{
+		pointsX[pointIdx] = points[pointIdx].x;
+		pointsY[pointIdx] = points[pointIdx].y;
+		pointsZ[pointIdx] = points[pointIdx].z;
+	}
+	int refreshPos = smootherX_.Insert(pointsX);
+	smootherY_.Insert(pointsY);
+	smootherZ_.Insert(pointsZ);
+
+	// smoothing
+	this->Update(refreshPos, (int)points.size());
+
+	return refreshPos;
+}
+
+int CPointSmoother::ReplaceBack(PSN_Point3D &point)
+{
+	int refreshPos = smootherX_.ReplaceBack(point.x);
+	smootherY_.ReplaceBack(point.y);
+	smootherZ_.ReplaceBack(point.z);
+	smoothedPoints_.pop_back();
+
+	// smoothing
+	this->Update(refreshPos, 1);
+
+	return refreshPos;
+}
+
+void CPointSmoother::SetQsets(std::vector<Qset> *Qsets)
+{
+	smootherX_.SetPrecomputedQsets(Qsets);
+	smootherY_.SetPrecomputedQsets(Qsets);
+	smootherZ_.SetPrecomputedQsets(Qsets);
+}
+
+void CPointSmoother::PopBack(void)
+{
+	assert(0 < smoothedPoints_.size());
+	smoothedPoints_.pop_back();
+	smootherX_.PopBack();
+	smootherY_.PopBack();
+	smootherZ_.PopBack();	
+}
+
+void CPointSmoother::SetSmoother(std::deque<PSN_Point3D> &data, std::deque<PSN_Point3D> &smoothedPoints, int span, int degree)
+{
+	smoothedPoints_ = smoothedPoints;
+	std::deque<double> pointX, pointY, pointZ, smoothX, smoothY, smoothZ;
+	for (int pos = 0; pos < smoothedPoints_.size(); pos++)
+	{
+		pointX.push_back(data[pos].x);
+		pointY.push_back(data[pos].y);
+		pointZ.push_back(data[pos].z);
+		smoothX.push_back(smoothedPoints_[pos].x);
+		smoothY.push_back(smoothedPoints_[pos].y);
+		smoothZ.push_back(smoothedPoints_[pos].z);
+	}
+	smootherX_.SetSmoother(pointX, smoothX, span, degree);
+	smootherY_.SetSmoother(pointY, smoothY, span, degree);
+	smootherZ_.SetSmoother(pointZ, smoothZ, span, degree);
+}
+
+PSN_Point3D CPointSmoother::GetResult(int pos)
+{
+	assert(pos < smoothedPoints_.size());
+	return smoothedPoints_[pos];
+}
+
+std::vector<PSN_Point3D> CPointSmoother::GetResults(int startPos, int endPos)
+{
+	if (endPos < 0) { endPos = (int)smoothedPoints_.size(); }
+	assert(endPos <= smoothedPoints_.size() && startPos <= endPos);
+	std::vector<PSN_Point3D> results;
+	results.insert(results.end(), smoothedPoints_.begin() + startPos, smoothedPoints_.begin() + endPos);
+	return results;
+}
+
+void CPointSmoother::GetSmoother(std::deque<PSN_Point3D> &data, std::deque<PSN_Point3D> &smoothedPoints, int &span, int &degree)
+{
+	smoothedPoints = smoothedPoints_;
+	std::deque<double> pointX, pointY, pointZ, smoothX, smoothY, smoothZ;
+	smootherX_.GetSmoother(pointX, smoothX, span, degree);
+	smootherY_.GetSmoother(pointY, smoothY, span, degree);
+	smootherZ_.GetSmoother(pointZ, smoothZ, span, degree);
+	data.resize(pointX.size());
+	for (int pos = 0; pos < smoothedPoints_.size(); pos++)
+	{
+		data[pos].x = pointX[pos];
+		data[pos].y = pointY[pos];
+		data[pos].z = pointZ[pos];
+	}
+}
+
+void CPointSmoother::Update(int refreshPos, int numPoints)
+{
+	int endPos = (int)smoothedPoints_.size() + numPoints;
+	smoothedPoints_.erase(smoothedPoints_.begin() + refreshPos, smoothedPoints_.end());
+	for (int pos = refreshPos; pos < endPos; pos++)
+	{
+		smoothedPoints_.push_back(PSN_Point3D(smootherX_.GetResult(pos), smootherY_.GetResult(pos), smootherZ_.GetResult(pos)));
+	}
+	size_ = smoothedPoints_.size();
+	back_ = &smoothedPoints_.back();
+}
 
 /////////////////////////////////////////////////////////////////////////
 // Track3D MEMBER FUNCTIONS

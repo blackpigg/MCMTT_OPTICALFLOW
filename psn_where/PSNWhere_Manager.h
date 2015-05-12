@@ -17,9 +17,9 @@
 //#define PSN_PRINT_LOG_
 //#define LOAD_SNAPSHOT_
 
-//#define SAVE_SNAPSHOT_
-#define DO_RECORD
-#define SHOW_TOPVIEW
+#define SAVE_SNAPSHOT_
+//#define DO_RECORD
+//#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -313,27 +313,6 @@ typedef struct _stCalibrationInfos
 typedef std::pair<PSN_Point3D, PSN_Point3D> PSN_Line;
 typedef std::pair<PSN_Point2D, unsigned int> PSN_Point2D_CamIdx;
 
-class CPointSmoother
-{
-public:
-	CPointSmoother(void);
-	~CPointSmoother(void);
-	int Insert(PSN_Point3D &point);
-	int Insert(std::vector<PSN_Point3D> &points);
-	PSN_Point3D GetResult(int pos);
-	std::vector<PSN_Point3D> GetResults(int startPos, int endPos = -1);
-	size_t size(void) const { return size_; }
-	PSN_Point3D back(void) const { return *back_; }
-
-private:
-	void Update(int refreshPos, int numPoints);
-
-	size_t size_;
-	PSN_Point3D *back_;
-	CPSNWhere_SGSmooth smootherX_, smootherY_, smootherZ_;	
-	std::deque<PSN_Point3D> smoothedPoints_;
-};
-
 class TrackTree;
 struct stTracklet2D
 {
@@ -393,11 +372,42 @@ struct stReconstruction
 {
 	bool bIsMeasurement;
 	CTrackletCombination tracklet2Ds;
+	std::vector<PSN_Point3D> rawPoints;
 	PSN_Point3D point;
+	PSN_Point3D smoothedPoint;
 	PSN_Point3D velocity;
 	double averageSensitivity;
 	double costReconstruction;
+	double costSmoothedPoint;
 	double costLink;
+};
+
+class CPointSmoother
+{
+public:
+	CPointSmoother(void);
+	~CPointSmoother(void);
+	// setter
+	int Insert(PSN_Point3D &point);
+	int Insert(std::vector<PSN_Point3D> &points);
+	int ReplaceBack(PSN_Point3D &point);
+	void SetQsets(std::vector<Qset> *Qsets);
+	void PopBack(void);
+	void SetSmoother(std::deque<PSN_Point3D> &data, std::deque<PSN_Point3D> &smoothedPoints, int span, int degree);
+	// getter
+	PSN_Point3D GetResult(int pos);
+	std::vector<PSN_Point3D> GetResults(int startPos, int endPos = -1);
+	size_t size(void) const { return size_; }
+	PSN_Point3D back(void) const { return *back_; }
+	void GetSmoother(std::deque<PSN_Point3D> &data, std::deque<PSN_Point3D> &smoothedPoints, int &span, int &degree);
+
+private:
+	void Update(int refreshPos, int numPoints);
+
+	size_t size_;
+	PSN_Point3D *back_;
+	CPSNWhere_SGSmooth smootherX_, smootherY_, smootherZ_;	
+	std::deque<PSN_Point3D> smoothedPoints_;
 };
 
 struct stTrackIndexElement;
@@ -433,13 +443,8 @@ public:
 	// reconstruction related
 	std::deque<stReconstruction> reconstructions;
 
-	// trajectory related
-	std::deque<PSN_Point3D> smoothedTrajectory;
-	
-
-	// dynamic related
-	//cv::KalmanFilter KF;
-	//cv::Mat KFMeasurement;
+	// smoothing related
+	CPointSmoother smoother;
 
 	// cost
 	double costTotal;

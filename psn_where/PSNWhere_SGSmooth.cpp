@@ -1,15 +1,13 @@
 #include "PSNWhere_SGSmooth.h"
 #include <stdio.h>
+#include <stddef.h>
 #include <math.h>
 #include <assert.h>
-#include <cv.h>
-
-#define SGS_DEFAULT_SPAN (9)
-#define SGS_DEFAULT_DEGREE (1)
 
 CPSNWhere_SGSmooth::CPSNWhere_SGSmooth(void)
 	: span_(SGS_DEFAULT_SPAN)
 	, degree_(SGS_DEFAULT_DEGREE)
+	, precomputedQsets_(NULL)
 {
 	Qset_.cols = 0;
 	Qset_.rows = 0;
@@ -18,6 +16,7 @@ CPSNWhere_SGSmooth::CPSNWhere_SGSmooth(void)
 CPSNWhere_SGSmooth::CPSNWhere_SGSmooth(int span, int degree, std::vector<double> *initialData)
 	: span_(span)
 	, degree_(degree)
+	, precomputedQsets_(NULL)
 {
 	Qset_.cols = 0;
 	Qset_.rows = 0;
@@ -43,13 +42,34 @@ int CPSNWhere_SGSmooth::Insert(std::vector<double> &queueNewData)
 	return Smoothing();
 }
 
+int CPSNWhere_SGSmooth::ReplaceBack(double replaceData)
+{
+	data_.back() = replaceData;
+	smoothedData_.pop_back();
+	return Smoothing();
+}
+
+void CPSNWhere_SGSmooth::PopBack(void)
+{
+	data_.pop_back();
+	smoothedData_.pop_back();
+}
+
+void CPSNWhere_SGSmooth::SetSmoother(std::deque<double> &data, std::deque<double> &smoothedData, int span, int degree)
+{
+	data_ = data;
+	smoothedData_ = smoothedData;
+	span_ = span;
+	degree_ = degree;
+}
+
 double CPSNWhere_SGSmooth::GetResult(int pos)
 {
 	assert(pos < smoothedData_.size());
 	return smoothedData_[pos];
 }
 
-std::vector<double> CPSNWhere_SGSmooth::GetResult(int startPos, int endPos)
+std::vector<double> CPSNWhere_SGSmooth::GetResults(int startPos, int endPos)
 {
 	assert(endPos < smoothedData_.size() && startPos <= endPos);
 	int numPoints = endPos - startPos + 1;
@@ -62,95 +82,115 @@ std::vector<double> CPSNWhere_SGSmooth::GetResult(int startPos, int endPos)
 	return results;
 }
 
-Qset* CPSNWhere_SGSmooth::CalculateQ(int windowSize)
+void CPSNWhere_SGSmooth::GetSmoother(std::deque<double> &data, std::deque<double> &smoothedData, int &span, int &degree)
+{
+	data = data_;
+	smoothedData = smoothedData_;
+	span = span_;
+	degree = degree_;
+}
+
+bool CPSNWhere_SGSmooth::UpdateQ(int windowSize)
 {
 	if (Qset_.rows == windowSize) { return false; }
+	if (NULL != precomputedQsets_ && precomputedQsets_->size() >= windowSize)
+	{
+		Qset_ = (*precomputedQsets_)[windowSize-1];
+	}
+	else
+	{
+		Qset_ = CalculateQ(windowSize, degree_);
+	}
+	return true;
+}
 
-	int halfWindowSize = (windowSize - 1) / 2;
-	//cv::Mat V = cv::Mat::ones(numFrame, degree_+1, CV_64F);
+Qset CPSNWhere_SGSmooth::CalculateQ(int windowSize, int degree)
+{
+	Qset resutQ_;
+	int halfWindowSize = (windowSize - 1) / 2;	
 	
 	// Qmid
-	Qset_.Qmid.clear();
-	Qset_.Qmid.resize(windowSize, 1.0 / (double)windowSize);
+	resutQ_.Qmid.clear();
+	resutQ_.Qmid.resize(windowSize, 1.0 / (double)windowSize);
 
 	// direction => row
 	int pos = 0;
-	std::vector<double> V(windowSize * (degree_+1), 1.0);	
-	for (int order = 1; order <= degree_; order++)
+	std::vector<double> V(windowSize * (degree+1), 1.0);	
+	for (int order = 1; order <= degree; order++)
 	{
-		for (int timeIdx = -halfWindowSize, pos = order; timeIdx <= halfWindowSize; timeIdx++, pos += degree_ + 1)
+		for (int timeIdx = -halfWindowSize, pos = order; timeIdx <= halfWindowSize; timeIdx++, pos += degree + 1)
 		{
 			V[pos] = std::pow((double)timeIdx, (double)order);
 		}
 	}
 
 	// find Q (recuded QR factorization, we don't need R)
-	Qset_.Q.clear();
-	Qset_.rows = windowSize;
-	Qset_.cols = degree_ + 1;
-	Qset_.Q.resize(Qset_.rows* Qset_.cols, 0.0);
+	resutQ_.Q.clear();
+	resutQ_.rows = windowSize;
+	resutQ_.cols = degree + 1;
+	resutQ_.Q.resize(resutQ_.rows* resutQ_.cols, 0.0);
 
 	int preColPos = 0;
 	double columnNorm = 0.0;
-	for (int colIdx = 0; colIdx < Qset_.cols; colIdx++)
+	for (int colIdx = 0; colIdx < resutQ_.cols; colIdx++)
 	{
 		std::vector<double> projectionsMagnitude(std::max(0, colIdx), 0.0);
-		for (int rowIdx = 0, pos = colIdx; rowIdx < Qset_.rows; rowIdx++, pos += Qset_.cols)
+		for (int rowIdx = 0, pos = colIdx; rowIdx < resutQ_.rows; rowIdx++, pos += resutQ_.cols)
 		{
-			Qset_.Q[pos] = V[pos];
+			resutQ_.Q[pos] = V[pos];
 			// for Q(preCol)' * V
 			for (int preColIdx = 0, preColPos = pos - colIdx; preColIdx < colIdx; preColIdx++, preColPos++)
 			{
-				projectionsMagnitude[preColIdx] += Qset_.Q[preColPos] * V[pos];
+				projectionsMagnitude[preColIdx] += resutQ_.Q[preColPos] * V[pos];
 			}
 		}
 
 		// orthogonalization
 		columnNorm = 0.0;
-		for (int rowIdx = 0, pos = colIdx; rowIdx < Qset_.rows; rowIdx++, pos+=Qset_.cols)
+		for (int rowIdx = 0, pos = colIdx; rowIdx < resutQ_.rows; rowIdx++, pos+=resutQ_.cols)
 		{
 			preColPos = pos - colIdx;
 			for (int preColIdx = 0; preColIdx < colIdx; preColIdx++, preColPos++)
 			{
-				Qset_.Q[pos] -= projectionsMagnitude[preColIdx] * Qset_.Q[preColPos];
+				resutQ_.Q[pos] -= projectionsMagnitude[preColIdx] * resutQ_.Q[preColPos];
 			}
-			columnNorm += Qset_.Q[pos] * Qset_.Q[pos];
+			columnNorm += resutQ_.Q[pos] * resutQ_.Q[pos];
 		}
 		columnNorm = std::sqrt(columnNorm);
 
 		// normalization
-		for (int rowIdx = 0, pos = colIdx; rowIdx < Qset_.rows; rowIdx++, pos += Qset_.cols)
+		for (int rowIdx = 0, pos = colIdx; rowIdx < resutQ_.rows; rowIdx++, pos += resutQ_.cols)
 		{
-			Qset_.Q[pos] /= columnNorm;
+			resutQ_.Q[pos] /= columnNorm;
 		}		
 	}
 
 	// Qbegin: q(1:hf,:)*q'
-	Qset_.Qbegin.clear();
-	Qset_.Qbegin.resize(halfWindowSize * Qset_.rows, 0.0);
+	resutQ_.Qbegin.clear();
+	resutQ_.Qbegin.resize(halfWindowSize * resutQ_.rows, 0.0);
 
 	// Qend: q((hf+2):end,:)*q'
-	Qset_.Qend.clear();
-	Qset_.Qend.resize(halfWindowSize * Qset_.rows, 0.0);
+	resutQ_.Qend.clear();
+	resutQ_.Qend.resize(halfWindowSize * resutQ_.rows, 0.0);
 	
 	int posFrontHalf = 0;
-	int posBackHalf = (halfWindowSize + 1) * Qset_.cols;	
+	int posBackHalf = (halfWindowSize + 1) * resutQ_.cols;	
 	for (int rowIdx = 0, pos = 0; rowIdx < halfWindowSize; rowIdx++)
 	{
 		int posQ = 0;
-		for (int colIdx = 0; colIdx < Qset_.rows; colIdx++, pos++)
+		for (int colIdx = 0; colIdx < resutQ_.rows; colIdx++, pos++)
 		{
-			for (int elementIdx = 0; elementIdx < Qset_.cols; elementIdx++, posQ++)
+			for (int elementIdx = 0; elementIdx < resutQ_.cols; elementIdx++, posQ++)
 			{
-				Qset_.Qbegin[pos] += Qset_.Q[posQ] * Qset_.Q[posFrontHalf + elementIdx];
-				Qset_.Qend[pos] += Qset_.Q[posQ] * Qset_.Q[posBackHalf + elementIdx];
+				resutQ_.Qbegin[pos] += resutQ_.Q[posQ] * resutQ_.Q[posFrontHalf + elementIdx];
+				resutQ_.Qend[pos] += resutQ_.Q[posQ] * resutQ_.Q[posBackHalf + elementIdx];
 			}
 		}
-		posFrontHalf += Qset_.cols;
-		posBackHalf += Qset_.cols;
+		posFrontHalf += resutQ_.cols;
+		posBackHalf += resutQ_.cols;
 	}
 
-	return &Qset_;
+	return resutQ_;
 }
 
 int CPSNWhere_SGSmooth::Smoothing(void)
@@ -172,7 +212,7 @@ int CPSNWhere_SGSmooth::Smoothing(void)
 	// smoothing
 	int halfWindowSize = (windowSize - 1) / 2;
 	int midStartPos = 0;
-	bool bEntireUpdate = NULL == CalculateQ(windowSize)? false : true;
+	bool bEntireUpdate = UpdateQ(windowSize);
 	std::vector<double> smoothedMid;
 	if(bEntireUpdate)
 	{
