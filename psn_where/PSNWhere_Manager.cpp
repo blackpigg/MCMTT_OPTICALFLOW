@@ -1073,7 +1073,7 @@ TrackTree::TrackTree()
 	: id(0)
 	, timeGeneration(0)
 	, bValid(true)
-	, numMeasurements(0)
+//	, numMeasurements(0)
 //	, maxGTProb(0.0)
 {
 }
@@ -1091,18 +1091,18 @@ void TrackTree::Initialize(unsigned int id, Track3D *seedTrack, unsigned int tim
 	treeList.push_back(*this);
 	seedTrack->tree = &treeList.back();
 	
-	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-	{
-		if(NULL == seedTrack->curTracklet2Ds.get(camIdx))
-		{
-			continue;
-		}
-		stTracklet2DInfo newTrackletInfo;
-		newTrackletInfo.tracklet2D = seedTrack->curTracklet2Ds.get(camIdx);
-		newTrackletInfo.queueRelatedTracks.push_back(seedTrack);
-		seedTrack->tree->tracklet2Ds[camIdx].push_back(newTrackletInfo);
-		seedTrack->tree->numMeasurements++;
-	}
+	//for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+	//{
+	//	if(NULL == seedTrack->curTracklet2Ds.get(camIdx))
+	//	{
+	//		continue;
+	//	}
+	//	stTracklet2DInfo newTrackletInfo;
+	//	newTrackletInfo.tracklet2D = seedTrack->curTracklet2Ds.get(camIdx);
+	//	newTrackletInfo.queueRelatedTracks.push_back(seedTrack);
+	//	seedTrack->tree->tracklet2Ds[camIdx].push_back(newTrackletInfo);
+	//	seedTrack->tree->numMeasurements++;
+	//}
 	//this->m_queueActiveTrees.push_back(seedTrack->tree);
 }
 
@@ -1375,31 +1375,31 @@ Track3D* TrackTree::FindOldestTrackInBranch(Track3D *trackInBranch, int nMostPre
  Return Values:
 	- bool: true for connected trees
 ************************************************************************/
-bool TrackTree::CheckConnectivityOfTrees(TrackTree *tree1, TrackTree *tree2)
-{
-	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-	{
-		if(0 == tree1->tracklet2Ds[camIdx].size() || 0 == tree2->tracklet2Ds[camIdx].size())
-		{
-			continue;
-		}
-		for(std::deque<stTracklet2DInfo>::iterator info1Iter = tree1->tracklet2Ds[camIdx].begin();
-			info1Iter != tree1->tracklet2Ds[camIdx].end();
-			info1Iter++)
-		{
-			for(std::deque<stTracklet2DInfo>::iterator info2Iter = tree2->tracklet2Ds[camIdx].begin();
-				info2Iter != tree2->tracklet2Ds[camIdx].end();
-				info2Iter++)
-			{
-				if((*info1Iter).tracklet2D == (*info2Iter).tracklet2D)
-				{
-					return true;
-				}
-			}
-		}
-	}
-	return false;
-}
+//bool TrackTree::CheckConnectivityOfTrees(TrackTree *tree1, TrackTree *tree2)
+//{
+//	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+//	{
+//		if(0 == tree1->tracklet2Ds[camIdx].size() || 0 == tree2->tracklet2Ds[camIdx].size())
+//		{
+//			continue;
+//		}
+//		for(std::deque<stTracklet2DInfo>::iterator info1Iter = tree1->tracklet2Ds[camIdx].begin();
+//			info1Iter != tree1->tracklet2Ds[camIdx].end();
+//			info1Iter++)
+//		{
+//			for(std::deque<stTracklet2DInfo>::iterator info2Iter = tree2->tracklet2Ds[camIdx].begin();
+//				info2Iter != tree2->tracklet2Ds[camIdx].end();
+//				info2Iter++)
+//			{
+//				if((*info1Iter).tracklet2D == (*info2Iter).tracklet2D)
+//				{
+//					return true;
+//				}
+//			}
+//		}
+//	}
+//	return false;
+//}
 
 /////////////////////////////////////////////////////////////////////////
 // CPSNWhere_Manager

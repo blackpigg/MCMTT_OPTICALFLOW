@@ -138,13 +138,14 @@ private:
 	bool ReadProjectionSensitivity(cv::Mat &matSensitivity, unsigned int camIdx);
 	bool ReadDistanceFromBoundary(cv::Mat &matDistance, unsigned int camIdx);
 
-	bool CheckVisibility(PSN_Point3D testPoint, unsigned int camIdx);
+	bool CheckVisibility(PSN_Point3D testPoint, unsigned int camIdx, PSN_Point2D *result2DPoint = NULL);
 	bool CheckHeadWidth(PSN_Point3D midPoint3D, PSN_Rect rect1, PSN_Rect rect2, unsigned int camIdx1, unsigned int camIdx2);
 
 	stReconstruction PointReconstruction(CTrackletCombination &tracklet2Ds);
 	double NViewPointReconstruction(std::vector<PSN_Line> &vecLines, PSN_Point3D &outputPoint);
 	double NViewGroundingPointReconstruction(std::vector<PSN_Point2D_CamIdx> &vecPointInfos, PSN_Point3D &outputPoint);
-	PSN_Line GetBackProjectionLine(PSN_Point2D point2D, unsigned int camIdx);	
+	PSN_Line GetBackProjectionLine(PSN_Point2D point2D, unsigned int camIdx);
+	double GetDistanceFromBoundary(PSN_Point3D point);
 	
 	//----------------------------------------------------------------
 	// 2D tracklet related
@@ -168,8 +169,8 @@ private:
 	//void Track3D_RepairDataStructure(void);
 
 	// cost calculation
-	double ComputeEnterProbability(std::vector<PSN_Point2D_CamIdx> &vecPointInfos);
-	double ComputeExitProbability(std::vector<PSN_Point2D_CamIdx> &vecPointInfos);
+	double ComputeEnterProbability(std::vector<PSN_Point3D> &points);
+	double ComputeExitProbability(std::vector<PSN_Point3D> &points);
 	static double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, unsigned int timeGap = 1);
 	double ComputeRGBCost(const cv::Mat *feature1, const cv::Mat *feature2, unsigned int timeGap);
 	double ComputeTrackletLinkCost(PSN_Point3D preLocation, PSN_Point3D curLocation, int timeGap);
@@ -177,7 +178,7 @@ private:
 
 	// miscellaneous
 	static bool CheckIncompatibility(Track3D *track1, Track3D *track2);
-	static bool CheckIncompatibility(CTrackletCombination &combi1, CTrackletCombination &combi2);
+	static bool CheckIncompatibility(CTrackletCombination &combi1, CTrackletCombination &combi2);	
 	cv::Mat GetRGBFeature(const cv::Mat *patch, int numBins);
 	
 	//----------------------------------------------------------------

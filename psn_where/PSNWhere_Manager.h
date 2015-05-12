@@ -17,9 +17,9 @@
 //#define PSN_PRINT_LOG_
 //#define LOAD_SNAPSHOT_
 
-#define SAVE_SNAPSHOT_
-//#define DO_RECORD
-//#define SHOW_TOPVIEW
+//#define SAVE_SNAPSHOT_
+#define DO_RECORD
+#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -473,11 +473,11 @@ public:
 
 typedef std::deque<Track3D*> PSN_TrackSet;
 
-struct stTracklet2DInfo
-{
-	stTracklet2D *tracklet2D;
-	std::deque<Track3D*> queueRelatedTracks;
-};
+//struct stTracklet2DInfo
+//{
+//	stTracklet2D *tracklet2D;
+//	std::deque<Track3D*> queueRelatedTracks;
+//};
 
 struct stTrackInTreeInfo
 {
@@ -495,8 +495,8 @@ public:
 	bool bValid;
 	std::deque<Track3D*> tracks; // seed at the first
 
-	unsigned int numMeasurements;
-	std::deque<stTracklet2DInfo> tracklet2Ds[NUM_CAM];
+	//unsigned int numMeasurements;
+	//std::deque<stTracklet2DInfo> tracklet2Ds[NUM_CAM];
 
 	// pruning related
 	//double maxGTProb;
@@ -518,7 +518,7 @@ public:
 	static void InvalidateBranchWithMinGTProb(Track3D *rootOfBranch, double minGTProb);
 	static Track3D* FindMaxGTProbBranch(Track3D* branchSeedTrack, size_t timeIndex);
 	static Track3D* FindOldestTrackInBranch(Track3D *trackInBranch, int nMostPreviousFrameIdx);
-	static bool CheckConnectivityOfTrees(TrackTree *tree1, TrackTree *tree2);
+	//static bool CheckConnectivityOfTrees(TrackTree *tree1, TrackTree *tree2);
 	
 
 private:
