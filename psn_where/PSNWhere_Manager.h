@@ -15,11 +15,11 @@
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
 //#define PSN_PRINT_LOG_
-//#define LOAD_SNAPSHOT_
+#define LOAD_SNAPSHOT_
 
 //#define SAVE_SNAPSHOT_
-#define DO_RECORD
-#define SHOW_TOPVIEW
+//#define DO_RECORD
+//#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -63,7 +63,7 @@ const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", 
 // VISUALIZATION SETTTING
 /////////////////////////////////////////////////////////////////////////
 #define DISP_TRAJECTORY3D_LENGTH (40)
-#define DISPLAY_ID_MODE (0) // 0: raw track id, 1: id for visualization
+#define DISPLAY_ID_MODE (1) // 0: raw track id, 1: id for visualization
 
 /////////////////////////////////////////////////////////////////////////
 // EVALUATION SETTING
@@ -376,7 +376,7 @@ struct stReconstruction
 	PSN_Point3D point;
 	PSN_Point3D smoothedPoint;
 	PSN_Point3D velocity;
-	double averageSensitivity;
+	double maxError;
 	double costReconstruction;
 	double costSmoothedPoint;
 	double costLink;
@@ -606,6 +606,7 @@ void nchoosek(int n, int k, std::deque<std::vector<unsigned int>> &outputCombina
 double erf(double x);
 double erfc(double x);
 cv::Mat histogram(cv::Mat singleChannelImage, int numBin);
+bool IsLineSegmentIntersect(PSN_Line &line1, PSN_Line &line2);
 
 // display related
 std::vector<cv::Scalar> GenerateColors(unsigned int numColor);

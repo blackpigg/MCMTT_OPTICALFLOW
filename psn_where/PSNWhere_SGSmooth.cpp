@@ -53,6 +53,7 @@ void CPSNWhere_SGSmooth::PopBack(void)
 {
 	data_.pop_back();
 	smoothedData_.pop_back();
+	size_ = smoothedData_.size();
 }
 
 void CPSNWhere_SGSmooth::SetSmoother(std::deque<double> &data, std::deque<double> &smoothedData, int span, int degree)
@@ -61,6 +62,7 @@ void CPSNWhere_SGSmooth::SetSmoother(std::deque<double> &data, std::deque<double
 	smoothedData_ = smoothedData;
 	span_ = span;
 	degree_ = degree;
+	size_ = smoothedData_.size();
 }
 
 double CPSNWhere_SGSmooth::GetResult(int pos)
@@ -251,8 +253,9 @@ int CPSNWhere_SGSmooth::Smoothing(void)
 			curSmoothedData += Qset_.Qend[pos] * data_[colIdx];
 		}
 		smoothedData_.push_back(curSmoothedData);
-	}
-	
+	}	
+	size_ = smoothedData_.size();
+
 	return refreshPos;
 }
 

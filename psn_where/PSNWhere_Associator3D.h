@@ -174,7 +174,7 @@ private:
 	static double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, unsigned int timeGap = 1);
 	double ComputeRGBCost(const cv::Mat *feature1, const cv::Mat *feature2, unsigned int timeGap);
 	double ComputeTrackletLinkCost(PSN_Point3D preLocation, PSN_Point3D curLocation, int timeGap);
-	double ComputeReconstructionProbability(PSN_Point3D point, std::vector<PSN_Point3D> *rawPoints, CTrackletCombination *trackletCombination);
+	double ComputeReconstructionProbability(PSN_Point3D point, std::vector<PSN_Point3D> *rawPoints, CTrackletCombination *trackletCombination, double maxError = 0.0);
 
 	// miscellaneous
 	static bool CheckIncompatibility(Track3D *track1, Track3D *track2);

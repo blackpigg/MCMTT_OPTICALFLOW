@@ -45,6 +45,7 @@ public:
 	double GetResult(int pos);
 	std::vector<double> GetResults(int startPos, int endPos);
 	void GetSmoother(std::deque<double> &data, std::deque<double> &smoothedData, int &span, int &degree);
+	size_t size(void) const { return size_; }
 
 	// others
 	bool UpdateQ(int windowSize);
@@ -56,6 +57,7 @@ private:
 
 	int span_;
 	int degree_;
+	size_t size_;
 	Qset Qset_;
 	std::deque<double> data_;
 	std::deque<double> smoothedData_;	

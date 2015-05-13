@@ -858,7 +858,7 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 	stReconstruction resultReconstruction;
 	resultReconstruction.bIsMeasurement = false;
 	resultReconstruction.point = PSN_Point3D(0.0, 0.0, 0.0);
-	resultReconstruction.averageSensitivity = 0.0;
+	resultReconstruction.maxError = 0.0;
 	resultReconstruction.costReconstruction = DBL_MAX;
 	resultReconstruction.costLink = 0.0;
 	resultReconstruction.velocity = PSN_Point3D(0.0, 0.0, 0.0);
@@ -888,18 +888,19 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 
 				curPoint = curTracklet->rects.back().reconstructionPoint();				
 				vecPointInfos.push_back(PSN_Point2D_CamIdx(curPoint, camIdx));
-				//maxError += E_DET * matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+				maxError += E_DET * matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 
 				// 3D position
 				resultReconstruction.rawPoints.push_back(curTracklet->currentLocation3D);
 
 				// sensitivity
-				resultReconstruction.averageSensitivity += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+				resultReconstruction.maxError += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 			}
-			if (CONSIDER_SENSITIVITY)
-				maxError = MAX_TRACKLET_SENSITIVITY_ERROR;
-			else
-				maxError = (double)MAX_BODY_WIDHT / 2.0;
+			//if (CONSIDER_SENSITIVITY)
+			//	maxError = MAX_TRACKLET_SENSITIVITY_ERROR;
+			//else
+			//	maxError = (double)MAX_BODY_WIDHT / 2.0;
+			resultReconstruction.maxError = maxError;
 			fDistance = this->NViewGroundingPointReconstruction(vecPointInfos, resultReconstruction.point);
 		}		
 		break;
@@ -922,15 +923,14 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 				resultReconstruction.rawPoints.push_back(curTracklet->currentLocation3D);
 
 				// sensitivity
-				resultReconstruction.averageSensitivity += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+				resultReconstruction.maxError += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 			}
+			resultReconstruction.maxError = maxError;
 			fDistance = this->NViewPointReconstruction(vecBackprojectionLines, resultReconstruction.point);
 		}
 		break;
 	}
 	resultReconstruction.smoothedPoint = resultReconstruction.point;
-	// sensitivity
-	resultReconstruction.averageSensitivity /= (double)tracklet2Ds.size();
 
 	if (2 > tracklet2Ds.size())
 	{
@@ -980,16 +980,12 @@ double CPSNWhere_Associator3D::NViewPointReconstruction(std::vector<PSN_Line> &v
 #ifdef PSN_DEBUG_MODE_
 	//printf("[CPSNWhere_Associator3D](MultiViewPointReconstruction) start\n");
 #endif
-
 	unsigned int numLines = (unsigned int)vecLines.size();
-
 	if(numLines < 2)
 	{
 		outputPoint = vecLines[0].second;
 		return MAX_TRACKLET_DISTANCE/2.0;
 	}
-
-
 	cv::Mat P = cv::Mat::zeros(3, 3, CV_64FC1);
 	cv::Mat PP = cv::Mat::zeros(3, 3, CV_64FC1);
 	cv::Mat A = cv::Mat::zeros(3, 3, CV_64FC1);	
@@ -1567,9 +1563,10 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		curTrack->duration++;
 		curTrack->timeEnd++;
 
-		// smoothing
-		
+		// smoothing		
 		int updateStartPos = curTrack->smoother.Insert(newReconstruction.point);
+		bool trackValidity = true;
+		double smoothedProbability = 0.0;
 		for (int pos = updateStartPos; pos < curTrack->smoother.size(); pos++)
 		{
 			stReconstruction *curReconstruction = &curTrack->reconstructions[pos];			
@@ -1580,13 +1577,25 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 
 				// update reconstruction cost
 				curTrack->costReconstruction -= curReconstruction->costSmoothedPoint;
-				curReconstruction->costSmoothedPoint = -log(ComputeReconstructionProbability(curReconstruction->smoothedPoint, &curReconstruction->rawPoints, &curReconstruction->tracklet2Ds));
+				smoothedProbability = ComputeReconstructionProbability(curReconstruction->smoothedPoint, &curReconstruction->rawPoints, &curReconstruction->tracklet2Ds, curReconstruction->maxError);
+				if (0.0 == smoothedProbability)
+				{
+					trackValidity = false;
+					break;
+				}
+				curReconstruction->costSmoothedPoint = -log(smoothedProbability);
 				curTrack->costReconstruction += curReconstruction->costSmoothedPoint;
 
 				if (0 == pos) { continue; }
 				// update link cost
 				curTrack->costLink -= curReconstruction->costLink;
-				curReconstruction->costLink = -log(ComputeLinkProbability(curTrack->reconstructions[pos-1].smoothedPoint, curReconstruction->smoothedPoint));
+				smoothedProbability = ComputeLinkProbability(curTrack->reconstructions[pos-1].smoothedPoint, curReconstruction->smoothedPoint);
+				if (0.0 == smoothedProbability)
+				{
+					trackValidity = false;
+					break;
+				}
+				curReconstruction->costLink = -log(smoothedProbability);
 				curTrack->costLink += curReconstruction->costLink;
 			}
 			else
@@ -1640,7 +1649,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		dummyReconstruction.costLink = 0.0;
 		dummyReconstruction.costReconstruction = 0.0;
 		dummyReconstruction.costSmoothedPoint = 0.0;
-		dummyReconstruction.averageSensitivity = 0.0;
+		dummyReconstruction.maxError = 0.0;
 		dummyReconstruction.velocity = (*trackIter)->reconstructions.back().velocity;
 		(*trackIter)->reconstructions.push_back(dummyReconstruction);
 						
@@ -2048,6 +2057,8 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			// smoothing			
 			newTrack.smoother.PopBack();
 			int updateStartPos = newTrack.smoother.Insert(newReconstruction.point);
+			bool trackValidity = true;
+			double smoothedProbability;
 			for (int pos = updateStartPos; pos < newTrack.smoother.size(); pos++)
 			{
 				stReconstruction *curReconstruction = &newTrack.reconstructions[pos];
@@ -2058,13 +2069,25 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 
 					// update reconstruction cost
 					newTrack.costReconstruction -= curReconstruction->costSmoothedPoint;
-					curReconstruction->costSmoothedPoint = -log(ComputeReconstructionProbability(curReconstruction->smoothedPoint, &curReconstruction->rawPoints, &curReconstruction->tracklet2Ds));
+					smoothedProbability = ComputeReconstructionProbability(curReconstruction->smoothedPoint, &curReconstruction->rawPoints, &curReconstruction->tracklet2Ds,  curReconstruction->maxError);
+					if (0.0 == smoothedProbability)
+					{
+						trackValidity = false;
+						break;
+					}
+					curReconstruction->costSmoothedPoint = -log(smoothedProbability);
 					newTrack.costReconstruction += curReconstruction->costSmoothedPoint;
 
 					if (0 == pos) { continue; }
 					// update link cost
 					newTrack.costLink -= curReconstruction->costLink;
-					curReconstruction->costLink = -log(ComputeLinkProbability(newTrack.reconstructions[pos-1].smoothedPoint, curReconstruction->smoothedPoint));
+					smoothedProbability = ComputeLinkProbability(newTrack.reconstructions[pos-1].smoothedPoint, curReconstruction->smoothedPoint);
+					if (0.0 == smoothedProbability)
+					{
+						trackValidity = false;
+						break;
+					}
+					curReconstruction->costLink = -log(smoothedProbability);
 					newTrack.costLink += curReconstruction->costLink;
 				}
 				else
@@ -2074,7 +2097,8 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 				}
 				// update velocity
 				curReconstruction->velocity = curReconstruction->smoothedPoint - newTrack.reconstructions[pos-1].smoothedPoint;
-			}	
+			}
+			if (!trackValidity) { continue; }
 
 			// copy 2D tracklet history and proecssig for clustering + appearance
 			newTrack.costRGB = 0.0;
@@ -2204,8 +2228,8 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 				interpolatedPoints[pos] = lastPosition;
 				interpolatedReconstructions[pos].point = lastPosition;
 				interpolatedReconstructions[pos].smoothedPoint = lastPosition;
-				interpolatedReconstructions[pos].bIsMeasurement = true;
-				interpolatedReconstructions[pos].averageSensitivity = 0.0;				
+				interpolatedReconstructions[pos].bIsMeasurement = false;
+				interpolatedReconstructions[pos].maxError = 0.0;				
 				interpolatedReconstructions[pos].costReconstruction = 0.0;
 				interpolatedReconstructions[pos].costSmoothedPoint = 0.0;
 				interpolatedReconstructions[pos].costLink = 0.0;
@@ -2218,6 +2242,8 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			newTrack.reconstructions.insert(newTrack.reconstructions.end(), interpolatedReconstructions.begin(), interpolatedReconstructions.end());
 			newTrack.smoother = curTrack->smoother;
 			int updateStartPos = newTrack.smoother.Insert(interpolatedPoints);
+			bool trackValidity = true;
+			double smoothedProbability = 0.0;
 			for (int pos = updateStartPos; pos < newTrack.smoother.size(); pos++)
 			{
 				stReconstruction *curReconstruction = &newTrack.reconstructions[pos];
@@ -2228,13 +2254,25 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 
 					// update reconstruction cost
 					newTrack.costReconstruction -= curReconstruction->costSmoothedPoint;
-					curReconstruction->costSmoothedPoint = -log(ComputeReconstructionProbability(curReconstruction->smoothedPoint, &curReconstruction->rawPoints, &curReconstruction->tracklet2Ds));
+					smoothedProbability = ComputeReconstructionProbability(curReconstruction->smoothedPoint, &curReconstruction->rawPoints, &curReconstruction->tracklet2Ds, curReconstruction->maxError);
+					if (0.0 == smoothedProbability)
+					{
+						trackValidity = false;
+						break;
+					}
+					curReconstruction->costSmoothedPoint = -log(smoothedProbability);
 					newTrack.costReconstruction += curReconstruction->costSmoothedPoint;
 
 					if (0 == pos) { continue; }
 					// update link cost
 					newTrack.costLink -= curReconstruction->costLink;
-					curReconstruction->costLink = -log(ComputeLinkProbability(newTrack.reconstructions[pos-1].smoothedPoint, curReconstruction->smoothedPoint));
+					smoothedProbability = ComputeLinkProbability(newTrack.reconstructions[pos-1].smoothedPoint, curReconstruction->smoothedPoint);
+					if (0.0 == smoothedProbability)
+					{
+						trackValidity = false;
+						break;
+					}
+					curReconstruction->costLink = -log(smoothedProbability);
 					newTrack.costLink += curReconstruction->costLink;
 				}
 				else
@@ -2246,6 +2284,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 				// update velocity
 				curReconstruction->velocity = curReconstruction->smoothedPoint - newTrack.reconstructions[pos-1].smoothedPoint;
 			}
+			if (!trackValidity) { continue; }
 
 			// tracklet history
 			for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
@@ -2634,7 +2673,7 @@ double CPSNWhere_Associator3D::ComputeTrackletLinkCost(PSN_Point3D preLocation, 
  Return Values:
 	- 
 ************************************************************************/
-double CPSNWhere_Associator3D::ComputeReconstructionProbability(PSN_Point3D point, std::vector<PSN_Point3D> *rawPoints, CTrackletCombination *trackletCombination)
+double CPSNWhere_Associator3D::ComputeReconstructionProbability(PSN_Point3D point, std::vector<PSN_Point3D> *rawPoints, CTrackletCombination *trackletCombination, double maxError)
 {
 	//-------------------------------------------------
 	// RECONSTRUCTION PROBABILITY
@@ -2649,7 +2688,7 @@ double CPSNWhere_Associator3D::ComputeReconstructionProbability(PSN_Point3D poin
 		}
 		fDistance /= (double)rawPoints->size();
 
-		double maxError = CONSIDER_SENSITIVITY? MAX_TRACKLET_SENSITIVITY_ERROR : (double)MAX_BODY_WIDHT / 2.0;
+		if (0.0 == maxError) { maxError = CONSIDER_SENSITIVITY? MAX_TRACKLET_SENSITIVITY_ERROR : (double)MAX_BODY_WIDHT / 2.0; }
 		if (fDistance > maxError) { return 0.0; }
 		probabilityReconstruction = 0.5 * psn::erfc(4.0 * fDistance / maxError - 2.0);
 	}
@@ -2758,7 +2797,7 @@ bool CPSNWhere_Associator3D::CheckIncompatibility(Track3D *track1, Track3D *trac
 		}
 	}
 
-	// check proximity
+	// check proximity and crossing
 	if (!bIncompatible)
 	{
 		// check overlapping
@@ -2771,13 +2810,23 @@ bool CPSNWhere_Associator3D::CheckIncompatibility(Track3D *track1, Track3D *trac
 		unsigned int overlapLength = timeEnd - timeStart + 1;
 		PSN_Point3D *reconLocation1;
 		PSN_Point3D *reconLocation2;
+		double distanceBetweenTracks = 0.0;
 		for (unsigned int reconIdx = 0; reconIdx < overlapLength; reconIdx++)
 		{
 			reconLocation1 = &(track1->reconstructions[track1ReconIdx].point);
 			reconLocation2 = &(track2->reconstructions[track2ReconIdx].point);
-			if ((*reconLocation1 - *reconLocation2).norm_L2() < MIN_TARGET_PROXIMITY) { return true; }
 			track1ReconIdx++;
 			track2ReconIdx++;
+			// proximity
+			distanceBetweenTracks = (*reconLocation1 - *reconLocation2).norm_L2();
+			if (distanceBetweenTracks > MAX_MOVING_SPEED * 2) { continue; }
+			if (distanceBetweenTracks < MIN_TARGET_PROXIMITY) { return true; }
+			if (reconIdx < overlapLength - 1)
+			{
+				// crossing
+				if (psn::IsLineSegmentIntersect(PSN_Line(*reconLocation1, track1->reconstructions[track1ReconIdx].point), PSN_Line(*reconLocation2, track2->reconstructions[track2ReconIdx].point)))
+				{ return true; }
+			}
 		}
 	}
 	return bIncompatible;
@@ -3334,7 +3383,8 @@ stTrack3DResult CPSNWhere_Associator3D::ResultWithTracks(PSN_TrackSet *trackSet,
 		}
 		
 		unsigned numPoint = 0;
-		int deferredLength = curTrack->timeEnd - nFrameIdx; 
+		//int deferredLength = std::max((int)curTrack->timeEnd - (int)nFrameIdx, 0); 
+		int deferredLength = curTrack->timeEnd - nFrameIdx;
 		if (deferredLength > curTrack->reconstructions.size()) { continue; }
 
 		for (std::deque<stReconstruction>::reverse_iterator pointIter = curTrack->reconstructions.rbegin() + deferredLength;
@@ -3947,11 +3997,11 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 				pointIter != curTrack->reconstructions.end();
 				pointIter++)
 			{
-				fprintf_s(fpTrack3D, "\t\t\t%d,point:(%f,%f,%f),smoothedPoint:(%f,%f,%f),velocity:(%f,%f,%f),averageSensitivity:%e,costReconstruction:%e,costSmoothedPoint:%e,costLink:%e,", (int)(*pointIter).bIsMeasurement, 
+				fprintf_s(fpTrack3D, "\t\t\t%d,point:(%f,%f,%f),smoothedPoint:(%f,%f,%f),velocity:(%f,%f,%f),maxError:%e,costReconstruction:%e,costSmoothedPoint:%e,costLink:%e,", (int)(*pointIter).bIsMeasurement, 
 					(*pointIter).point.x, (*pointIter).point.y, (*pointIter).point.z,
 					(*pointIter).smoothedPoint.x, (*pointIter).smoothedPoint.y, (*pointIter).smoothedPoint.z,
 					(*pointIter).velocity.x, (*pointIter).velocity.y, (*pointIter).velocity.z,
-					(*pointIter).averageSensitivity, (*pointIter).costReconstruction, (*pointIter).costSmoothedPoint, (*pointIter).costLink);
+					(*pointIter).maxError, (*pointIter).costReconstruction, (*pointIter).costSmoothedPoint, (*pointIter).costLink);
 				fprintf_s(fpTrack3D, "tracklet2Ds:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 				{
@@ -4636,29 +4686,32 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			// reconstrcution related
 			int numReconstruction = 0;
 			fscanf_s(fpTrack, "\t\treconstructions:%d,\n\t\t{\n", &numReconstruction);
-			std::deque<PSN_Point3D> points(numReconstruction);
-			std::deque<PSN_Point3D> smoothedPoints(numReconstruction);
+			std::deque<PSN_Point3D> points(newTrack.duration);
+			std::deque<PSN_Point3D> smoothedPoints(newTrack.duration);
 			for (int pointIdx = 0; pointIdx < numReconstruction; pointIdx++)
 			{
 				stReconstruction newReconstruction;
-				float x, y, z, sx, sy, sz, vx, vy, vz, averageSensitivity, costReconstruction, costSmoothedPoint, costLink;
-				fscanf_s(fpTrack, "\t\t\t%d,point:(%f,%f,%f),smoothedPoint:(%f,%f,%f),velocity:(%f,%f,%f),averageSensitivity:%e,costReconstruction:%e,costSmoothedPoint:%e,costLink:%e,", 
-					&readingInt, &x, &y, &z, &sx, &sy, &sz, &vx, &vy, &vz, &averageSensitivity, &costReconstruction, &costSmoothedPoint, &costLink);
+				float x, y, z, sx, sy, sz, vx, vy, vz, maxError, costReconstruction, costSmoothedPoint, costLink;
+				fscanf_s(fpTrack, "\t\t\t%d,point:(%f,%f,%f),smoothedPoint:(%f,%f,%f),velocity:(%f,%f,%f),maxError:%e,costReconstruction:%e,costSmoothedPoint:%e,costLink:%e,", 
+					&readingInt, &x, &y, &z, &sx, &sy, &sz, &vx, &vy, &vz, &maxError, &costReconstruction, &costSmoothedPoint, &costLink);
 				newReconstruction.bIsMeasurement = 0 < readingInt ? true : false;
 				newReconstruction.point = PSN_Point3D((double)x, (double)y, (double)z);
 				newReconstruction.smoothedPoint = PSN_Point3D((double)sx, (double)sy, (double)sz);
 				newReconstruction.velocity = PSN_Point3D((double)vx, (double)vy, (double)vz);
-				newReconstruction.averageSensitivity = (double)averageSensitivity;
+				newReconstruction.maxError = (double)maxError;
 				newReconstruction.costLink = (double)costLink;
 				newReconstruction.costReconstruction = (double)costReconstruction;
 				newReconstruction.costSmoothedPoint = (double)costSmoothedPoint;
 
-				points[pointIdx].x = x;
-				points[pointIdx].y = y;
-				points[pointIdx].z = z;
-				smoothedPoints[pointIdx].x = sx;
-				smoothedPoints[pointIdx].y = sy;
-				smoothedPoints[pointIdx].z = sz;
+				if (pointIdx < (int)newTrack.duration)
+				{
+					points[pointIdx].x = x;
+					points[pointIdx].y = y;
+					points[pointIdx].z = z;
+					smoothedPoints[pointIdx].x = sx;
+					smoothedPoints[pointIdx].y = sy;
+					smoothedPoints[pointIdx].z = sz;
+				}
 
 				fscanf_s(fpTrack, "tracklet2Ds:{");
 				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)

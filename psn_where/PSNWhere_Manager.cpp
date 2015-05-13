@@ -419,6 +419,23 @@ cv::Mat psn::histogram(cv::Mat singleChannelImage, int numBin)
 	return vecHistogram;
 }
 
+// from: "Tricks of the Windows Game Programming Gurus"
+bool psn::IsLineSegmentIntersect(PSN_Line &line1, PSN_Line &line2)
+{
+	double s1x, s1y, s2x, s2y;
+	s1x = line1.second.x - line1.first.x;
+	s1y = line1.second.y - line1.first.y;
+	s2x = line2.second.x - line2.first.x;
+	s2y = line2.second.y - line2.first.y;
+
+	double s, t;
+	s = (-s1y * (line1.first.x - line2.first.x) + s1x * (line1.first.y - line2.first.y)) / (-s2x * s1y + s1x * s2y);
+	t = ( s2x * (line1.first.y - line2.first.y) - s2y * (line1.first.x - line2.first.x)) / (-s2x * s1y + s1x * s2y);
+
+	if (0 <= s && s <= 1 && 0 <= t && t <= 1) { return true; }
+	return false;
+}
+
 std::vector<cv::Scalar> psn::GenerateColors(unsigned int numColor)
 {
 	// refer: http://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
@@ -865,6 +882,8 @@ void CPointSmoother::PopBack(void)
 void CPointSmoother::SetSmoother(std::deque<PSN_Point3D> &data, std::deque<PSN_Point3D> &smoothedPoints, int span, int degree)
 {
 	smoothedPoints_ = smoothedPoints;
+	size_ = smoothedPoints_.size();
+	back_ = &smoothedPoints_.back();
 	std::deque<double> pointX, pointY, pointZ, smoothX, smoothY, smoothZ;
 	for (int pos = 0; pos < smoothedPoints_.size(); pos++)
 	{
