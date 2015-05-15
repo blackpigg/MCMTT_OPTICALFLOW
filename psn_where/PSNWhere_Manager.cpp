@@ -679,16 +679,13 @@ PSN_Point2D psn::GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint, bool bZoom
  Return Values:
 	- none
 ************************************************************************/
-void psn::printLog(const char *filename, const char *strLog)
+void psn::printLog(const char *filename, std::string strLog)
 {
-	char strPrint[128];
-	sprintf_s(strPrint, "%s\n", strLog);
-		
 	try
 	{
 		FILE *fp;
 		fopen_s(&fp, filename, "a");
-		fprintf(fp, strPrint);
+		fprintf(fp, strLog.c_str());
 		fclose(fp);
 	}
 	catch(DWORD dwError)
@@ -1438,7 +1435,6 @@ CPSNWhere_Manager::CPSNWhere_Manager(void)
 {
 }
 
-
 /************************************************************************
  Method Name: ~CPSNWhere_Manager
  Description: 
@@ -1452,37 +1448,6 @@ CPSNWhere_Manager::CPSNWhere_Manager(void)
 CPSNWhere_Manager::~CPSNWhere_Manager(void)
 {
 }
-
-
-/************************************************************************
- Method Name: printLog
- Description: 
-	- print out log file
- Input Arguments:
-	- filename: file path
-	- strLog: log string
- Return Values:
-	- none
-************************************************************************/
-void CPSNWhere_Manager::printLog(const char *filename, const char *strLog)
-{
-	char strPrint[128];
-	sprintf_s(strPrint, "%s\n", strLog);
-		
-	try
-	{
-		FILE *fp;
-		fopen_s(&fp, filename, "a");
-		fprintf(fp, strPrint);
-		fclose(fp);
-	}
-	catch(DWORD dwError)
-	{
-		printf("[ERROR] cannot open logging file! error code %d\n", dwError);
-		return;
-	}
-}
-
 
 /************************************************************************
  Method Name: Triangulation

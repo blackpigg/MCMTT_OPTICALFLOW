@@ -15,11 +15,11 @@
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
 //#define PSN_PRINT_LOG_
-#define LOAD_SNAPSHOT_
+//#define LOAD_SNAPSHOT_
 
 //#define SAVE_SNAPSHOT_
-//#define DO_RECORD
-//#define SHOW_TOPVIEW
+#define DO_RECORD
+#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -622,7 +622,7 @@ void DrawLine(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, unsigne
 PSN_Point2D GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint, bool bZoom = false);
 
 // file interface related
-void printLog(const char *filename, const char *strLog);
+void printLog(const char *filename, std::string strLog);
 std::string MakeTrackIDList(PSN_TrackSet *tracks);
 }
 
@@ -652,7 +652,6 @@ public:
 	static cv::Mat MakeMatTile(std::vector<cv::Mat> *imageArray, unsigned int numRows, unsigned int numCols);
 	static std::vector<stDetection> ReadDetectionResultWithTxt(std::string strDatasetPath, unsigned int camIdx, unsigned int frameIdx);
 	static std::vector<stTrack2DResult> Read2DTrackResultWithTxt(std::string strDatasetPath, unsigned int frameIdx);
-	static void printLog(const char *filename, const char *strLog);
 	static double Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoint3D);
 };
 

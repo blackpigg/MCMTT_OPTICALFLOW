@@ -871,12 +871,6 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 ************************************************************************/
 std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingScore(void)
 {
-	// DEBUG
-	if (2 == m_nCamID)
-	{
-		int a = 0;
-	}
-
 	cv::Mat *ptmatCurrGrayFrame = *(this->m_vecPtGrayFrameBuffer.rbegin());
 	cv::Mat *ptmatPrevGrayFrame = *(this->m_vecPtGrayFrameBuffer.rbegin() + 1);
 	size_t numDetection = this->m_vecDetection2D.size();
@@ -1065,9 +1059,6 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 ************************************************************************/
 void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchingCostArray)
 {
-	//cv::Mat *ptmatCurrGrayFrame = *(this->m_vecPtGrayFrameBuffer.rbegin());
-	//cv::Mat matCurrFrame(*ptmatCurrGrayFrame);
-
 	// handling infinity
 	float maxCost = -1000.0f;
 	for (int costIdx = 0; costIdx < matchingCostArray.size(); costIdx++)
@@ -1095,8 +1086,6 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		//---------------------------------------------------
 		// MATCHING VALIDATION
 		//---------------------------------------------------
-		//if (PSN_2D_MIN_CONFIDENCE > curTracker->confidence) { continue; }
-		//if (curDetection->bOverlapWithOtherDetection) { continue; }
 		// distance in 3D space
 		if ((curDetection->location - curTracker->lastPosition).norm_L2() > PSN_2D_MAX_DETECTION_DISTANCE) { continue; }
 		// height difference
@@ -1119,8 +1108,7 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		curTracker->height = curDetection->height;
 	}
 	cHungarianMatcher.Finalize();	
-
-
+	
 	/////////////////////////////////////////////////////////////////////////////
 	// TRACKER GENERATION
 	/////////////////////////////////////////////////////////////////////////////
@@ -1128,18 +1116,7 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		detectionIter != this->m_vecDetection2D.end();
 		detectionIter++)
 	{
-		if ((*detectionIter).bMatchedWithTracker)
-		{
-//#ifdef PSN_2D_DEBUG_DISPLAY_
-//			PSN_Rect curBox = (*detectionIter).detection.box;
-//			curBox.x *= PSN_2D_DEBUG_DISPLAY_SCALE;
-//			curBox.y *= PSN_2D_DEBUG_DISPLAY_SCALE;
-//			curBox.w *= PSN_2D_DEBUG_DISPLAY_SCALE;
-//			curBox.h *= PSN_2D_DEBUG_DISPLAY_SCALE;
-//			cv::rectangle(testMat, curBox.cv(), cv::Scalar(255, 255, 255));
-//#endif
-			continue;
-		}
+		if ((*detectionIter).bMatchedWithTracker) { continue; }
 		
 		stTracker2D newTracker;
 		newTracker.id = this->m_nNewTrackerID++;
@@ -1162,8 +1139,19 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		// insert to the data structure
 		this->m_listTracker2D.push_back(newTracker);
 		this->m_queueActiveTracker2D.push_back(&this->m_listTracker2D.back());
-	}
 
+		//// DEBUG
+		//if ( 2 != m_nCamID || 87 != newTracker.id) { continue; }
+		//std::string debugString(std::to_string(newTracker.featurePoints.size()));
+		//debugString += ",{";
+		//for (int pointIdx = 0; pointIdx < newTracker.featurePoints.size(); pointIdx++)
+		//{
+		//	debugString += "(" + std::to_string(newTracker.featurePoints[pointIdx].x) + "," + std::to_string(newTracker.featurePoints[pointIdx].y) + ")";
+		//	if (pointIdx == newTracker.featurePoints.size() - 1) { debugString += "}"; }
+		//	else { debugString += ","; }
+		//}
+		//psn::printLog("data/features.txt", debugString);
+	}
 
 	/////////////////////////////////////////////////////////////////////////////
 	// TRACKER TERMINATION & RESULT PACKING

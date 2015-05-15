@@ -415,6 +415,7 @@ void CPSNWhere_Associator3D::Finalize(void)
 	/////////////////////////////////////////////////////////////////////////////
 	// EVALUATION
 	/////////////////////////////////////////////////////////////////////////////
+#ifndef LOAD_SNAPSHOT_
 	printf("[EVALUATION] deferred result\n");
 	for (unsigned int timeIdx = nCurrentFrameIdx_ - PROC_WINDOW_SIZE + 2; timeIdx <= nCurrentFrameIdx_; timeIdx++)
 	{
@@ -430,7 +431,7 @@ void CPSNWhere_Associator3D::Finalize(void)
 	this->m_cEvaluator_Instance.PrintResultToConsole();
 	this->m_cEvaluator_Instance.PrintResultToFile("data/evaluation_instance.txt");
 	this->m_cEvaluator_Instance.PrintResultMatrix("data/result_matrix_instance.txt");
-
+#endif
 
 	/////////////////////////////////////////////////////////////////////////////
 	// FINALIZE
@@ -607,14 +608,20 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 
 #ifdef PSN_PRINT_LOG_
 	// PRINT LOG
-	char strLog[128];
-	sprintf_s(strLog, "%d,%d,%d,%f,%f", 
-	nCurrentFrameIdx_, 
-	nCountTrackInOptimization_,
-	nCountUCTrackInOptimization_,
-	fCurrentProcessingTime_,
-	fCurrentSolvingTime_);
-	CPSNWhere_Manager::printLog(strLogFileName_, strLog);
+	std::string strLog = "";
+	strLog += std::to_string(nCurrentFrameIdx_);
+	strLog += std::to_string(nCountTrackInOptimization_);
+	strLog += std::to_string(nCountUCTrackInOptimization_);
+	strLog += std::to_string(fCurrentProcessingTime_);
+	strLog += std::to_string(fCurrentSolvingTime_);
+	strLog += std::to_string(nCurrentFrameIdx_);
+	//sprintf_s(strLog, "%d,%d,%d,%f,%f", 
+	//nCurrentFrameIdx_, 
+	//nCountTrackInOptimization_,
+	//nCountUCTrackInOptimization_,
+	//fCurrentProcessingTime_,
+	//fCurrentSolvingTime_);
+	psn::printLog(strLogFileName_, strLog);
 	fCurrentSolvingTime_ = 0.0;
 #endif
 
@@ -896,10 +903,7 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 				// sensitivity
 				resultReconstruction.maxError += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 			}
-			//if (CONSIDER_SENSITIVITY)
-			//	maxError = MAX_TRACKLET_SENSITIVITY_ERROR;
-			//else
-			//	maxError = (double)MAX_BODY_WIDHT / 2.0;
+			if (!CONSIDER_SENSITIVITY) { maxError = (double)MAX_BODY_WIDHT / 2.0; }
 			resultReconstruction.maxError = maxError;
 			fDistance = this->NViewGroundingPointReconstruction(vecPointInfos, resultReconstruction.point);
 		}		
@@ -925,6 +929,7 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 				// sensitivity
 				resultReconstruction.maxError += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 			}
+			if (!CONSIDER_SENSITIVITY) { maxError = (double)MAX_BODY_WIDHT / 2.0; }
 			resultReconstruction.maxError = maxError;
 			fDistance = this->NViewPointReconstruction(vecBackprojectionLines, resultReconstruction.point);
 		}
@@ -2821,12 +2826,12 @@ bool CPSNWhere_Associator3D::CheckIncompatibility(Track3D *track1, Track3D *trac
 			distanceBetweenTracks = (*reconLocation1 - *reconLocation2).norm_L2();
 			if (distanceBetweenTracks > MAX_MOVING_SPEED * 2) { continue; }
 			if (distanceBetweenTracks < MIN_TARGET_PROXIMITY) { return true; }
-			if (reconIdx < overlapLength - 1)
-			{
-				// crossing
-				if (psn::IsLineSegmentIntersect(PSN_Line(*reconLocation1, track1->reconstructions[track1ReconIdx].point), PSN_Line(*reconLocation2, track2->reconstructions[track2ReconIdx].point)))
-				{ return true; }
-			}
+			//if (reconIdx < overlapLength - 1)
+			//{
+			//	// crossing
+			//	if (psn::IsLineSegmentIntersect(PSN_Line(*reconLocation1, track1->reconstructions[track1ReconIdx].point), PSN_Line(*reconLocation2, track2->reconstructions[track2ReconIdx].point)))
+			//	{ return true; }
+			//}
 		}
 	}
 	return bIncompatible;
