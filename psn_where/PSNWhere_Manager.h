@@ -41,10 +41,13 @@
 	// ETRI Testbed setting
 	define NUM_CAM (4)
 	const unsigned int CAM_ID[NUM_CAM] = {0, 1, 2, 3};
+	const double CAM_HEIGHT_SCALE[NUM_CAM] = {1.0, 1.0, 1.0, 1.0};
 #else
 	// PETS.S2.L1 setting
 	#define NUM_CAM (3)
 	const unsigned int CAM_ID[NUM_CAM] = {1, 5, 7};
+	//const double CAM_HEIGHT_SCALE[NUM_CAM] = {1.0, 0.77, 0.77};
+	const double CAM_HEIGHT_SCALE[NUM_CAM] = {1.0, 1.0, 1.0};
 #endif
 
 #define NUM_DETECTION_PART (8)

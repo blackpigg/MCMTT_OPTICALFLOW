@@ -140,6 +140,7 @@ private:
 
 	bool CheckVisibility(PSN_Point3D testPoint, unsigned int camIdx, PSN_Point2D *result2DPoint = NULL);
 	bool CheckHeadWidth(PSN_Point3D midPoint3D, PSN_Rect rect1, PSN_Rect rect2, unsigned int camIdx1, unsigned int camIdx2);
+	bool CheckTrackletConnectivity(PSN_Point3D endPoint, PSN_Point3D startPoint, int timeGap);
 
 	stReconstruction PointReconstruction(CTrackletCombination &tracklet2Ds);
 	double NViewPointReconstruction(std::vector<PSN_Line> &vecLines, PSN_Point3D &outputPoint);
@@ -163,7 +164,6 @@ private:
 	PSN_TrackSet Track3D_GetWholeCandidateTracks(void);
 
 	//void Track3D_SolveHOMHT(void);
-
 	//void Track3D_Pruning_GTP(void);
 	//void Track3D_Pruning_KBest(void);
 	//void Track3D_RepairDataStructure(void);
@@ -180,6 +180,7 @@ private:
 	static bool CheckIncompatibility(Track3D *track1, Track3D *track2);
 	static bool CheckIncompatibility(CTrackletCombination &combi1, CTrackletCombination &combi2);	
 	cv::Mat GetRGBFeature(const cv::Mat *patch, int numBins);
+	double GetCost(Track3D *track);
 	
 	//----------------------------------------------------------------
 	// Hypothesis related
@@ -216,6 +217,7 @@ private:
 	bool bInit_;
 	bool bSnapshotReaded_;
 	Etiseo::CameraModel cCamModel_[NUM_CAM];
+	PSN_Point3D pFieldOfView[NUM_CAM][4];
 	cv::Mat matProjectionSensitivity_[NUM_CAM];
 	cv::Mat matDistanceFromBoundary_[NUM_CAM];
 

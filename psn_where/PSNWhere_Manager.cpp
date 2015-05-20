@@ -631,7 +631,7 @@ void psn::DrawLine(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, un
 	// get color
 	cv::Scalar curColor = psn::getColorByID(vecColors, nID);
 
-	for(size_t pointIdx = 0; pointIdx < pointArray.size() - 1; pointIdx++)
+	for(int pointIdx = 0; pointIdx < (int)pointArray.size() - 1; pointIdx++)
 	{
 		cv::line(imageFrame, pointArray[pointIdx].cv(), pointArray[pointIdx+1].cv(), curColor, lineThickness);
 	}

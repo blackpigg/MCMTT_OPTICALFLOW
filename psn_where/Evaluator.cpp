@@ -6,7 +6,7 @@
 //#define CROP_ZONE_Y_MIN (-14274.0)
 //#define CROP_ZONE_Y_MAX (1733.5)
 //#define CROP_ZONE_MARGIN (1000.0)
-#define BOUNDARY_PROCESSING_ (true)
+#define BOUNDARY_PROCESSING_ (false)
 
 CEvaluator::CEvaluator(void)
 	: bInit(false)
@@ -133,7 +133,7 @@ void CEvaluator::SetResult(PSN_TrackSet &trackSet, unsigned int timeIdx)
 		int reconIdx = (int)timeIdx - (*trackIter)->timeStart;
 		if (0 > reconIdx || (int)(*trackIter)->reconstructions.size() <= reconIdx) { continue;	}
 
-		PSN_Point3D curPoint = (*trackIter)->reconstructions[timeIdx - (*trackIter)->timeStart].point;
+		PSN_Point3D curPoint = (*trackIter)->reconstructions[timeIdx - (*trackIter)->timeStart].smoothedPoint;
 		if ((BOUNDARY_PROCESSING_ && !this->m_rectCropZoneMargin.contain(PSN_Point2D(curPoint.x, curPoint.y)))
 			|| (!BOUNDARY_PROCESSING_ && !this->m_rectCropZone.contain(PSN_Point2D(curPoint.x, curPoint.y)))) 
 		{ continue; }

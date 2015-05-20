@@ -92,7 +92,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	std::string strDatasetPath = argv[1];
 #endif
 
-	// input frame range	
+	// input frame range
 	//int frameIdxStart = 0;
 	//int frameIdxEnd = 300;
 	
@@ -102,7 +102,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	// PETS2009
 	int frameIdxStart = 0;
-	//int frameIdxEnd = 88;
+	//int frameIdxEnd = 150;
 	int frameIdxEnd = 794;
 	
 

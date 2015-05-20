@@ -66,13 +66,13 @@ NOTES:
 
 // enter/exit related
 #define ENTER_PENALTY_FREE_LENGTH (3)
-#define BOUNDARY_DISTANCE (1000.0)
-#define P_EN_MAX (1.0E-1)
+#define BOUNDARY_DISTANCE (700.0)
+#define P_EN_MAX (1.0E-3)
 #define P_EX_MAX (1.0E-6)
-#define P_EN_DECAY (1.0E-2)
-#define P_EX_DECAY (1.0E-2)
-#define COST_EN_MAX (300.0)
-#define COST_EX_MAX (300.0)
+#define P_EN_DECAY (1.0E-3)
+#define P_EX_DECAY (1.0E-3)
+#define COST_EN_MAX (400.0)
+#define COST_EX_MAX (400.0)
 
 // calibration related
 #define E_DET (3)
@@ -87,6 +87,7 @@ NOTES:
 #define DATASET_FRAME_RATE (7.0)
 //#define MAX_MOVING_SPEED (5000.0 / DATASET_FRAME_RATE)
 #define MAX_MOVING_SPEED (900.0)
+#define MIN_MOVING_SPEED (100.0)
 
 // appearance reltaed
 #define IMG_PATCH_WIDTH (20)
@@ -270,12 +271,19 @@ void CPSNWhere_Associator3D::Initialize(std::string datasetPath, std::vector<stC
 	nNewVisualizationID_ = 0;
 	queuePairTreeIDToVisualizationID_.clear();
 
-	// camera model
+	// camera model and field of view
 	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{
+		// camera model
 		cCamModel_[camIdx] = vecStCalibInfo[camIdx]->cCamModel;
 		matProjectionSensitivity_[camIdx] = vecStCalibInfo[camIdx]->matProjectionSensitivity.clone();
 		matDistanceFromBoundary_[camIdx] = vecStCalibInfo[camIdx]->matDistanceFromBoundary.clone();
+
+		// field of view (clockwise)
+		pFieldOfView[camIdx][0] = this->ImageToWorld(PSN_Point2D(0.0, 0.0), 0.0, camIdx);
+		pFieldOfView[camIdx][1] = this->ImageToWorld(PSN_Point2D((double)cCamModel_[camIdx].width()-1, 0.0), 0.0, camIdx);
+		pFieldOfView[camIdx][2] = this->ImageToWorld(PSN_Point2D((double)cCamModel_[camIdx].width()-1, (double)cCamModel_[camIdx].height()-1), 0.0, camIdx);
+		pFieldOfView[camIdx][3] = this->ImageToWorld(PSN_Point2D(0.0, (double)cCamModel_[camIdx].height()-1), 0.0, camIdx);
 	}
 	
 	// evaluation
@@ -818,6 +826,21 @@ bool CPSNWhere_Associator3D::CheckVisibility(PSN_Point3D testPoint, unsigned int
 		return false;
 	}
 	return true;
+
+	//// http://stackoverflow.com/questions/11716268/point-in-polygon-algorithm
+	//bool cross = false;
+	//for (int i = 0, j = 3; i < 4; j = i++)
+	//{
+	//	if (((pFieldOfView[camIdx][i].y >= testPoint.y) != (pFieldOfView[camIdx][j].y >= testPoint.y)) && 
+	//		(testPoint.x <= (pFieldOfView[camIdx][j].x - pFieldOfView[camIdx][i].x) * 
+	//		(testPoint.y - pFieldOfView[camIdx][i].y) / 
+	//		(pFieldOfView[camIdx][j].y - pFieldOfView[camIdx][i].y) + pFieldOfView[camIdx][i].x))
+	//	{
+	//		cross = !cross;
+	//	}
+	//}
+
+	//return cross;
 }
 
 /************************************************************************
@@ -852,6 +875,23 @@ bool CPSNWhere_Associator3D::CheckHeadWidth(PSN_Point3D midPoint3D, PSN_Rect rec
 }
 
 /************************************************************************
+ Method Name: CheckTrackletConnectivity
+ Description: 
+	- 
+ Input Arguments:
+	- 
+	- 
+ Return Values:
+	- 
+************************************************************************/
+bool CPSNWhere_Associator3D::CheckTrackletConnectivity(PSN_Point3D endPoint, PSN_Point3D startPoint, int timeGap)
+{
+	if (timeGap > 1) { return true; }
+	double norm2 = (endPoint - startPoint).norm_L2();
+	return norm2 <= COST_TRACKLET_LINK_MIN_DIST;
+}
+
+/************************************************************************
  Method Name: PointReconstruction
  Description: 
 	- Reconstruction 3D point with most recent points of 2D tracklets
@@ -876,6 +916,7 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 	resultReconstruction.tracklet2Ds = tracklet2Ds;	
 	double fDistance = DBL_MAX;
 	double maxError = E_CAL;
+	//double maxError = 0;
 	double probabilityReconstruction = 0.0;
 	PSN_Point2D curPoint(0.0, 0.0);	
 
@@ -896,14 +937,16 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 				curPoint = curTracklet->rects.back().reconstructionPoint();				
 				vecPointInfos.push_back(PSN_Point2D_CamIdx(curPoint, camIdx));
 				maxError += E_DET * matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+				//maxError = std::max(maxError, E_DET * (double)matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x));
 
 				// 3D position
 				resultReconstruction.rawPoints.push_back(curTracklet->currentLocation3D);
 
-				// sensitivity
-				resultReconstruction.maxError += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+				//// sensitivity
+				//resultReconstruction.maxError += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 			}
-			if (!CONSIDER_SENSITIVITY) { maxError = (double)MAX_BODY_WIDHT / 2.0; }
+			//if (!CONSIDER_SENSITIVITY) { maxError = (double)MAX_BODY_WIDHT / 2.0; }
+			//else { maxError += E_CAL; }
 			resultReconstruction.maxError = maxError;
 			fDistance = this->NViewGroundingPointReconstruction(vecPointInfos, resultReconstruction.point);
 		}		
@@ -921,15 +964,17 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 				PSN_Line curLine = curTracklet->backprojectionLines.back();
 
 				vecBackprojectionLines.push_back(curLine);
-				maxError += E_DET * matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+				//maxError += E_DET * matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+				maxError = std::max(maxError, E_DET * (double)matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x));
 
 				// 3D position
 				resultReconstruction.rawPoints.push_back(curTracklet->currentLocation3D);
 
-				// sensitivity
-				resultReconstruction.maxError += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
+				//// sensitivity
+				//resultReconstruction.maxError += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 			}
 			if (!CONSIDER_SENSITIVITY) { maxError = (double)MAX_BODY_WIDHT / 2.0; }
+			else { maxError += E_CAL; }
 			resultReconstruction.maxError = maxError;
 			fDistance = this->NViewPointReconstruction(vecBackprojectionLines, resultReconstruction.point);
 		}
@@ -1527,11 +1572,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 				pointsIn3D.push_back(curTrack->trackletLastLocation3D[camIdx]);
 			}
 			curTrack->costExit = std::min(COST_EX_MAX, -std::log(this->ComputeExitProbability(pointsIn3D)));
-			curTrack->costTotal = curTrack->costEnter 
-								+ curTrack->costReconstruction 
-								+ curTrack->costLink 
-								+ curTrack->costExit
-								+ curTrack->costRGB;
+			curTrack->costTotal = GetCost(curTrack);
 
 			// move to time jump track list
 			queuePausedTrack_.push_back(curTrack);
@@ -1539,11 +1580,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		}
 
 		// cost update (not essential, for just debuging)
-		curTrack->costTotal = curTrack->costEnter 
-							+ curTrack->costReconstruction 
-							+ curTrack->costLink 
-							+ curTrack->costExit
-							+ curTrack->costRGB;
+		curTrack->costTotal = GetCost(curTrack);
 		
 		// point reconstruction and cost update
 		stReconstruction newReconstruction = this->PointReconstruction(curTrack->curTracklet2Ds);
@@ -1594,7 +1631,11 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 				if (0 == pos) { continue; }
 				// update link cost
 				curTrack->costLink -= curReconstruction->costLink;
+
+				// TESTING
 				smoothedProbability = ComputeLinkProbability(curTrack->reconstructions[pos-1].smoothedPoint, curReconstruction->smoothedPoint);
+				//smoothedProbability = ComputeLinkProbability(curTrack->reconstructions[pos-1].smoothedPoint + curTrack->reconstructions[pos-1].velocity, curReconstruction->smoothedPoint);
+
 				if (0.0 == smoothedProbability)
 				{
 					trackValidity = false;
@@ -1611,6 +1652,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 
 			// update velocity
 			curReconstruction->velocity = curReconstruction->smoothedPoint - curTrack->reconstructions[pos-1].smoothedPoint;
+			if (MIN_MOVING_SPEED > curReconstruction->velocity.norm_L2()) { curReconstruction->velocity = PSN_Point3D(0.0, 0.0, 0.0); }
 		}
 
 		// increase iterator
@@ -2086,7 +2128,11 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 					if (0 == pos) { continue; }
 					// update link cost
 					newTrack.costLink -= curReconstruction->costLink;
+
+					// TESTING
 					smoothedProbability = ComputeLinkProbability(newTrack.reconstructions[pos-1].smoothedPoint, curReconstruction->smoothedPoint);
+					//smoothedProbability = ComputeLinkProbability(newTrack.reconstructions[pos-1].smoothedPoint + newTrack.reconstructions[pos-1].velocity, curReconstruction->smoothedPoint);
+
 					if (0.0 == smoothedProbability)
 					{
 						trackValidity = false;
@@ -2102,6 +2148,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 				}
 				// update velocity
 				curReconstruction->velocity = curReconstruction->smoothedPoint - newTrack.reconstructions[pos-1].smoothedPoint;
+				if (MIN_MOVING_SPEED > curReconstruction->velocity.norm_L2()) { curReconstruction->velocity = PSN_Point3D(0.0, 0.0, 0.0); }
 			}
 			if (!trackValidity) { continue; }
 
@@ -2131,7 +2178,11 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 						int timeGap = nCurrentFrameIdx_ - newTrack.timeTrackletEnded[camIdx];
 
 						// tracklet location
-						newTrack.costLink += ComputeTrackletLinkCost(
+						//newTrack.costLink += ComputeTrackletLinkCost(
+						//	newTrack.trackletLastLocation3D[camIdx], 
+						//	newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
+						//	timeGap);
+						trackValidity &= CheckTrackletConnectivity(
 							newTrack.trackletLastLocation3D[camIdx], 
 							newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
 							timeGap);
@@ -2147,12 +2198,8 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 				newTrack.lastRGBFeature[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
 				newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
 			}
-
-			newTrack.costTotal = newTrack.costReconstruction 
-							   + newTrack.costLink 
-							   + newTrack.costEnter 
-							   + newTrack.costExit
-							   + newTrack.costRGB;
+			if (!trackValidity) { continue; }
+			newTrack.costTotal = GetCost(&newTrack);
 			
 			// generate track instance
 			listTrack3D_.push_back(newTrack);
@@ -2271,7 +2318,11 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 					if (0 == pos) { continue; }
 					// update link cost
 					newTrack.costLink -= curReconstruction->costLink;
+
+					// TESTING
 					smoothedProbability = ComputeLinkProbability(newTrack.reconstructions[pos-1].smoothedPoint, curReconstruction->smoothedPoint);
+					//smoothedProbability = ComputeLinkProbability(newTrack.reconstructions[pos-1].smoothedPoint + newTrack.reconstructions[pos-1].velocity, curReconstruction->smoothedPoint);
+
 					if (0.0 == smoothedProbability)
 					{
 						trackValidity = false;
@@ -2288,6 +2339,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 
 				// update velocity
 				curReconstruction->velocity = curReconstruction->smoothedPoint - newTrack.reconstructions[pos-1].smoothedPoint;
+				if (MIN_MOVING_SPEED > curReconstruction->velocity.norm_L2()) { curReconstruction->velocity = PSN_Point3D(0.0, 0.0, 0.0); }
 			}
 			if (!trackValidity) { continue; }
 
@@ -2314,7 +2366,11 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 						int timeGap = nCurrentFrameIdx_ - newTrack.timeTrackletEnded[camIdx];
 
 						// tracklet location
-						newTrack.costLink += ComputeTrackletLinkCost(
+						//newTrack.costLink += ComputeTrackletLinkCost(
+						//	newTrack.trackletLastLocation3D[camIdx], 
+						//	newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
+						//	timeGap);
+						trackValidity &= CheckTrackletConnectivity(
 							newTrack.trackletLastLocation3D[camIdx], 
 							newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
 							timeGap);
@@ -2330,12 +2386,9 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 				newTrack.lastRGBFeature[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
 				newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
 			}
+			if (!trackValidity) { continue; }
 
-			newTrack.costTotal = newTrack.costReconstruction 
-							   + newTrack.costLink 
-							   + newTrack.costEnter 
-							   + newTrack.costExit 
-							   + newTrack.costRGB;
+			newTrack.costTotal = GetCost(&newTrack);
 
 			// insert to the list of track instances
 			listTrack3D_.push_back(newTrack);
@@ -2826,12 +2879,12 @@ bool CPSNWhere_Associator3D::CheckIncompatibility(Track3D *track1, Track3D *trac
 			distanceBetweenTracks = (*reconLocation1 - *reconLocation2).norm_L2();
 			if (distanceBetweenTracks > MAX_MOVING_SPEED * 2) { continue; }
 			if (distanceBetweenTracks < MIN_TARGET_PROXIMITY) { return true; }
-			//if (reconIdx < overlapLength - 1)
-			//{
-			//	// crossing
-			//	if (psn::IsLineSegmentIntersect(PSN_Line(*reconLocation1, track1->reconstructions[track1ReconIdx].point), PSN_Line(*reconLocation2, track2->reconstructions[track2ReconIdx].point)))
-			//	{ return true; }
-			//}
+			if (reconIdx < overlapLength - 1)
+			{
+				// crossing
+				if (psn::IsLineSegmentIntersect(PSN_Line(*reconLocation1, track1->reconstructions[track1ReconIdx].point), PSN_Line(*reconLocation2, track2->reconstructions[track2ReconIdx].point)))
+				{ return true; }
+			}
 		}
 	}
 	return bIncompatible;
@@ -2888,6 +2941,28 @@ cv::Mat CPSNWhere_Associator3D::GetRGBFeature(const cv::Mat *patch, int numBins)
 	featureR = featureR / numPixels;
 
 	return featureR;
+}
+
+/************************************************************************
+ Method Name: GetCost
+ Description: 
+	- 
+ Input Arguments:
+	- 
+ Return Values:
+	- 
+************************************************************************/
+double CPSNWhere_Associator3D::GetCost(Track3D *track)
+{
+	track->costReconstruction = 0.0;
+	track->costLink = 0.0;
+	for (int reconIdx = 0; reconIdx < track->reconstructions.size(); reconIdx++)
+	{
+		track->costReconstruction += track->reconstructions[reconIdx].costSmoothedPoint;
+		track->costLink += track->reconstructions[reconIdx].costLink;
+	}
+	double resultCost = track->costEnter + track->costReconstruction + track->costLink + track->costRGB + track->costExit;
+	return resultCost;
 }
 
 /************************************************************************
@@ -3051,25 +3126,8 @@ void CPSNWhere_Associator3D::Hypothesis_BranchHypotheses(PSN_HypothesisSet &outB
 		Track3D *curTrack = (*tracks)[trackIdx];
 		if (!curTrack->bValid) { continue; }
 
-		double curEnteringCost = curTrack->costEnter;
-		
-		// TODO: proximity with initial tracks		
-		//if (NULL != initialselectedTracks)
-		//{
-		//	for (PSN_TrackSet::iterator initialTrackIter = initialselectedTracks->begin();
-		//		initialTrackIter != initialselectedTracks->end();
-		//		initialTrackIter++)
-		//	{
-		//		if ((*initialTrackIter)->bActive) { continue; }
-		//	}
-		//}		
-
 		// cost	
-		curTrack->costTotal = curEnteringCost
-							+ curTrack->costReconstruction
-							+ curTrack->costLink
-							+ curTrack->costExit
-							+ curTrack->costRGB;
+		curTrack->costTotal = GetCost(curTrack);
 
 		if (0.0 < curTrack->costTotal) { continue; }
 
@@ -3391,7 +3449,8 @@ stTrack3DResult CPSNWhere_Associator3D::ResultWithTracks(PSN_TrackSet *trackSet,
 		//int deferredLength = std::max((int)curTrack->timeEnd - (int)nFrameIdx, 0); 
 		int deferredLength = curTrack->timeEnd - nFrameIdx;
 		if (deferredLength > curTrack->reconstructions.size()) { continue; }
-
+		bool bVisible[NUM_CAM];
+		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) { bVisible[camIdx] = false; }
 		for (std::deque<stReconstruction>::reverse_iterator pointIter = curTrack->reconstructions.rbegin() + deferredLength;
 			pointIter != curTrack->reconstructions.rend();
 			pointIter++)
@@ -3402,15 +3461,17 @@ stTrack3DResult CPSNWhere_Associator3D::ResultWithTracks(PSN_TrackSet *trackSet,
 
 			for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
-				//newObject.point3DBox[camIdx] = this->GetHuman3DBox((*pointIter).point, 500, camIdx);				
-				newObject.recentPoint2Ds[camIdx].push_back(this->WorldToImage((*pointIter).smoothedPoint, camIdx));
+				//newObject.point3DBox[camIdx] = this->GetHuman3DBox((*pointIter).point, 500, camIdx);
+				PSN_Point2D reprejectedPoint(0.0, 0.0);
+				if (CheckVisibility((*pointIter).smoothedPoint, camIdx, &reprejectedPoint)) { bVisible[camIdx] = true; }
+				newObject.recentPoint2Ds[camIdx].push_back(reprejectedPoint);
 
 				if (1 < numPoint) { continue; }
 				if (NULL == curTrack->curTracklet2Ds.get(camIdx))
 				{
 					PSN_Rect curRect(0.0, 0.0, 0.0, 0.0);
 					PSN_Point3D topCenterInWorld((*pointIter).smoothedPoint);
-					topCenterInWorld.z = 1700;
+					topCenterInWorld.z = 1700 / CAM_HEIGHT_SCALE[camIdx];
 					PSN_Point2D bottomCenterInImage = this->WorldToImage((*pointIter).smoothedPoint, camIdx);
 					PSN_Point2D topCenterInImage = this->WorldToImage(topCenterInWorld, camIdx);
 					
@@ -3431,13 +3492,15 @@ stTrack3DResult CPSNWhere_Associator3D::ResultWithTracks(PSN_TrackSet *trackSet,
 			}
 		}
 
-		// 2D detection position
+		// 2D detection position and visibillity
 		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 		{
 			stTracklet2D *curTracklet = curTrack->reconstructions.back().tracklet2Ds.get(camIdx);
 			PSN_Point3D detectionLocation(0.0, 0.0, 0.0);
 			if (NULL != curTracklet) { detectionLocation = this->ImageToWorld(curTracklet->rects.back().bottomCenter(), 0.0, camIdx); }
 			newObject.curDetectionPosition.push_back(detectionLocation);
+
+			if (!bVisible[camIdx]) { newObject.recentPoint2Ds[camIdx].clear(); }
 		}
 
 		result3D.object3DInfo.push_back(newObject);
