@@ -819,9 +819,11 @@ bool CPSNWhere_Associator3D::ReadDistanceFromBoundary(cv::Mat &matDistance, unsi
 bool CPSNWhere_Associator3D::CheckVisibility(PSN_Point3D testPoint, unsigned int camIdx, PSN_Point2D *result2DPoint)
 {
 	PSN_Point2D reprojectedPoint = this->WorldToImage(testPoint, camIdx);
+	PSN_Point2D reprojectedTopPoint = this->WorldToImage(PSN_Point3D(testPoint.x, testPoint.y, DEFAULT_HEIGHT), camIdx);
+	double halfWidth = (reprojectedTopPoint - reprojectedPoint).norm_L2() / 6;
 	if (NULL != result2DPoint) { *result2DPoint = reprojectedPoint; }
-	if (reprojectedPoint.x < 0 || reprojectedPoint.x >= (double)cCamModel_[camIdx].width() || 
-		reprojectedPoint.y < 0 || reprojectedPoint.y >= (double)cCamModel_[camIdx].height())
+	if (reprojectedPoint.x < halfWidth || reprojectedPoint.x >= (double)cCamModel_[camIdx].width() - halfWidth || 
+		reprojectedPoint.y < halfWidth || reprojectedPoint.y >= (double)cCamModel_[camIdx].height() - halfWidth)
 	{
 		return false;
 	}
