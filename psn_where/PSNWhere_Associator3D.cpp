@@ -65,7 +65,7 @@ NOTES:
 #define FN_RATE (0.1)
 
 // enter/exit related
-#define ENTER_PENALTY_FREE_LENGTH (3)
+#define ENTER_PENALTY_FREE_LENGTH (2)
 #define BOUNDARY_DISTANCE (700.0)
 #define P_EN_MAX (1.0E-3)
 #define P_EX_MAX (1.0E-6)
@@ -1954,7 +1954,8 @@ void CPSNWhere_Associator3D::Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeed
 		}
 
 		// initiation cost
-		newTrack.costEnter = bInitiationPenaltyFree_? -log(P_EN_MAX) : std::min(COST_EN_MAX, -std::log(this->ComputeEnterProbability(pointsIn3D)));
+		//newTrack.costEnter = bInitiationPenaltyFree_? -log(P_EN_MAX) : std::min(COST_EN_MAX, -std::log(this->ComputeEnterProbability(pointsIn3D)));
+		newTrack.costEnter = bInitiationPenaltyFree_? 0 : std::min(COST_EN_MAX, -std::log(this->ComputeEnterProbability(pointsIn3D)));
 		pointsIn3D.clear();
 
 		// point reconstruction
@@ -2007,6 +2008,11 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 	printf("[CPSNWhere_Associator3D](BranchTracks) start\n");
 	time_t timer_start = clock();
 #endif
+
+	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+	{
+		// TODO: 브랜치 뜬 track을, tracklet 안에서 visual feature distance가 가장 작은 것부터 sorting, 점증적으로 cost 주기
+	}
 
 	/////////////////////////////////////////////////////////////////////
 	// SPATIAL BRANCHING
@@ -2154,20 +2160,26 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			}
 			if (!trackValidity) { continue; }
 
+			// DEBUG			
+			if (9359 == curTrack->id)
+			{
+				int a = 0;
+			}
+
 			// copy 2D tracklet history and proecssig for clustering + appearance
 			newTrack.costRGB = 0.0;
 			std::deque<stTracklet2D*> queueNewlyInsertedTracklet2D;
 			for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
 				// location in 3D
-				newTrack.trackletLastLocation3D[camIdx] = (*trackIter)->trackletLastLocation3D[camIdx];
+				newTrack.trackletLastLocation3D[camIdx] = curTrack->trackletLastLocation3D[camIdx];
 
 				// appearance
-				newTrack.lastRGBFeature[camIdx] = (*trackIter)->lastRGBFeature[camIdx].clone();
-				newTrack.timeTrackletEnded[camIdx] = (*trackIter)->timeTrackletEnded[camIdx];
+				newTrack.lastRGBFeature[camIdx] = curTrack->lastRGBFeature[camIdx].clone();
+				newTrack.timeTrackletEnded[camIdx] = curTrack->timeTrackletEnded[camIdx];
 
 				// tracklet info
-				newTrack.tracklet2DIDs[camIdx] = (*trackIter)->tracklet2DIDs[camIdx];
+				newTrack.tracklet2DIDs[camIdx] = curTrack->tracklet2DIDs[camIdx];
 				if (NULL == newTrack.curTracklet2Ds.get(camIdx)) { continue; }
 				if (0 == newTrack.tracklet2DIDs[camIdx].size() || newTrack.tracklet2DIDs[camIdx].back() != newTrack.curTracklet2Ds.get(camIdx)->id)
 				{
@@ -2209,8 +2221,8 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 					
 			// insert to the track tree and related lists
 			Track3D *branchTrack = &listTrack3D_.back();
-			(*trackIter)->tree->tracks.push_back(branchTrack);
-			(*trackIter)->childrenTrack.push_back(branchTrack);
+			curTrack->tree->tracks.push_back(branchTrack);
+			curTrack->childrenTrack.push_back(branchTrack);
 			queueTracksInWindow_.push_back(branchTrack);
 
 			// insert to global queue
@@ -4044,6 +4056,17 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 			}
 			fprintf_s(fpTrack3D, "\t\t}\n");
 
+			// tracklet last locations
+			fprintf_s(fpTrack3D, "\t\ttrackletLastLocation3D:{");
+			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+			{
+				fprintf_s(fpTrack3D, "(%f,%f,%f)", 
+					curTrack->trackletLastLocation3D[camIdx].x,
+					curTrack->trackletLastLocation3D[camIdx].y,
+					curTrack->trackletLastLocation3D[camIdx].z);
+			}
+			fprintf_s(fpTrack3D, "}\n");
+
 			fprintf_s(fpTrack3D, "\t\tbActive:%d\n", (int)curTrack->bActive);
 			fprintf_s(fpTrack3D, "\t\tbValid:%d\n", (int)curTrack->bValid);
 			fprintf_s(fpTrack3D, "\t\ttreeID:%d\n", (int)curTrack->tree->id);
@@ -4716,6 +4739,16 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				fscanf_s(fpTrack, "}\n");
 			}
 			fscanf_s(fpTrack, "\t\t}\n");
+
+			// tracklet last locations
+			fscanf_s(fpTrack, "\t\ttrackletLastLocation3D:{");
+			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+			{
+				float tx = 0, ty = 0, tz = 0;
+				fscanf_s(fpTrack, "(%f,%f,%f)", &tx, &ty, &tz);
+				newTrack.trackletLastLocation3D[camIdx] = PSN_Point3D((double)tx, (double)ty, (double)tz);
+			}
+			fscanf_s(fpTrack, "}\n");
 
 			fscanf_s(fpTrack, "\t\tbActive:%d\n", &readingInt);
 			newTrack.bActive = 0 < readingInt ? true : false;
@@ -5536,7 +5569,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 		int numPair = 0;
 		queuePairTreeIDToVisualizationID_.clear();
 		fscanf_s(fpInfo, "queuePairTreeIDToVisualizationID:%d,{", &numPair);
-		for (int pairIdx = 0; pairIdx < queuePairTreeIDToVisualizationID_.size(); pairIdx++)
+		for (int pairIdx = 0; pairIdx < numPair; pairIdx++)
 		{
 			int id1, id2;
 			fscanf_s(fpInfo, "(%d,%d)", &id1, &id2);
