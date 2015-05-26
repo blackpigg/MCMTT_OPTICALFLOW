@@ -69,6 +69,8 @@ public:
 			(*vertexIter)->countNeighborInSolution--;
 		}
 	}
+
+	size_t degree() const { return queueNeighbor.size(); }
 };
 
 // vertex set
@@ -89,18 +91,7 @@ public:
 
 // graph
 class PSN_Graph
-{
-	//------------------------------------------------------
-	// VARIABLES
-	//------------------------------------------------------
-public:
-private:
-	bool m_bTopologyModified;
-	size_t m_nNumVertex;
-	size_t m_nNumEdge;
-	size_t m_nNewID;
-	std::list<PSN_GraphVertex> m_listVertex;
-
+{	
 	//------------------------------------------------------
 	// METHODS
 	//------------------------------------------------------
@@ -111,9 +102,11 @@ public:
 
 	bool Clear(void);
 	bool TopologyModified(void);
-	size_t Size(void){ return this->m_nNumVertex; }
-	size_t NumEdge(void){ return this->m_nNumEdge; }
-	double AverageVertexDegree(void) { return (double)this->m_nNumEdge / (double)this->m_nNumVertex; }
+	size_t Size(void) const { return this->m_nNumVertex; }
+	size_t NumEdge(void) const { return this->m_nNumEdge; }
+	size_t maxDegree(void);
+	size_t minDegree(void);
+	double AverageVertexDegree(void);	
 
 	PSN_GraphVertex* AddVertex(double weight);
 	bool DeleteVertex(PSN_GraphVertex* vertex);
@@ -125,8 +118,15 @@ public:
 	bool SetWeight(PSN_GraphVertex* vertex, double weight);
 	double GetWeight(PSN_GraphVertex* vertex);
 
+	//------------------------------------------------------
+	// VARIABLES
+	//------------------------------------------------------
 private:
-
+	bool m_bTopologyModified;
+	size_t m_nNumVertex;
+	size_t m_nNumEdge;
+	size_t m_nNewID;
+	std::list<PSN_GraphVertex> m_listVertex;
 };
 
 struct stGraphSolvingResult

@@ -617,18 +617,19 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 #ifdef PSN_PRINT_LOG_
 	// PRINT LOG
 	std::string strLog = "";
-	strLog += std::to_string(nCurrentFrameIdx_);
-	strLog += std::to_string(nCountTrackInOptimization_);
-	strLog += std::to_string(nCountUCTrackInOptimization_);
-	strLog += std::to_string(fCurrentProcessingTime_);
-	strLog += std::to_string(fCurrentSolvingTime_);
-	strLog += std::to_string(nCurrentFrameIdx_);
+	strLog += std::to_string(nCurrentFrameIdx_) + ",";
+	strLog += std::to_string(nCountTrackInOptimization_) + ",";
+	strLog += std::to_string(nCountUCTrackInOptimization_) + ",";
+	strLog += std::to_string(fCurrentProcessingTime_) + ",";
+	strLog += std::to_string(fCurrentSolvingTime_) + ",";
+	strLog += std::to_string(nCurrentFrameIdx_) + ",";
 	//sprintf_s(strLog, "%d,%d,%d,%f,%f", 
 	//nCurrentFrameIdx_, 
 	//nCountTrackInOptimization_,
 	//nCountUCTrackInOptimization_,
 	//fCurrentProcessingTime_,
 	//fCurrentSolvingTime_);
+	strLog += "\n";
 	psn::printLog(strLogFileName_, strLog);
 	fCurrentSolvingTime_ = 0.0;
 #endif
