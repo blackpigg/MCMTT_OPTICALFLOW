@@ -975,6 +975,15 @@ void Track3D::Initialize(unsigned int id, Track3D *parentTrack, unsigned int tim
 {
 	this->id = id;
 	this->curTracklet2Ds = trackletCombination;
+	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+	{
+		this->timeTrackletEnded[camIdx] = 0;
+		this->lastTrackletLocation3D[camIdx] = PSN_Point3D(0.0, 0.0, 0.0);
+		this->lastTrackletSensitivity[camIdx] = 0;
+	}
+	this->numOutpoint = 0;
+
+	// inheritance related
 	if(NULL == parentTrack)
 	{
 		this->timeStart = timeGeneration;
@@ -990,12 +999,6 @@ void Track3D::Initialize(unsigned int id, Track3D *parentTrack, unsigned int tim
 	this->duration = this->timeEnd - this->timeStart + 1;
 	this->costEnter = parentTrack->costEnter;
 	this->loglikelihood = parentTrack->loglikelihood;
-	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-	{
-		this->timeTrackletEnded[camIdx] = 0;
-		this->trackletLastSensitivity[camIdx] = 0;
-	}
-	this->numOutpoint = 0;
 }
 
 void Track3D::RemoveFromTree()

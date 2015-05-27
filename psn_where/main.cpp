@@ -87,6 +87,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	// argument handling
 #ifdef _UNICODE
 	std::wstring wstrDatasetPath(argv[1]);
+
 	std::string strDatasetPath(wstrDatasetPath.begin(), wstrDatasetPath.end());
 #else
 	std::string strDatasetPath = argv[1];
@@ -102,8 +103,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	// PETS2009
 	int frameIdxStart = 0;
-	int frameIdxEnd = 188;
-	//int frameIdxEnd = 794;
+	//int frameIdxEnd = 5;
+	int frameIdxEnd = 794;
 	
 
 	/////////////////////////////////////////////////////////////////

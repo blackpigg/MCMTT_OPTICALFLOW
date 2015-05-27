@@ -15,11 +15,11 @@
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
 //#define PSN_PRINT_LOG_
-#define LOAD_SNAPSHOT_
+//#define LOAD_SNAPSHOT_
 
 //#define SAVE_SNAPSHOT_
-//#define DO_RECORD
-//#define SHOW_TOPVIEW
+#define DO_RECORD
+#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -470,8 +470,8 @@ public:
 
 	// tracklet related	
 	unsigned int timeTrackletEnded[NUM_CAM];
-	PSN_Point3D trackletLastLocation3D[NUM_CAM];
-	double trackletLastSensitivity[NUM_CAM];
+	PSN_Point3D lastTrackletLocation3D[NUM_CAM];
+	double lastTrackletSensitivity[NUM_CAM];
 	cv::Mat lastRGBFeature[NUM_CAM];
 
 	// termination
