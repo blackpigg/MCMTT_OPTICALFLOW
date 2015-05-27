@@ -73,6 +73,7 @@ NOTES:
 #define P_EX_DECAY (1.0E-3)
 #define COST_EN_MAX (400.0)
 #define COST_EX_MAX (400.0)
+#define MAX_OUTPOINT (3)
 
 // calibration related
 #define E_DET (3)
@@ -887,11 +888,11 @@ bool CPSNWhere_Associator3D::CheckHeadWidth(PSN_Point3D midPoint3D, PSN_Rect rec
  Return Values:
 	- 
 ************************************************************************/
-bool CPSNWhere_Associator3D::CheckTrackletConnectivity(PSN_Point3D endPoint, PSN_Point3D startPoint, int timeGap)
+bool CPSNWhere_Associator3D::CheckTrackletConnectivity(PSN_Point3D endPoint, PSN_Point3D startPoint,  double sensitivity1, double sensitivity2, int timeGap)
 {
 	if (timeGap > 1) { return true; }
 	double norm2 = (endPoint - startPoint).norm_L2();
-	return norm2 <= COST_TRACKLET_LINK_MIN_DIST;
+	return norm2 <= E_CAL + E_DET * (sensitivity1 + sensitivity2);
 }
 
 /************************************************************************
@@ -1556,6 +1557,9 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 				curTrack->lastRGBFeature[camIdx].release();
 				curTrack->lastRGBFeature[camIdx] = curTrack->curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
 				curTrack->timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
+
+				PSN_Point2D bottomCenter = curTrack->curTracklet2Ds.get(camIdx)->rects.back().bottomCenter();
+				curTrack->trackletLastSensitivity[camIdx] = matProjectionSensitivity_[camIdx].at<double>((int)bottomCenter.y, (int)bottomCenter.x);
 			}
 		}
 		if (!curTrack->bValid) { continue; }	
@@ -1657,6 +1661,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 			curReconstruction->velocity = curReconstruction->smoothedPoint - curTrack->reconstructions[pos-1].smoothedPoint;
 			if (MIN_MOVING_SPEED > curReconstruction->velocity.norm_L2()) { curReconstruction->velocity = PSN_Point3D(0.0, 0.0, 0.0); }
 		}
+		curTrack->numOutpoint = 0;
 
 		// increase iterator
 		queueNewTracks.push_back(curTrack);
@@ -1702,7 +1707,23 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		dummyReconstruction.maxError = 0.0;
 		dummyReconstruction.velocity = (*trackIter)->reconstructions.back().velocity;
 		(*trackIter)->reconstructions.push_back(dummyReconstruction);
-						
+
+		bool bPointOut = true;
+		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+		{
+			if (this->CheckVisibility(dummyReconstruction.smoothedPoint, camIdx))
+			{
+				bPointOut = false;
+				break;
+			}
+		}
+		if (bPointOut) { (*trackIter)->numOutpoint++; }
+		if (MAX_OUTPOINT < (*trackIter)->numOutpoint)
+		{
+			// for logging
+			queueTerminatedTracks.push_back(*trackIter);
+			continue;
+		}
 		queueNewTracks.push_back(*trackIter);
 	}
 	queuePausedTrack_ = queueNewTracks;
@@ -1952,6 +1973,8 @@ void CPSNWhere_Associator3D::Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeed
 			// appearance
 			newTrack.lastRGBFeature[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
 			newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
+			PSN_Point2D bottomCenter = newTrack.curTracklet2Ds.get(camIdx)->rects.back().bottomCenter();
+			newTrack.trackletLastSensitivity[camIdx] = matProjectionSensitivity_[camIdx].at<double>((int)bottomCenter.y, (int)bottomCenter.x);
 		}
 
 		// initiation cost
@@ -2161,12 +2184,6 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			}
 			if (!trackValidity) { continue; }
 
-			// DEBUG			
-			if (9359 == curTrack->id)
-			{
-				int a = 0;
-			}
-
 			// copy 2D tracklet history and proecssig for clustering + appearance
 			newTrack.costRGB = 0.0;
 			std::deque<stTracklet2D*> queueNewlyInsertedTracklet2D;
@@ -2178,6 +2195,8 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 				// appearance
 				newTrack.lastRGBFeature[camIdx] = curTrack->lastRGBFeature[camIdx].clone();
 				newTrack.timeTrackletEnded[camIdx] = curTrack->timeTrackletEnded[camIdx];
+				PSN_Point2D bottomCenter = newTrack.curTracklet2Ds.get(camIdx)->rects.back().bottomCenter();
+				double curTrackletSensitivity = matProjectionSensitivity_[camIdx].at<double>((int)bottomCenter.y, (int)bottomCenter.x);
 
 				// tracklet info
 				newTrack.tracklet2DIDs[camIdx] = curTrack->tracklet2DIDs[camIdx];
@@ -2199,7 +2218,9 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 						//	timeGap);
 						trackValidity &= CheckTrackletConnectivity(
 							newTrack.trackletLastLocation3D[camIdx], 
-							newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
+							newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D,
+							curTrack->trackletLastSensitivity[camIdx],
+							curTrackletSensitivity,
 							timeGap);
 
 						// RGB cost
@@ -2211,7 +2232,8 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 				}
 				// appearance
 				newTrack.lastRGBFeature[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
-				newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
+				newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;				
+				newTrack.trackletLastSensitivity[camIdx] = curTrackletSensitivity;
 			}
 			if (!trackValidity) { continue; }
 			newTrack.costTotal = GetCost(&newTrack);
@@ -2246,6 +2268,12 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 	{
 		if (DO_BRANCH_CUT && MAX_TRACK_IN_OPTIMIZATION <= numTemporalBranch) { break; }
 		Track3D *curTrack = *trackIter;
+
+		// DEBUG			
+		if (25481 == curTrack->id)
+		{
+			int a = 0;
+		}
 
 		for (std::deque<Track3D*>::iterator seedTrackIter = seedTracks->begin();
 			seedTrackIter != seedTracks->end();
@@ -2368,6 +2396,9 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 				newTrack.lastRGBFeature[camIdx] = (*trackIter)->lastRGBFeature[camIdx].clone();
 				newTrack.timeTrackletEnded[camIdx] = (*trackIter)->timeTrackletEnded[camIdx];
 
+				PSN_Point2D bottomCenter = newTrack.curTracklet2Ds.get(camIdx)->rects.back().bottomCenter();
+				double curTrackletSensitivity = matProjectionSensitivity_[camIdx].at<double>((int)bottomCenter.y, (int)bottomCenter.x);
+
 				// tracklet info
 				newTrack.tracklet2DIDs[camIdx] = curTrack->tracklet2DIDs[camIdx];
 				if (NULL == seedTrack->curTracklet2Ds.get(camIdx)) { continue; }
@@ -2387,7 +2418,9 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 						//	timeGap);
 						trackValidity &= CheckTrackletConnectivity(
 							newTrack.trackletLastLocation3D[camIdx], 
-							newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
+							newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D,
+							curTrack->trackletLastSensitivity[camIdx],
+							curTrackletSensitivity,
 							timeGap);
 
 						// RGB cost
@@ -2400,6 +2433,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 				// appearance
 				newTrack.lastRGBFeature[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
 				newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
+				newTrack.trackletLastSensitivity[camIdx] = curTrackletSensitivity;
 			}
 			if (!trackValidity) { continue; }
 
@@ -4137,6 +4171,9 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 			// HO-MHT
 			fprintf_s(fpTrack3D, "\t\tbNewTrack:%d\n", (int)curTrack->bNewTrack);
 
+			// num out points
+			fprintf_s(fpTrack3D, "\t\tbnumOutpoint:%d\n", (int)curTrack->numOutpoint);
+
 			// appearance
 			fprintf_s(fpTrack3D, "\t\tlastRGBFeature:\n\t\t{\n");
 			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
@@ -4890,6 +4927,10 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			// HO-MHT
 			fscanf_s(fpTrack, "\t\tbNewTrack:%d\n", &readingInt);
 			newTrack.bNewTrack = 0 < readingInt ? true : false;
+
+			// num out points
+			fscanf_s(fpTrack, "\t\tbnumOutpoint:%d\n", &readingInt);
+			newTrack.numOutpoint = (unsigned int)readingInt;
 
 			// appearance
 			fscanf_s(fpTrack, "\t\tlastRGBFeature:\n\t\t{\n");

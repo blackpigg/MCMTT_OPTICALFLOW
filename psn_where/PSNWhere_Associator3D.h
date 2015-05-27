@@ -140,7 +140,7 @@ private:
 
 	bool CheckVisibility(PSN_Point3D testPoint, unsigned int camIdx, PSN_Point2D *result2DPoint = NULL);
 	bool CheckHeadWidth(PSN_Point3D midPoint3D, PSN_Rect rect1, PSN_Rect rect2, unsigned int camIdx1, unsigned int camIdx2);
-	bool CheckTrackletConnectivity(PSN_Point3D endPoint, PSN_Point3D startPoint, int timeGap);
+	bool CheckTrackletConnectivity(PSN_Point3D endPoint, PSN_Point3D startPoint, double sensitivity1, double sensitivity2, int timeGap);
 
 	stReconstruction PointReconstruction(CTrackletCombination &tracklet2Ds);
 	double NViewPointReconstruction(std::vector<PSN_Line> &vecLines, PSN_Point3D &outputPoint);

@@ -993,7 +993,9 @@ void Track3D::Initialize(unsigned int id, Track3D *parentTrack, unsigned int tim
 	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{
 		this->timeTrackletEnded[camIdx] = 0;
+		this->trackletLastSensitivity[camIdx] = 0;
 	}
+	this->numOutpoint = 0;
 }
 
 void Track3D::RemoveFromTree()

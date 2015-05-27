@@ -15,11 +15,11 @@
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
 //#define PSN_PRINT_LOG_
-//#define LOAD_SNAPSHOT_
+#define LOAD_SNAPSHOT_
 
 //#define SAVE_SNAPSHOT_
-#define DO_RECORD
-#define SHOW_TOPVIEW
+//#define DO_RECORD
+//#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -66,7 +66,7 @@ const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", 
 // VISUALIZATION SETTTING
 /////////////////////////////////////////////////////////////////////////
 #define DISP_TRAJECTORY3D_LENGTH (40)
-#define DISPLAY_ID_MODE (1) // 0: raw track id, 1: id for visualization
+#define DISPLAY_ID_MODE (0) // 0: raw track id, 1: id for visualization
 
 /////////////////////////////////////////////////////////////////////////
 // EVALUATION SETTING
@@ -427,8 +427,7 @@ public:
 
 	unsigned int id;
 	CTrackletCombination curTracklet2Ds;
-	std::deque<unsigned int> tracklet2DIDs[NUM_CAM];
-	PSN_Point3D trackletLastLocation3D[NUM_CAM];
+	std::deque<unsigned int> tracklet2DIDs[NUM_CAM];	
 	bool bActive;		// for update and branching
 	bool bValid;		// for deletion
 
@@ -442,7 +441,7 @@ public:
 	unsigned int timeEnd;
 	unsigned int timeGeneration;
 	unsigned int duration;
-
+	
 	// reconstruction related
 	std::deque<stReconstruction> reconstructions;
 
@@ -469,9 +468,14 @@ public:
 	// HO-HMT
 	bool bNewTrack;	
 
-	// appearance
-	cv::Mat lastRGBFeature[NUM_CAM];
+	// tracklet related	
 	unsigned int timeTrackletEnded[NUM_CAM];
+	PSN_Point3D trackletLastLocation3D[NUM_CAM];
+	double trackletLastSensitivity[NUM_CAM];
+	cv::Mat lastRGBFeature[NUM_CAM];
+
+	// termination
+	unsigned int numOutpoint; // count tpoints
 };
 
 typedef std::deque<Track3D*> PSN_TrackSet;
