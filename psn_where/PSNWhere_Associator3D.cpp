@@ -71,8 +71,8 @@ NOTES:
 #define P_EX_MAX (1.0E-6)
 #define P_EN_DECAY (1.0E-3)
 #define P_EX_DECAY (1.0E-3)
-#define COST_EN_MAX (400.0)
-#define COST_EX_MAX (400.0)
+#define COST_EN_MAX (200.0)
+#define COST_EX_MAX (200.0)
 #define MAX_OUTPOINT (3)
 
 // calibration related
@@ -2088,6 +2088,10 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			if (*branchIter == curCombination){ continue; }
 			Track3D *curTrack = *trackIter;
 
+			// DEBUG
+			if (31806 == curTrack->id)
+				int a = 0;
+
 			// generate a new track with branching combination
 			Track3D newTrack;
 			newTrack.id = nNewTrackID_;
@@ -2203,7 +2207,6 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 					newTrack.tracklet2DIDs[camIdx].push_back(newTrack.curTracklet2Ds.get(camIdx)->id);
 					queueNewlyInsertedTracklet2D.push_back(newTrack.curTracklet2Ds.get(camIdx));
 
-
 					// when a newly inserted tracklet is not the most front tracklet
 					if (newTrack.tracklet2DIDs[camIdx].size() > 1)
 					{
@@ -2267,11 +2270,9 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 		if (DO_BRANCH_CUT && MAX_TRACK_IN_OPTIMIZATION <= numTemporalBranch) { break; }
 		Track3D *curTrack = *trackIter;
 
-		// DEBUG			
-		if (25481 == curTrack->id)
-		{
+		// DEBUG
+		if (31806 == curTrack->id)
 			int a = 0;
-		}
 
 		for (std::deque<Track3D*>::iterator seedTrackIter = seedTracks->begin();
 			seedTrackIter != seedTracks->end();
@@ -2712,7 +2713,7 @@ double CPSNWhere_Associator3D::ComputeEnterProbability(std::vector<PSN_Point3D> 
 		if (distanceFromBoundary < curDistance) { distanceFromBoundary = curDistance; }
 	}
 	if (distanceFromBoundary < 0) { return 1.0; }
-	return distanceFromBoundary <= BOUNDARY_DISTANCE? 1.0 : P_EN_MAX * exp(-(double)(P_EN_DECAY * (distanceFromBoundary - BOUNDARY_DISTANCE)));
+	return distanceFromBoundary <= BOUNDARY_DISTANCE? 1.0 : P_EN_MAX * exp(-(double)(P_EN_DECAY * std::max(0.0, distanceFromBoundary - BOUNDARY_DISTANCE)));
 }
 
 /************************************************************************
@@ -2733,7 +2734,7 @@ double CPSNWhere_Associator3D::ComputeExitProbability(std::vector<PSN_Point3D> &
 		if (distanceFromBoundary < curDistance) { distanceFromBoundary = curDistance; }
 	}
 	if (distanceFromBoundary < 0) { return 1.0; }
-	return distanceFromBoundary <= BOUNDARY_DISTANCE? P_EX_MAX : P_EX_MAX * exp(-(double)(P_EX_DECAY * (distanceFromBoundary - BOUNDARY_DISTANCE)));
+	return distanceFromBoundary <= BOUNDARY_DISTANCE? P_EX_MAX : P_EX_MAX * exp(-(double)(P_EX_DECAY * std::max(0.0, distanceFromBoundary - BOUNDARY_DISTANCE)));
 }
 
 /************************************************************************
@@ -4923,7 +4924,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			newTrack.bNewTrack = 0 < readingInt ? true : false;			
 
 			// tracklet related
-			fscanf_s(fpTrack, "\t\t}\n\t\ttimeTrackletEnded:(");
+			fscanf_s(fpTrack, "\t\ttimeTrackletEnded:(");
 			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
 				fscanf_s(fpTrack, "%d", &readingInt);
@@ -4961,6 +4962,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				}
 				fscanf_s(fpTrack, ")\n");
 			}
+			fscanf_s(fpTrack, "\t\t}\n");
 			
 			// termination
 			fscanf_s(fpTrack, "\t\tbnumOutpoint:%d\n", &readingInt);
