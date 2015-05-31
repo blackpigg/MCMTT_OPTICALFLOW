@@ -133,10 +133,16 @@ struct stGraphSolvingResult
 {
 	std::deque<std::pair<PSN_VertexSet, double>> vecSolutions;
 	double solvingTime;
+	int iterationNumber;
+	int bestIteration;
+	int maximumSearchInterval;
+	size_t numEdges;
+	size_t numVertices;
+	size_t maximumDegree;
+	double averageDegree;
 };
 typedef std::pair<PSN_GraphVertex*, PSN_GraphVertex*> PSN_VertexPair;
 typedef enum { M1 = 0, M2, M3, M4, A } BLS_MOVE_TYPE;
-
 
 
 /////////////////////////////////////////////////////////////////////////

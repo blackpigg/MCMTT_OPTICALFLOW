@@ -2092,7 +2092,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			Track3D *curTrack = *trackIter;
 
 			// DEBUG
-			if (31806 == curTrack->id)
+			if (67640 == curTrack->id)
 				int a = 0;
 
 			// generate a new track with branching combination
@@ -2274,7 +2274,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 		Track3D *curTrack = *trackIter;
 
 		// DEBUG
-		if (31806 == curTrack->id)
+		if (67640 == curTrack->id)
 			int a = 0;
 
 		for (std::deque<Track3D*>::iterator seedTrackIter = seedTracks->begin();
@@ -3030,6 +3030,8 @@ void CPSNWhere_Associator3D::Hypothesis_UpdateHypotheses(PSN_HypothesisSet &inou
 	nCountTrackInOptimization_ = 0;
 	nCountUCTrackInOptimization_ = 0;
 
+	vectorSolvingInfo_.clear();
+	vectorSolvingInfo_.reserve(inoutUpdatedHypotheses.size());
 	//---------------------------------------------------------
 	// ADD NEW TRACKS TO RELATED TRACK QUEUE
 	//---------------------------------------------------------
@@ -3041,6 +3043,8 @@ void CPSNWhere_Associator3D::Hypothesis_UpdateHypotheses(PSN_HypothesisSet &inou
 		if (K_BEST_SIZE <= newHypothesesSet.size()) { break; }
 		//if (!(*hypothesisIter).bValid){ continue; }
 		stGlobalHypothesis newGlobalHypothesis = (*hypothesisIter);
+		stHypothesisSolvingInfo newInfo;
+		newInfo.rank = newHypothesesSet.size();
 
 		// add new branch tracks
 		PSN_TrackSet newRelatedTracks = (*hypothesisIter).relatedTracks;

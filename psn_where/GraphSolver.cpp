@@ -465,17 +465,12 @@ stGraphSolvingResult* CGraphSolver::Solve(void)
 #define BLS_PHI (7)
 #define BLS_MIN_ITERATION (100)
 #define BLS_MAX_ITERATION (2000)
-// DEBUG
-int bestIteration = 0;
-int previousBestIteration = 0;
-int maxSearchInterval = 0;
 void CGraphSolver::RunBLS(void)
 {
-	// DEBUG
+	// solving information related
 	time_t timer_start = clock();
-	bestIteration = 0;
-	previousBestIteration = 0;
-	maxSearchInterval = 0;
+	this->m_stResult.bestIteration = 0;
+	this->m_stResult.maximumSearchInterval = 0;
 
 	// parameters
 	double L0 = 0.01 * (double)this->m_pGraph->Size();
@@ -522,6 +517,7 @@ void CGraphSolver::RunBLS(void)
 	size_t maxIter = this->m_pGraph->NumEdge() * 100;
 #endif
 	maxIter = std::min(std::max((size_t)BLS_MIN_ITERATION, maxIter), (size_t)BLS_MAX_ITERATION);
+	this->m_stResult.iterationNumber = maxIter;
 
 	/////////////////////////////////////////////////////////////////////////////
 	// MAIN LOOP
@@ -553,10 +549,9 @@ void CGraphSolver::RunBLS(void)
 			fbest = fc;
 			w = 0;
 
-			// DEBUG
-			previousBestIteration = bestIteration;
-			bestIteration = (int)this->BLS_nIter;
-			maxSearchInterval = std::max(maxSearchInterval, bestIteration - previousBestIteration);
+			// solving info			
+			this->m_stResult.maximumSearchInterval = std::max(this->m_stResult.maximumSearchInterval, (int)this->BLS_nIter - this->m_stResult.bestIteration);
+			this->m_stResult.bestIteration = (int)this->BLS_nIter;
 		}
 		else
 		{
@@ -602,20 +597,13 @@ void CGraphSolver::RunBLS(void)
 #endif
 	std::sort(this->m_stResult.vecSolutions.front().first.begin(), this->m_stResult.vecSolutions.front().first.end(), psnGraphComparatorVertexIDAscend);	// by track ID
 
-	// DEBUG
+	// result packing
 	time_t timer_end = clock();
-	double solvingTime = (double)(timer_end - timer_start) / CLOCKS_PER_SEC;
-	std::string strLog = "";
-	strLog += std::to_string(m_pGraph->Size()) + ",";		// the # of nodes
-	strLog += std::to_string(m_pGraph->NumEdge()) + ",";	// the # of edges
-	strLog += std::to_string(bestIteration) + ",";			// the # of iteration where the best solution is got
-	strLog += std::to_string(maxIter) + ",";				// the limit of iteration number
-	strLog += std::to_string(m_pGraph->AverageVertexDegree()) + ",";	// average degree of vertices
-	strLog += std::to_string(m_pGraph->maxDegree()) + ",";	// maximum degree of vertices
-	strLog += std::to_string(maxSearchInterval) + ",";		// maximum searching interval
-	strLog += std::to_string(solvingTime) + ",";			// solving time
-	strLog += "\n";
-	psn::printLog("logs/graphs/BLS.txt", strLog);
+	this->m_stResult.solvingTime = (double)(timer_end - timer_start) / CLOCKS_PER_SEC;
+	this->m_stResult.numEdges = m_pGraph->NumEdge();
+	this->m_stResult.numVertices = m_pGraph->Size();
+	this->m_stResult.maximumDegree = m_pGraph->maxDegree();
+	this->m_stResult.averageDegree = m_pGraph->AverageVertexDegree();
 }
 
 void CGraphSolver::RunILS(void)

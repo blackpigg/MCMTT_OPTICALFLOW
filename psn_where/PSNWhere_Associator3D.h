@@ -107,8 +107,17 @@ struct stGlobalHypothesis
 	bool bValid;
 };
 typedef std::deque<stGlobalHypothesis> PSN_HypothesisSet;
-
 typedef std::pair<unsigned int, unsigned int> PAIR_UINT;
+
+// for GRAPH SOLVING ANALYSIS
+struct stHypothesisSolvingInfo
+{
+	int rank;
+	double costInitialSolution;
+	double costAdded;
+	double reviousSolution;
+	stGraphSolvingResult solvingResult;
+};
 
 /////////////////////////////////////////////////////////////////////////
 // CLASS DECLARATION
@@ -274,6 +283,7 @@ private:
 	//std::deque<stGraphSolution> queueStGraphSolutions_;
 	PSN_HypothesisSet queuePrevGlobalHypotheses_;
 	PSN_HypothesisSet queueCurrGlobalHypotheses_;
+	std::vector<stHypothesisSolvingInfo> vectorSolvingInfo_;
 
 	// for visualization
 	unsigned int nNewVisualizationID_;
