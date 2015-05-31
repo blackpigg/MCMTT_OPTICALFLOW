@@ -688,6 +688,8 @@ PSN_Point2D CPSNWhere_Associator3D::WorldToImage(PSN_Point3D point3D, int camIdx
 {
 	PSN_Point2D resultPoint2D(0, 0);
 	cCamModel_[camIdx].worldToImage(point3D.x, point3D.y, point3D.z, resultPoint2D.x, resultPoint2D.y);
+	resultPoint2D.x--;
+	resultPoint2D.y--;
 	return resultPoint2D;
 }
 
@@ -707,7 +709,8 @@ PSN_Point3D CPSNWhere_Associator3D::ImageToWorld(PSN_Point2D point2D, double z, 
 {
 	PSN_Point3D resultPoint3D(0, 0, 0);
 	resultPoint3D.z = z;
-	cCamModel_[camIdx].imageToWorld(point2D.x, point2D.y, z, resultPoint3D.x, resultPoint3D.y);
+	cCamModel_[camIdx].imageToWorld(point2D.x+1.0, point2D.y+1.0, z, resultPoint3D.x, resultPoint3D.y);
+//	cCamModel_[camIdx].imageToWorld(point2D.x, point2D.y, z, resultPoint3D.x, resultPoint3D.y);
 	return resultPoint3D;
 }
 
