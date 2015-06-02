@@ -1315,7 +1315,7 @@ void CPSNWhere_Associator3D::Tracklet2D_UpdateTracklets(std::vector<stTrack2DRes
 		}
 
 		//-------------------------------------------------
-		// UPDATING ESTABLISHED 2D TRACKLETS
+		// UPDATING EXISTING 2D TRACKLETS
 		//-------------------------------------------------
 		std::deque<stTracklet2D*>::iterator trackletIter = vecTracklet2DSet_[camIdx].activeTracklets.begin();
 		for (unsigned int objInfoIdx = 0; objInfoIdx < numTracklet; objInfoIdx++)
@@ -2092,7 +2092,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			Track3D *curTrack = *trackIter;
 
 			// DEBUG
-			if (67640 == curTrack->id)
+			if (67803 == curTrack->id)
 				int a = 0;
 
 			// generate a new track with branching combination
@@ -2233,9 +2233,9 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 							&newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureHead, 
 							timeGap);						
 					}
-				}
-				// appearance
+				}				
 				newTrack.lastRGBFeature[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
+				newTrack.lastTrackletLocation3D[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D;
 				newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;				
 				newTrack.lastTrackletSensitivity[camIdx] = curTrackletSensitivity;
 			}
@@ -2274,7 +2274,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 		Track3D *curTrack = *trackIter;
 
 		// DEBUG
-		if (67640 == curTrack->id)
+		if (67803 == curTrack->id)
 			int a = 0;
 
 		for (std::deque<Track3D*>::iterator seedTrackIter = seedTracks->begin();
@@ -2392,11 +2392,11 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 			{
 				// location in 3D
-				newTrack.lastTrackletLocation3D[camIdx] = (*trackIter)->lastTrackletLocation3D[camIdx];
+				newTrack.lastTrackletLocation3D[camIdx] = curTrack->lastTrackletLocation3D[camIdx];
 
 				// appearance
-				newTrack.lastRGBFeature[camIdx] = (*trackIter)->lastRGBFeature[camIdx].clone();
-				newTrack.timeTrackletEnded[camIdx] = (*trackIter)->timeTrackletEnded[camIdx];
+				newTrack.lastRGBFeature[camIdx] = curTrack->lastRGBFeature[camIdx].clone();
+				newTrack.timeTrackletEnded[camIdx] = curTrack->timeTrackletEnded[camIdx];
 
 				// tracklet info
 				newTrack.tracklet2DIDs[camIdx] = curTrack->tracklet2DIDs[camIdx];
@@ -2430,9 +2430,9 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 							&newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureHead, 
 							timeGap);
 					}
-				}
-				// appearance
+				}				
 				newTrack.lastRGBFeature[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->RGBFeatureTail.clone();
+				newTrack.lastTrackletLocation3D[camIdx] = newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D;
 				newTrack.timeTrackletEnded[camIdx] = nCurrentFrameIdx_;
 				newTrack.lastTrackletSensitivity[camIdx] = curTrackletSensitivity;
 			}
