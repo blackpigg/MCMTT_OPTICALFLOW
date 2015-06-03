@@ -14,12 +14,12 @@
 
 #define PSN_DEBUG_MODE_
 #define PSN_MONITOR_MODE_
-//#define PSN_PRINT_LOG_
-//#define LOAD_SNAPSHOT_
+#define PSN_PRINT_LOG_
+#define LOAD_SNAPSHOT_
 
 //#define SAVE_SNAPSHOT_
-#define DO_RECORD
-#define SHOW_TOPVIEW
+//#define DO_RECORD
+//#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -500,6 +500,7 @@ public:
 	unsigned int id;
 	unsigned int timeGeneration;
 	bool bValid;
+	bool bConfirmed;
 	std::deque<Track3D*> tracks; // seed at the first
 
 	//unsigned int numMeasurements;

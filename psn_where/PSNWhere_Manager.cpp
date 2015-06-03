@@ -1094,6 +1094,7 @@ TrackTree::TrackTree()
 	: id(0)
 	, timeGeneration(0)
 	, bValid(true)
+	, bConfirmed(false)
 //	, numMeasurements(0)
 //	, maxGTProb(0.0)
 {

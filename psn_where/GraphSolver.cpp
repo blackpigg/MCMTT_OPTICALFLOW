@@ -517,7 +517,7 @@ void CGraphSolver::RunBLS(void)
 	size_t maxIter = this->m_pGraph->NumEdge() * 100;
 #endif
 	maxIter = std::min(std::max((size_t)BLS_MIN_ITERATION, maxIter), (size_t)BLS_MAX_ITERATION);
-	this->m_stResult.iterationNumber = maxIter;
+	this->m_stResult.iterationNumber = (int)maxIter;
 
 	/////////////////////////////////////////////////////////////////////////////
 	// MAIN LOOP

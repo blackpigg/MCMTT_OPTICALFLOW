@@ -198,7 +198,8 @@ private:
 	void Hypothesis_Formation(PSN_HypothesisSet &outBranchHypotheses, PSN_HypothesisSet *existingHypotheses);
 	void Hypothesis_BranchHypotheses(PSN_HypothesisSet &outBranchHypotheses, PSN_TrackSet *tracks, PSN_TrackSet *initialSolutionTracks = NULL);
 	void Hypothesis_PruningNScanBack(unsigned int nCurrentFrameIdx, unsigned int N, PSN_TrackSet *tracksInWindow, std::deque<stGlobalHypothesis> *ptQueueHypothesis = NULL);
-	void Hypothesis_PruningTrackWithGTP(unsigned int nCurrentFrameIdx, unsigned int nNumMaximumTrack, PSN_TrackSet *tracksInWindow);
+	void Hypothesis_PruningConfirmation(unsigned int nCurrentFrameIdx, std::deque<TrackTree*> *queueUnconfirmedTrees);
+	void Hypothesis_PruningTrackWithGTP(unsigned int nCurrentFrameIdx, unsigned int nNumMaximumTrack, PSN_TrackSet *tracksInWindow, std::deque<TrackTree*> *queueActiveTrackTree);	
 	void Hypothesis_RefreshHypotheses(PSN_HypothesisSet &inoutUpdatedHypotheses);
 
 	//----------------------------------------------------------------

@@ -18,12 +18,15 @@ NOTES:
 // optimization related
 #define PROC_WINDOW_SIZE (5)
 #define GTP_THRESHOLD (0.0001)
+#define GTP_RATIO_THRESHOLD (0.3)
+#define NUM_TRACK_RATIO_IN_TREE (0.01)
+#define MIN_TRACK_IN_TREE (10)
 #define MAX_TRACK_IN_OPTIMIZATION (2000)
 #define MAX_TRACK_IN_UNCONFIRMED_TREE (2)
-#define MAX_UNCONFIRMED_TRACK (50)
+#define MAX_UNCONFIRMED_TRACK (3)
 #define NUM_FRAME_FOR_GTP_CHECK (3)
 #define NUM_FRAME_FOR_CONFIRMATION (3)
-#define K_BEST_SIZE (100)
+#define K_BEST_SIZE (50)
 #define DO_BRANCH_CUT (false)
 
 // reconstruction related
@@ -154,33 +157,10 @@ bool psnTrackGPandLengthComparator(const Track3D *track1, const Track3D *track2)
 	return true;
 }
 
-//bool psnTreeNumMeasurementDescendComparator(const TrackTree *tree1, const TrackTree *tree2)
-//{
-//	return tree1->numMeasurements > tree2->numMeasurements;
-//}
-
 bool psnSolutionLogLikelihoodDescendComparator(const stGlobalHypothesis &solution1, const stGlobalHypothesis &solution2)
 {
 	return solution1.logLikelihood > solution2.logLikelihood;
 }
-
-//bool psnUnconfirmedTrackGTPLengthDescendComparator(const TrackTree *tree1, const TrackTree *tree2)
-//{
-//	if(tree1->maxGTProb > tree1->maxGTProb)
-//	{
-//		return true;
-//	}	
-//	if(tree1->maxGTProb < tree1->maxGTProb)
-//	{
-//		return false;
-//	}
-//	if(tree1->timeGeneration < tree2->timeGeneration)
-//	{
-//		return true;
-//	}
-//	return false;
-//}
-
 
 /////////////////////////////////////////////////////////////////////////
 // MEMBER FUNCTIONS
@@ -367,30 +347,17 @@ void CPSNWhere_Associator3D::Finalize(void)
 #ifdef PSN_DEBUG_MODE_
 	printf("[CPSNWhere_Associator3D](Finalize) start\n");
 #endif
-
+	
 	if (!bInit_) { return; }
-
 #ifdef SAVE_SNAPSHOT_
 	this->SaveSnapshot(SNAPSHOT_PATH);
 #endif
-
 	/////////////////////////////////////////////////////////////////////////////
 	// PRINT RESULT
 	/////////////////////////////////////////////////////////////////////////////
-#ifdef PSN_PRINT_LOG_
-	//// candidate tracks
-	//this->PrintTracks(queuePausedTrack_, strTrackLogFileName_, true);
-	//this->PrintTracks(queueActiveTrack_, strTrackLogFileName_, true);
-#endif
 
 	// tracks in solutions
 	std::deque<Track3D*> queueResultTracks;
-	//for(std::list<Track3D>::iterator trackIter = listResultTrack3D_.begin();
-	//	trackIter != listResultTrack3D_.end();
-	//	trackIter++)
-	//{
-	//	queueResultTracks.push_back(&(*trackIter));
-	//}
 	for (std::deque<Track3D*>::iterator trackIter = queueTracksInBestSolution_.begin();
 		trackIter != queueTracksInBestSolution_.end();
 		trackIter++)
@@ -398,26 +365,7 @@ void CPSNWhere_Associator3D::Finalize(void)
 		queueResultTracks.push_back(*trackIter);
 	}
 
-
-#ifdef PSN_PRINT_LOG_
-	// track print
-	PSN_TrackSet allTracks;
-	for(std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
-		trackIter != listTrack3D_.end();
-		trackIter++)
-	{
-		allTracks.push_back(&(*trackIter));
-	}	
-	this->PrintTracks(allTracks, strTrackLogFileName_, false);
-	//this->PrintTracks(queueResultTracks, strResultLogFileName_, false);
-
-	//// deferred result
-	//this->SaveDefferedResult(0);
-	//this->FilePrintDefferedResult();
-	//this->FilePrintInstantResult();
-#endif
 	// print results
-	//this->SaveDefferedResult(0);
 	this->PrintResult(strInstantResultFileName_, &queueTrackingResult_);
 	this->PrintResult(strDefferedResultFileName_, &queueDeferredTrackingResult_);
 
@@ -538,21 +486,11 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	// solve MHT
 	this->Hypothesis_UpdateHypotheses(queuePrevGlobalHypotheses_, &queueNewSeedTracks_);
 	this->Hypothesis_Formation(queueCurrGlobalHypotheses_, &queuePrevGlobalHypotheses_);	
-
-	//if (80 == nCurrentFrameIdx_)
-	//{
-	//	this->PrintCurrentTrackTrees("data/trees.txt");
-	//}
-
 	// post-pruning
 	this->Hypothesis_PruningNScanBack(nCurrentFrameIdx_, PROC_WINDOW_SIZE, &queueTracksInWindow_, &queueCurrGlobalHypotheses_);
-	this->Hypothesis_PruningTrackWithGTP(nCurrentFrameIdx_, MAX_TRACK_IN_OPTIMIZATION, &queueTracksInWindow_);
+	//this->Hypothesis_PruningConfirmation(nCurrentFrameIdx_, &queuePtUnconfirmedTrees_);
+	this->Hypothesis_PruningTrackWithGTP(nCurrentFrameIdx_, MAX_TRACK_IN_OPTIMIZATION, &queueTracksInWindow_, &queuePtActiveTrees_);
 	this->Hypothesis_RefreshHypotheses(queueCurrGlobalHypotheses_);
-
-	//if (80 == nCurrentFrameIdx_)
-	//{
-	//	this->PrintCurrentTrackTrees("data/trees_afterPruning.txt");
-	//}
 
 	/////////////////////////////////////////////////////////////////////////////
 	// RESULT PACKING
@@ -582,9 +520,6 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 		queueDeferredTrackingResult_.push_back(this->ResultWithTracks(&queueTracksInBestSolution_, frameIdx + 1 - PROC_WINDOW_SIZE, processingTime));
 	}
 	
-	//this->SaveInstantResult();
-	//this->SaveDefferedResult(PROC_WINDOW_SIZE);
-
 	/////////////////////////////////////////////////////////////////////////////
 	// EVALUATION
 	/////////////////////////////////////////////////////////////////////////////
@@ -623,7 +558,6 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	strLog += std::to_string(nCountUCTrackInOptimization_) + ",";
 	strLog += std::to_string(fCurrentProcessingTime_) + ",";
 	strLog += std::to_string(fCurrentSolvingTime_) + ",";
-	strLog += std::to_string(nCurrentFrameIdx_) + ",";
 	//sprintf_s(strLog, "%d,%d,%d,%f,%f", 
 	//nCurrentFrameIdx_, 
 	//nCountTrackInOptimization_,
@@ -1728,11 +1662,6 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 	}
 	queuePausedTrack_ = queueNewTracks;
 	queueNewTracks.clear();
-
-	// print out
-#ifdef PSN_PRINT_LOG_
-	//this->PrintTracks(queueTerminatedTracks, strTrackLogFileName_, true);
-#endif
 	queueTerminatedTracks.clear();
 
 	//---------------------------------------------------------
@@ -1788,37 +1717,6 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 			(*treeIter)->bValid = false;
 			continue;
 		}
-
-		//// update 2D tracklet info
-		//(*treeIter)->numMeasurements = 0;
-		//for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-		//{
-		//	if (0 == (*treeIter)->tracklet2Ds[camIdx].size()) { continue; }
-
-		//	std::deque<stTracklet2DInfo> queueUpdatedTrackletInfo;
-		//	for (std::deque<stTracklet2DInfo>::iterator infoIter = (*treeIter)->tracklet2Ds[camIdx].begin();
-		//		infoIter != (*treeIter)->tracklet2Ds[camIdx].end();
-		//		infoIter++)
-		//	{
-		//		if ((*infoIter).tracklet2D->timeStart + nNumFramesForProc_ < nCurrentFrameIdx_)
-		//		{ continue;	}
-
-		//		std::deque<Track3D*> queueNewTracks;
-		//		for (std::deque<Track3D*>::iterator trackIter = (*infoIter).queueRelatedTracks.begin();
-		//			trackIter != (*infoIter).queueRelatedTracks.end();
-		//			trackIter++)
-		//		{
-		//			if ((*trackIter)->bValid) { queueNewTracks.push_back(*trackIter); }
-		//		}
-
-		//		if (0 == queueNewTracks.size()) { continue; }
-
-		//		(*infoIter).queueRelatedTracks = queueNewTracks;
-		//		queueUpdatedTrackletInfo.push_back(*infoIter);
-		//	}
-		//	(*treeIter)->numMeasurements += (unsigned int)queueUpdatedTrackletInfo.size();
-		//	(*treeIter)->tracklet2Ds[camIdx] = queueUpdatedTrackletInfo;
-		//}
 		queueNewActiveTrees.push_back(*treeIter);
 	}	
 	queuePtActiveTrees_ = queueNewActiveTrees;
@@ -2091,10 +1989,6 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 			if (*branchIter == curCombination){ continue; }
 			Track3D *curTrack = *trackIter;
 
-			// DEBUG
-			if (67803 == curTrack->id)
-				int a = 0;
-
 			// generate a new track with branching combination
 			Track3D newTrack;
 			newTrack.id = nNewTrackID_;
@@ -2216,10 +2110,6 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 						int timeGap = nCurrentFrameIdx_ - newTrack.timeTrackletEnded[camIdx];
 
 						// tracklet location
-						//newTrack.costLink += ComputeTrackletLinkCost(
-						//	newTrack.lastTrackletLocation3D[camIdx], 
-						//	newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
-						//	timeGap);
 						trackValidity &= CheckTrackletConnectivity(
 							newTrack.lastTrackletLocation3D[camIdx], 
 							newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D,
@@ -2272,10 +2162,6 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 	{
 		if (DO_BRANCH_CUT && MAX_TRACK_IN_OPTIMIZATION <= numTemporalBranch) { break; }
 		Track3D *curTrack = *trackIter;
-
-		// DEBUG
-		if (67803 == curTrack->id)
-			int a = 0;
 
 		for (std::deque<Track3D*>::iterator seedTrackIter = seedTracks->begin();
 			seedTrackIter != seedTracks->end();
@@ -2413,10 +2299,6 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 						int timeGap = nCurrentFrameIdx_ - newTrack.timeTrackletEnded[camIdx];
 
 						// tracklet location
-						//newTrack.costLink += ComputeTrackletLinkCost(
-						//	newTrack.lastTrackletLocation3D[camIdx], 
-						//	newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D, 
-						//	timeGap);
 						trackValidity &= CheckTrackletConnectivity(
 							newTrack.lastTrackletLocation3D[camIdx], 
 							newTrack.curTracklet2Ds.get(camIdx)->currentLocation3D,
@@ -2479,224 +2361,6 @@ PSN_TrackSet CPSNWhere_Associator3D::Track3D_GetWholeCandidateTracks(void)
 {
 	return queueTracksInWindow_;
 }
-
-///************************************************************************
-// Method Name: Track3D_SolveHOMHT
-// Description: 
-//	- solve multiple hyphothesis problem with track trees
-// Input Arguments:
-//	- none
-// Return Values:
-//	- none
-//************************************************************************/
-//void CPSNWhere_Associator3D::Track3D_SolveHOMHT(void)
-//{
-//	if (0 == queueTracksInWindow_.size()) { return; }
-//	
-//	//---------------------------------------------------------
-//	// PROPAGATE GLOBAL HYPOTHESES
-//	//---------------------------------------------------------
-//	if (0 == queuePrevGlobalHypotheses_.size())
-//	{
-//		this->Hypothesis_BranchHypotheses(this->Track3D_GetWholeCandidateTracks());
-//	}
-//	else
-//	{	
-//		// solve K times
-//#pragma omp parallel for
-//		for (std::deque<stGlobalHypothesis>::iterator hypothesisIter = queuePrevGlobalHypotheses_.begin();
-//			hypothesisIter != queuePrevGlobalHypotheses_.end();
-//			hypothesisIter++)
-//		{
-//			this->Hypothesis_BranchHypotheses((*hypothesisIter).relatedTracks, &((*hypothesisIter).selectedTracks));
-//		}
-//	}
-//
-//	if (0 == queueStGraphSolutions_.size()) { return; }
-//
-//	// sort solutions by probability and save best solution
-//	std::sort(queueStGraphSolutions_.begin(), queueStGraphSolutions_.end(), psnSolutionLogLikelihoodDescendComparator);
-//	if (0 < queueStGraphSolutions_.size())
-//	{
-//		for (PSN_TrackSet::iterator trackIter = queueStGraphSolutions_.front().tracks.begin();
-//			trackIter != queueStGraphSolutions_.front().tracks.end();
-//			trackIter++)
-//		{
-//			(*trackIter)->bCurrentBestSolution = true;
-//		}
-//	}
-//
-//	//---------------------------------------------------------
-//	// CALCULATE PROBABILITIES
-//	//---------------------------------------------------------
-//	double solutionLoglikelihoodSum = 0;
-//	for (size_t solutionIdx = 0; solutionIdx < queueStGraphSolutions_.size(); solutionIdx++)
-//	{
-//		stGraphSolution *curSolution = &(queueStGraphSolutions_[solutionIdx]);
-//		solutionLoglikelihoodSum += curSolution->logLikelihood;
-//		for (size_t trackIdx = 0; trackIdx < curSolution->tracks.size(); trackIdx++)
-//		{
-//			curSolution->tracks[trackIdx]->GTProb += curSolution->logLikelihood;
-//		}
-//	}
-//
-//	// probability of global hypothesis
-//	for (size_t solutionIdx = 0; solutionIdx < queueStGraphSolutions_.size(); solutionIdx++)
-//	{
-//		queueStGraphSolutions_[solutionIdx].probability = queueStGraphSolutions_[solutionIdx].logLikelihood / solutionLoglikelihoodSum;		
-//	}
-//
-//	// global track probability
-//	for (size_t trackIdx = 0; trackIdx < queueTracksInWindow_.size(); trackIdx++)
-//	{
-//		Track3D *curTrack = queueTracksInWindow_[trackIdx];
-//		curTrack->GTProb /= solutionLoglikelihoodSum;
-//		if (curTrack->tree->maxGTProb < curTrack->GTProb)
-//		{
-//			curTrack->tree->maxGTProb = curTrack->GTProb;
-//		}
-//	}
-//}
-//
-//
-///************************************************************************
-// Method Name: Track3D_Pruning
-// Description: 
-//	- prune tracks
-// Input Arguments:
-//	- none
-// Return Values:
-//	- none
-//************************************************************************/
-//void CPSNWhere_Associator3D::Track3D_Pruning_GTP(void)
-//{
-//	// sort
-//	std::sort(queueTracksInWindow_.begin(), queueTracksInWindow_.end(), psnTrackGTPandLLDescend);
-//
-//	//---------------------------------------------------------
-//	// TRACK PRUNING
-//	//---------------------------------------------------------
-//	PSN_TrackSet newQueueTracksInWindow;
-//	size_t numTracksInWindow = 0;
-//	size_t numTracksPruned = 0;
-//	for(PSN_TrackSet::iterator trackIter = queueTracksInWindow_.begin();
-//		trackIter != queueTracksInWindow_.end();
-//		trackIter++)
-//	{
-//		if(numTracksInWindow < MAX_TRACK_IN_OPTIMIZATION || (*trackIter)->duration < NUM_FRAME_FOR_CONFIRMATION)
-//		{
-//			newQueueTracksInWindow.push_back(*trackIter);
-//			numTracksInWindow++;
-//		}
-//		else
-//		{
-//			(*trackIter)->bValid = false;
-//			numTracksPruned++;
-//		}
-//	}
-//	queueTracksInWindow_ = newQueueTracksInWindow;
-//
-//
-//	//---------------------------------------------------------
-//	// REPAIRING DATA STRUCTURES
-//	//---------------------------------------------------------	
-//	this->Track3D_RepairDataStructure();
-//
-//#ifdef PSN_DEBUG_MODE_
-//	printf("[CPSNWhere_Associator3D](Pruing) deleted tracks: %d\n", (int)numTracksPruned);
-//#endif
-//}
-//
-//
-///************************************************************************
-// Method Name: Track3D_Pruning_KBest
-// Description: 
-//	- prune tracks with K-best solutions
-// Input Arguments:
-//	- none
-// Return Values:
-//	- none
-//************************************************************************/
-//void CPSNWhere_Associator3D::Track3D_Pruning_KBest(void)
-//{
-//	int numTrackLeft = 0;
-//	int numUCTrackLeft = 0;
-//	
-//	std::sort(queueTracksInWindow_.begin(), queueTracksInWindow_.end(), psnTrackGTPandLLDescend);	
-//	for(PSN_TrackSet::iterator trackIter = queueTracksInWindow_.begin();
-//		trackIter != queueTracksInWindow_.end();
-//		trackIter++)
-//	{
-//		//if((*trackIter)->tree->timeGeneration + NUM_FRAME_FOR_CONFIRMATION > nCurrentFrameIdx_ && numUCTrackLeft < MAX_UNCONFIRMED_TRACK) 
-//		if((*trackIter)->tree->timeGeneration + NUM_FRAME_FOR_CONFIRMATION > nCurrentFrameIdx_) 
-//		{ 
-//			numUCTrackLeft++;
-//			continue; 
-//		}
-//
-//		if(numTrackLeft < MAX_TRACK_IN_OPTIMIZATION && (*trackIter)->GTProb > 0) 
-//		{ 	
-//			numTrackLeft++;
-//			continue;
-//		}
-//
-//		(*trackIter)->bValid = false;
-//	}
-//}
-//
-///************************************************************************
-// Method Name: Track3D_RepairDataStructure
-// Description: 
-//	- 
-// Input Arguments:
-//	- 
-// Return Values:
-//	- 
-//************************************************************************/
-//void CPSNWhere_Associator3D::Track3D_RepairDataStructure()
-//{
-//	PSN_TrackSet newTrackQueue;
-//
-//	// m_queueActiveTrack
-//	for(size_t trackIdx = 0; trackIdx < queueActiveTrack_.size(); trackIdx++)		
-//	{
-//		Track3D *curTrack = queueActiveTrack_[trackIdx];
-//		if(curTrack->bValid){ newTrackQueue.push_back(curTrack); }
-//	}
-//	queueActiveTrack_ = newTrackQueue;
-//	newTrackQueue.clear();
-//
-//	// m_queueDeactivatedTrack
-//	for(size_t trackIdx = 0; trackIdx < queuePausedTrack_.size(); trackIdx++)		
-//	{
-//		Track3D *curTrack = queuePausedTrack_[trackIdx];
-//		if(curTrack->bValid){ newTrackQueue.push_back(curTrack); }
-//	}	
-//	queuePausedTrack_ = newTrackQueue;
-//	newTrackQueue.clear();
-//
-//	// m_queueTracksInWindow
-//	int numTrackPruned = (int)queueTracksInWindow_.size();
-//	for(size_t trackIdx = 0; trackIdx < queueTracksInWindow_.size(); trackIdx++)		
-//	{
-//		Track3D *curTrack = queueTracksInWindow_[trackIdx];
-//		if(curTrack->bValid){ newTrackQueue.push_back(curTrack); }
-//	}	
-//	queueTracksInWindow_ = newTrackQueue;
-//	numTrackPruned =- (int)queueTracksInWindow_.size();
-//	newTrackQueue.clear();
-//
-//	// m_queueActiveTrees
-//	std::deque<TrackTree*> newTreeQueue;
-//	for(size_t treeIdx = 0; treeIdx < queuePtActiveTrees_.size(); treeIdx++)
-//	{
-//		if(queuePtActiveTrees_[treeIdx]->bSelected)
-//		{
-//			newTreeQueue.push_back(queuePtActiveTrees_[treeIdx]);
-//		}
-//	}
-//	queuePtActiveTrees_ = newTreeQueue;
-//}
 
 /************************************************************************
  Method Name: ComputeEnterProbability
@@ -3044,7 +2708,9 @@ void CPSNWhere_Associator3D::Hypothesis_UpdateHypotheses(PSN_HypothesisSet &inou
 		//if (!(*hypothesisIter).bValid){ continue; }
 		stGlobalHypothesis newGlobalHypothesis = (*hypothesisIter);
 		stHypothesisSolvingInfo newInfo;
-		newInfo.rank = newHypothesesSet.size();
+
+		// TODO...: cost <->solving relationship
+		newInfo.rank = (int)newHypothesesSet.size();
 
 		// add new branch tracks
 		PSN_TrackSet newRelatedTracks = (*hypothesisIter).relatedTracks;
@@ -3137,6 +2803,14 @@ void CPSNWhere_Associator3D::Hypothesis_Formation(PSN_HypothesisSet &outBranchHy
 		{
 			outBranchHypotheses[hypothesisIdx].selectedTracks[trackIdx]->GTProb += outBranchHypotheses[hypothesisIdx].probability;
 		}
+	}
+
+	// sorting and confirmaiton of track tree
+	std::sort(outBranchHypotheses.begin(), outBranchHypotheses.end(), psnSolutionLogLikelihoodDescendComparator);
+	PSN_TrackSet *tracksInBestSolution = &outBranchHypotheses.front().selectedTracks;
+	for (int trackIdx = 0; trackIdx < tracksInBestSolution->size(); trackIdx++)
+	{
+		(*tracksInBestSolution)[trackIdx]->tree->bConfirmed = true;
 	}
 }
 
@@ -3313,9 +2987,6 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 	if (NULL == ptQueueHypothesis) { return; }
 	if (0 >= (*ptQueueHypothesis).size()) { return; }
 
-	// sort by prob. of hypotheses
-	std::sort((*ptQueueHypothesis).begin(), (*ptQueueHypothesis).end(), psnSolutionLogLikelihoodDescendComparator);
-
 	// DEBUG
 	//PrintHypotheses(*ptQueueHypothesis, "data/hypotheses.txt", nCurrentFrameIdx);
 
@@ -3342,6 +3013,33 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 }
 
 /************************************************************************
+ Method Name: Hypothesis_PruningConfirmation
+ Description: 
+	- 
+ Input Arguments:
+	- 
+ Return Values:
+	- 
+************************************************************************/
+void CPSNWhere_Associator3D::Hypothesis_PruningConfirmation(unsigned int nCurrentFrameIdx, std::deque<TrackTree*> *queueUnconfirmedTrees)
+{
+	for (std::deque<TrackTree*>::iterator treeIter = queueUnconfirmedTrees->begin();
+		treeIter != queueUnconfirmedTrees->end();
+		treeIter++)
+	{
+		if ((*treeIter)->bConfirmed) { continue; }
+		if (nCurrentFrameIdx < (*treeIter)->timeGeneration + NUM_FRAME_FOR_CONFIRMATION) { continue; }
+		(*treeIter)->bValid = false;
+		for (PSN_TrackSet::iterator trackIter = (*treeIter)->tracks.begin();
+			trackIter != (*treeIter)->tracks.end();
+			trackIter++)
+		{
+			(*trackIter)->bValid = false;
+		}
+	}
+}
+
+/************************************************************************
  Method Name: Hypothesis_PruningKBest
  Description: 
 	- 
@@ -3350,16 +3048,50 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
  Return Values:
 	- 
 ************************************************************************/
-void CPSNWhere_Associator3D::Hypothesis_PruningTrackWithGTP(unsigned int nCurrentFrameIdx, unsigned int nNumMaximumTrack, PSN_TrackSet *tracksInWindow)
+void CPSNWhere_Associator3D::Hypothesis_PruningTrackWithGTP(unsigned int nCurrentFrameIdx, unsigned int nNumMaximumTrack, PSN_TrackSet *tracksInWindow, std::deque<TrackTree*> *queueActiveTrackTree)
 {
 	int numTrackLeft = 0;
 	int numUCTrackLeft = 0;
 	
+	//// GTP ratio pruning
+	//for (std::deque<TrackTree*>::iterator treeIter = queueActiveTrackTree->begin();
+	//	treeIter != queueActiveTrackTree->end();
+	//	treeIter++)
+	//{
+	//	//// find maximum GTP
+	//	//double maxGTP = 0.0;
+	//	//for (PSN_TrackSet::iterator trackIter = (*treeIter)->tracks.begin(); 
+	//	//	trackIter != (*treeIter)->tracks.end(); 
+	//	//	trackIter++)
+	//	//{
+	//	//	if (maxGTP < (*trackIter)->GTProb) { maxGTP = (*trackIter)->GTProb; }
+	//	//}
+
+	//	//// pruning
+	//	//double GTPThreshold = maxGTP * GTP_RATIO_THRESHOLD;
+	//	//for (PSN_TrackSet::iterator trackIter = (*treeIter)->tracks.begin(); 
+	//	//	trackIter != (*treeIter)->tracks.end(); 
+	//	//	trackIter++)
+	//	//{
+	//	//	if ((*trackIter)->GTProb < GTPThreshold) { (*trackIter)->bValid = false; }
+	//	//}
+	//	
+	//	PSN_TrackSet sortedTrackSet = (*treeIter)->tracks;
+	//	std::sort(sortedTrackSet.begin(), sortedTrackSet.end(), psnTrackGTPandLLDescend);
+	//	int numMaximumTracksInTree = std::max((int)MIN_TRACK_IN_TREE, (int)(sortedTrackSet.size() * NUM_TRACK_RATIO_IN_TREE));
+	//	for (int trackIdx = numMaximumTracksInTree+1; trackIdx < sortedTrackSet.size(); trackIdx++)
+	//	{
+	//		sortedTrackSet[trackIdx]->bValid = false;
+	//	}
+	//}
+
+	// simple GTP pruning
 	std::sort(tracksInWindow->begin(), tracksInWindow->end(), psnTrackGTPandLLDescend);	
 	for (PSN_TrackSet::iterator trackIter = tracksInWindow->begin();
 		trackIter != tracksInWindow->end();
 		trackIter++)
 	{
+		if (!(*trackIter)->bValid) { continue; }
 		//if((*trackIter)->tree->timeGeneration + NUM_FRAME_FOR_CONFIRMATION > this->m_nCurrentFrameIdx && numUCTrackLeft < MAX_UNCONFIRMED_TRACK) 
 		if ((*trackIter)->tree->timeGeneration + NUM_FRAME_FOR_CONFIRMATION > nCurrentFrameIdx) 
 		{ 
@@ -3808,118 +3540,6 @@ void CPSNWhere_Associator3D::PrintResult(const char *strFilepath, std::deque<stT
 	}
 }
 
-///************************************************************************
-// Method Name: SaveDefferedResult
-// Description: 
-//	- 
-// Input Arguments:
-//	- none
-// Return Values:
-//	- none
-//************************************************************************/
-//void CPSNWhere_Associator3D::SaveDefferedResult(unsigned int deferredLength)
-//{
-//	if(nCurrentFrameIdx_ < deferredLength)
-//	{
-//		return;
-//	}
-//
-//	for(; nLastPrintedDeferredResultFrameIdx_ + deferredLength <= nCurrentFrameIdx_; nLastPrintedDeferredResultFrameIdx_++)
-//	{
-//		stTrack3DResult newResult;
-//		newResult.frameIdx = nLastPrintedDeferredResultFrameIdx_;
-//		newResult.processingTime = 0.0;
-//		newResult.object3DInfo.clear();
-//
-//		for(std::deque<Track3D*>::iterator trackIter = queueTracksInBestSolution_.begin();
-//			trackIter != queueTracksInBestSolution_.end();
-//			trackIter++)
-//		{
-//			if((*trackIter)->timeEnd < nLastPrintedDeferredResultFrameIdx_ || (*trackIter)->timeStart > nLastPrintedDeferredResultFrameIdx_)
-//			{
-//				continue;
-//			}
-//
-//			unsigned int curPosIdx = nLastPrintedDeferredResultFrameIdx_ - (*trackIter)->timeStart;
-//
-//			stObject3DInfo newObjectInfo;
-//			newObjectInfo.id = (*trackIter)->tree->id;
-//			newObjectInfo.recentPoints.push_back((*trackIter)->reconstructions[curPosIdx].point);
-//
-//			for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-//			{
-//				if(NULL == (*trackIter)->reconstructions[curPosIdx].tracklet2Ds.get(camIdx))
-//				{
-//					newObjectInfo.bVisibleInViews[camIdx] = false;
-//					newObjectInfo.rectInViews[camIdx] = PSN_Rect(0, 0, 0, 0);
-//				}
-//				else
-//				{
-//					newObjectInfo.bVisibleInViews[camIdx] = true;
-//					unsigned int rectIdx = nLastPrintedDeferredResultFrameIdx_ - (*trackIter)->reconstructions[curPosIdx].tracklet2Ds.get(camIdx)->timeStart;
-//					newObjectInfo.rectInViews[camIdx] = (*trackIter)->reconstructions[curPosIdx].tracklet2Ds.get(camIdx)->rects[rectIdx];					
-//				}
-//			}
-//
-//			newResult.object3DInfo.push_back(newObjectInfo);
-//		}
-//		queueDeferredTrackingResult_.push_back(newResult);
-//	}
-//}
-//
-//
-///************************************************************************
-// Method Name: SaveInstantResult
-// Description: 
-//	- 
-// Input Arguments:
-//	- none
-// Return Values:
-//	- none
-//************************************************************************/
-//void CPSNWhere_Associator3D::SaveInstantResult(void)
-//{
-//	stTrack3DResult newResult;
-//	newResult.frameIdx = nCurrentFrameIdx_;
-//	newResult.processingTime = fCurrentProcessingTime_;
-//	newResult.object3DInfo.clear();
-//
-//	for(std::deque<Track3D*>::iterator trackIter = queueTracksInBestSolution_.begin();
-//		trackIter != queueTracksInBestSolution_.end();
-//		trackIter++)
-//	{
-//		if((*trackIter)->timeEnd < newResult.frameIdx || (*trackIter)->timeStart > newResult.frameIdx)
-//		{
-//			continue;
-//		}
-//
-//		unsigned int curPosIdx = newResult.frameIdx - (*trackIter)->timeStart;
-//
-//		stObject3DInfo newObjectInfo;
-//		newObjectInfo.id = (*trackIter)->tree->id;
-//		newObjectInfo.recentPoints.push_back((*trackIter)->reconstructions[curPosIdx].point);
-//
-//		for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-//		{
-//			if(NULL == (*trackIter)->reconstructions[curPosIdx].tracklet2Ds.get(camIdx))
-//			{
-//				newObjectInfo.bVisibleInViews[camIdx] = false;
-//				newObjectInfo.rectInViews[camIdx] = PSN_Rect(0, 0, 0, 0);
-//			}
-//			else
-//			{
-//				newObjectInfo.bVisibleInViews[camIdx] = true;
-//				unsigned int rectIdx = newResult.frameIdx - (*trackIter)->reconstructions[curPosIdx].tracklet2Ds.get(camIdx)->timeStart;
-//				newObjectInfo.rectInViews[camIdx] = (*trackIter)->reconstructions[curPosIdx].tracklet2Ds.get(camIdx)->rects[rectIdx];					
-//			}
-//		}
-//
-//		newResult.object3DInfo.push_back(newObjectInfo);
-//	}
-//
-//	queueTrackingResult_.push_back(newResult);
-//}
-
 /************************************************************************
  Method Name: SaveSnapshot
  Description: 
@@ -4222,33 +3842,6 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 			fprintf_s(fpTrack3D, "\t\ttracks:%d,", (int)curTree->tracks.size());
 			trackIDList = psn::MakeTrackIDList(&curTree->tracks) + "\n";
 			fprintf_s(fpTrack3D, trackIDList.c_str());
-			//fprintf_s(fpTrack3D, "\t\tnumMeasurements:%d\n", (int)curTree->numMeasurements);
-			//// tracklet2Ds
-			//fprintf_s(fpTrack3D, "\t\ttrackle2Ds:\n\t\t{\n");
-			//for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-			//{
-			//	if (0 == curTree->tracklet2Ds[camIdx].size())
-			//	{
-			//		fprintf_s(fpTrack3D, "\t\t\ttrackletInfo:0,{}\n");
-			//		continue;
-			//	}
-			//	fprintf_s(fpTrack3D, "\t\t\ttrackletInfo:%d,\n\t\t\t{", (int)curTree->tracklet2Ds[camIdx].size());
-			//	for (int trackletIDIdx = 0; trackletIDIdx < curTree->tracklet2Ds[camIdx].size(); trackletIDIdx++)
-			//	{
-			//		fprintf_s(fpTrack3D, "\n\t\t\t\tid:%d,relatedTracks:%d,{", (int)curTree->tracklet2Ds[camIdx][trackletIDIdx].tracklet2D->id, (int)curTree->tracklet2Ds[camIdx][trackletIDIdx].queueRelatedTracks.size());
-			//		for (int trackIdx = 0; trackIdx < curTree->tracklet2Ds[camIdx][trackletIDIdx].queueRelatedTracks.size(); trackIdx++)
-			//		{
-			//			fprintf_s(fpTrack3D, "%d", curTree->tracklet2Ds[camIdx][trackletIDIdx].queueRelatedTracks[trackIdx]->id);
-			//			if(curTree->tracklet2Ds[camIdx][trackletIDIdx].queueRelatedTracks.size() - 1 >  trackIdx)
-			//			{
-			//				fprintf_s(fpTrack3D, ",");
-			//			}					
-			//		}
-			//		fprintf_s(fpTrack3D, "}\n");
-			//	}
-			//	fprintf_s(fpTrack3D, "\t\t\t}\n");
-			//}
-			//fprintf_s(fpTrack3D, "\t\t}\n\t}\n");
 			fprintf_s(fpTrack3D, "\t}\n");
 		}
 		fprintf_s(fpTrack3D, "}\n");
@@ -5043,57 +4636,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				if (trackIdx < numTracks - 1) { fscanf_s(fpTrack, ","); }
 			}
 			fscanf_s(fpTrack, "}\n");
-			//fscanf_s(fpTrack, "\t\tnumMeasurements:%d\n", &readingInt);
-			//newTree.numMeasurements = (unsigned int)readingInt;
-			//// tracklet2Ds
-			//int numTracklet = 0;
-			//fscanf_s(fpTrack, "\t\ttrackle2Ds:\n\t\t{\n");
-			//for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-			//{
-			//	fscanf_s(fpTrack, "\t\t\ttrackletInfo:%d,", &numTracklet);
-			//	if (0 == numTracklet)
-			//	{
-			//		fscanf_s(fpTrack, "{}\n");
-			//		continue;
-			//	}
-			//	fscanf_s(fpTrack, "\n\t\t\t{\n");
-			//	for (int trackletIdx = 0; trackletIdx < numTracklet; trackletIdx++)
-			//	{
-			//		int numRelatedTracks = 0;
-			//		stTracklet2DInfo newTrackletInfo;
-			//		fscanf_s(fpTrack, "\t\t\t\tid:%d,relatedTracks:%d,{", &readingInt, &numRelatedTracks);
-			//		// find tracklet
-			//		for (std::list<stTracklet2D>::iterator trackletIter = vecTracklet2DSet_[camIdx].tracklets.begin();
-			//			trackletIter != vecTracklet2DSet_[camIdx].tracklets.end();
-			//			trackletIter++)
-			//		{
-			//			if ((unsigned int)readingInt != (*trackletIter).id) { continue; }
-			//			newTrackletInfo.tracklet2D = &(*trackletIter);
-			//			break;
-			//		}
-
-			//		// find related tracks
-			//		for (int idIdx = 0; idIdx < numRelatedTracks; idIdx++)
-			//		{
-			//			fscanf_s(fpTrack, "%d", &readingInt);
-			//			for (std::list<Track3D>::iterator trackIter = listTrack3D_.begin();
-			//				trackIter != listTrack3D_.end();
-			//				trackIter++)
-			//			{
-			//				if ((unsigned int)readingInt != (*trackIter).id) { continue; }
-			//				newTrackletInfo.queueRelatedTracks.push_back(&(*trackIter));
-			//				break;
-			//			}
-			//			if (trackletIdx < numTracklet - 1) { fscanf_s(fpTrack, ","); }
-			//		}
-			//		fscanf_s(fpTrack, "}\n");
-			//		newTree.tracklet2Ds[camIdx].push_back(newTrackletInfo);					
-			//	}
-			//	fscanf_s(fpTrack, "\t\t\t}\n");
-			//}
-			//fscanf_s(fpTrack, "\t\t}\n\t}\n");
 			fscanf_s(fpTrack, "\t}\n");
-
 			listTrackTree_.push_back(newTree);
 
 #ifdef PSN_DEBUG_MODE_
@@ -5654,111 +5197,6 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 #endif
 	return true;
 }
-
-
-///************************************************************************
-// Method Name: FilePrintForAnalysis
-// Description: 
-//	- 
-// Input Arguments:
-//	- 
-// Return Values:
-//	- 
-//************************************************************************/
-//void CPSNWhere_Associator3D::FilePrintForAnalysis(void)
-//{
-//	try
-//	{		
-//		FILE *fp;
-//
-//		char strPrint[256];
-//		sprintf_s(strPrint, "logs/analysis/%04d.txt", nCurrentFrameIdx_);
-//		fopen_s(&fp, strPrint, "w");
-//
-//		fprintf_s(fp, "frame:%d\nnumTracks:%d\n", (int)nCurrentFrameIdx_, (int)queueTracksInWindow_.size());		
-//
-//		//---------------------------------------------------------
-//		// PRINT TRACKS
-//		//---------------------------------------------------------
-//		for(PSN_TrackSet::iterator trackIter = queueTracksInWindow_.begin();
-//			trackIter != queueTracksInWindow_.end();
-//			trackIter++)
-//		{
-//			Track3D *curTrack = *trackIter;
-//
-//			fprintf_s(fp, "{\n\tid:%d\n\ttreeID:%d\n", (int)curTrack->id, (int)curTrack->tree->id);			
-//			fprintf_s(fp, "\tnumReconstructions:%d\n\ttimeStart:%d\n\ttimeEnd:%d\n", (int)curTrack->reconstructions.size(), (int)curTrack->timeStart, (int)curTrack->timeEnd);
-//			fprintf_s(fp, "\ttrackleIDs:\n\t{\n");			
-//			for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-//			{
-//				if(0 == curTrack->tracklet2DIDs[camIdx].size())
-//				{
-//					fprintf_s(fp, "\t\tnumTracklet:0,[]\n");
-//					continue;
-//				}
-//
-//				fprintf_s(fp, "\t\tnumTracklet:%d,[", (int)curTrack->tracklet2DIDs[camIdx].size());				
-//				for(unsigned int trackletIDIdx = 0; trackletIDIdx < curTrack->tracklet2DIDs[camIdx].size(); trackletIDIdx++)
-//				{
-//					fprintf_s(fp, "%d", (int)curTrack->tracklet2DIDs[camIdx][trackletIDIdx]);					
-//					if(curTrack->tracklet2DIDs[camIdx].size() - 1 != trackletIDIdx)
-//					{
-//						fprintf_s(fp, ",");
-//					}
-//					else
-//					{
-//						fprintf_s(fp, "]\n");
-//					}
-//				}
-//			}
-//			fprintf_s(fp, "\t}\n");
-//			fprintf_s(fp, "\ttotalCost:%e\n", curTrack->costTotal);
-//			fprintf_s(fp, "\tinitCost:%e\n", curTrack->costEnter);
-//			fprintf_s(fp, "\ttermCost:%e\n", curTrack->costExit);
-//			fprintf_s(fp, "\treconstructionCost:%e\n", curTrack->costReconstruction);
-//			fprintf_s(fp, "\tlinkCost:%e\n", curTrack->costLink);
-//
-//			if(curTrack->timeEnd >= nCurrentFrameIdx_)
-//			{
-//				fprintf_s(fp, "\tcurrentReconstructionCost:%e\n", curTrack->reconstructions.back().costReconstruction);
-//				fprintf_s(fp, "\tcurrentLinkCost:%e\n", curTrack->reconstructions.back().costLink);			
-//				fprintf_s(fp, "\tcurrentReconstruction:(%f,%f,%f)\n", curTrack->reconstructions.back().point.x, curTrack->reconstructions.back().point.y, curTrack->reconstructions.back().point.z);			
-//			}
-//			fprintf_s(fp, "}\n");
-//		}
-//
-//		
-//		//---------------------------------------------------------
-//		// PRINT SOLUTIONS
-//		//---------------------------------------------------------
-//		fprintf_s(fp, "numSolution:%d\n", (int)queueStGraphSolutions_.size());		
-//		for(std::vector<stGraphSolution>::iterator solutionIter = queueStGraphSolutions_.begin();
-//			solutionIter != queueStGraphSolutions_.end();
-//			solutionIter++)
-//		{
-//			stGraphSolution *curSolution = &(*solutionIter);
-//
-//			fprintf_s(fp, "{\n\ttracks:(%d){", (int)curSolution->tracks.size());
-//			for(PSN_TrackSet::iterator trackIter = curSolution->tracks.begin();
-//				trackIter != curSolution->tracks.end();
-//				trackIter++)
-//			{
-//				fprintf_s(fp, "%d,", (int)(*trackIter)->id);				
-//			}
-//
-//			fprintf_s(fp, "}\n\tloglikelihood:%e\n", curSolution->logLikelihood);
-//			fprintf_s(fp, "\tprobability:%e\n}\n", curSolution->probability);			
-//		}		
-//		
-//		fclose(fp);
-//	}
-//	catch(DWORD dwError)
-//	{
-//		printf("[ERROR](FilePrintForAnalysis) cannot open file! error code %d\n", dwError);
-//		return;
-//	}
-//}
-
 
 /************************************************************************
  Method Name: IndexCombination
