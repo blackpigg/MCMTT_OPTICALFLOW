@@ -47,7 +47,7 @@ PSN_Graph::PSN_Graph(size_t nNumVertex)
 	, m_nNumEdge(0)
 	, m_nNewID(nNumVertex)
 {
-	for(size_t vertexIdx = 0; vertexIdx < nNumVertex; vertexIdx++)
+	for (size_t vertexIdx = 0; vertexIdx < nNumVertex; vertexIdx++)
 	{
 		this->m_listVertex.push_back(PSN_GraphVertex(vertexIdx));
 	}
@@ -67,7 +67,7 @@ bool PSN_Graph::Clear()
 		this->m_nNewID = 0;
 		return true;
 	}
-	catch(DWORD dwError)
+	catch (DWORD dwError)
 	{
 		printf("[ERROR] Error is occured at Clear!!: %d\n", dwError);
 	}
@@ -134,7 +134,7 @@ bool PSN_Graph::AddEdge(PSN_GraphVertex* vertex1, PSN_GraphVertex* vertex2)
 {
 	try
 	{
-		if(vertex1->valid && vertex2->valid)
+		if (vertex1->valid && vertex2->valid)
 		{
 			vertex1->queueNeighbor.push_back(vertex2);
 			vertex2->queueNeighbor.push_back(vertex1);
@@ -143,7 +143,7 @@ bool PSN_Graph::AddEdge(PSN_GraphVertex* vertex1, PSN_GraphVertex* vertex2)
 			return true;
 		}
 	}
-	catch(DWORD dwError)
+	catch (DWORD dwError)
 	{
 		printf("[ERROR] Error is occured at AddEdge!!: %d\n", dwError);
 	}
@@ -157,29 +157,26 @@ bool PSN_Graph::Update(void)
 		this->m_bTopologyModified = true;
 
 		// delete invalid verteces from the neighbor list
-		for(std::list<PSN_GraphVertex>::iterator vertexIter = this->m_listVertex.begin();
+		for (std::list<PSN_GraphVertex>::iterator vertexIter = this->m_listVertex.begin();
 			vertexIter != this->m_listVertex.end();
 			vertexIter++)
 		{
 			std::deque<PSN_GraphVertex*> newNeighbors;
-			for(std::deque<PSN_GraphVertex*>::iterator neighborIter = (*vertexIter).queueNeighbor.begin();
+			for (std::deque<PSN_GraphVertex*>::iterator neighborIter = (*vertexIter).queueNeighbor.begin();
 				neighborIter != (*vertexIter).queueNeighbor.end();
 				neighborIter++)
 			{
-				if((*neighborIter)->valid)
-				{
-					newNeighbors.push_back((*neighborIter));
-				}
+				if ((*neighborIter)->valid) { newNeighbors.push_back((*neighborIter)); }
 			}
 			(*vertexIter).queueNeighbor = newNeighbors;
 		}
 
 		// delete invalid verteces
-		for(std::list<PSN_GraphVertex>::iterator vertexIter = this->m_listVertex.begin();
+		for (std::list<PSN_GraphVertex>::iterator vertexIter = this->m_listVertex.begin();
 			vertexIter != this->m_listVertex.end();
 			/* do in the loop */)
 		{
-			if((*vertexIter).valid)
+			if ((*vertexIter).valid)
 			{
 				vertexIter++;
 				continue;
@@ -188,7 +185,7 @@ bool PSN_Graph::Update(void)
 			this->m_nNumVertex--;
 		}
 	}
-	catch(DWORD dwError)
+	catch (DWORD dwError)
 	{
 		printf("[ERROR] Error is occured at Update!!: %d\n", dwError);
 		return false;
@@ -200,7 +197,7 @@ bool PSN_Graph::Update(void)
 PSN_VertexSet PSN_Graph::GetAllVerteces(void)
 {
 	PSN_VertexSet allVertex;
-	for(std::list<PSN_GraphVertex>::iterator vertexIter = this->m_listVertex.begin();
+	for (std::list<PSN_GraphVertex>::iterator vertexIter = this->m_listVertex.begin();
 		vertexIter != this->m_listVertex.end();
 		vertexIter++)
 	{
@@ -219,13 +216,13 @@ bool PSN_Graph::SetWeight(PSN_GraphVertex* vertex, double weight)
 {
 	try
 	{
-		if(vertex->valid)
+		if (vertex->valid)
 		{
 			vertex->weight = weight;
 			return true;
 		}
 	}
-	catch(DWORD dwError)
+	catch (DWORD dwError)
 	{
 		printf("[ERROR] Error is occured at SetWeight!!: %d\n", dwError);
 	}
@@ -236,12 +233,12 @@ double PSN_Graph::GetWeight(PSN_GraphVertex* vertex)
 {
 	try
 	{
-		if(vertex->valid)
+		if (vertex->valid)
 		{
 			return vertex->weight;
 		}
 	}
-	catch(DWORD dwError)
+	catch (DWORD dwError)
 	{
 		printf("[ERROR] Error is occured at GetWeight!!: %d\n", dwError);
 	}
@@ -267,7 +264,7 @@ void CGraphSolver::Initialize(PSN_Graph* pGraph)
 	this->m_bHasInitialSolution = false;
 
 	// solver dependent initialization
-	switch(nCurrentSolver)
+	switch (nCurrentSolver)
 	{
 	case PSN_GRAPH_SOLVER_BLS:
 		this->BLS_C.clear();
@@ -320,7 +317,7 @@ void CGraphSolver::SetGraph(PSN_Graph* pGraph)
 
 void CGraphSolver::SetInitialPoints(std::deque<PSN_VertexSet> initialPoints)
 {
-	if(0 == initialPoints.size()){ return; }
+	if (0 == initialPoints.size()) { return; }
 
 	this->m_queueInitialPoints = initialPoints;
 
@@ -330,7 +327,7 @@ void CGraphSolver::SetInitialPoints(std::deque<PSN_VertexSet> initialPoints)
 	this->BLS_OM.clear();
 
 	// C
-	for(PSN_VertexSet::iterator vertexIter = initialPoints.front().begin();
+	for (PSN_VertexSet::iterator vertexIter = initialPoints.front().begin();
 		vertexIter != initialPoints.front().end();
 		vertexIter++)
 	{
@@ -344,11 +341,11 @@ void CGraphSolver::SetInitialPoints(std::deque<PSN_VertexSet> initialPoints)
 #else	
 	size_t sizeCheckInC = this->BLS_C.size();
 #endif
-	for(PSN_VertexSet::iterator vertexIter = initialPoints.front().begin();
+	for (PSN_VertexSet::iterator vertexIter = initialPoints.front().begin();
 		vertexIter != initialPoints.front().end();
 		vertexIter++)
 	{
-		if(sizeCheckInC != (*vertexIter)->countNeighborInSolution)
+		if (sizeCheckInC != (*vertexIter)->countNeighborInSolution)
 		{
 			// illegal solution
 			this->m_queueInitialPoints.clear();
@@ -367,32 +364,32 @@ void CGraphSolver::SetInitialPoints(std::deque<PSN_VertexSet> initialPoints)
 	size_t sizePA = this->BLS_C.size();
 #endif
 	PSN_VertexSet allVertex = this->m_pGraph->GetAllVerteces();
-	for(PSN_VertexSet::iterator vertexIter = allVertex.begin();
+	for (PSN_VertexSet::iterator vertexIter = allVertex.begin();
 		vertexIter != allVertex.end();
 		vertexIter++)
 	{
 		// OC
-		if((*vertexIter)->bInSolution){ continue; }		
+		if ((*vertexIter)->bInSolution) { continue; }		
 		this->BLS_OC.push_back(*vertexIter);
 
 		// PA
-		if(sizePA == (*vertexIter)->countNeighborInSolution)
+		if (sizePA == (*vertexIter)->countNeighborInSolution)
 		{
 			this->BLS_PA.push_back(*vertexIter);
 			continue;
 		}
 
 		//OM
-		if(sizeOM != (*vertexIter)->countNeighborInSolution)
+		if (sizeOM != (*vertexIter)->countNeighborInSolution)
 		{ continue;	}
 
 #ifdef PSN_GRAPH_TYPE_MWISP
 		// find pair
-		for(PSN_VertexSet::iterator neighborIter = (*vertexIter)->queueNeighbor.begin();
+		for (PSN_VertexSet::iterator neighborIter = (*vertexIter)->queueNeighbor.begin();
 			neighborIter != (*vertexIter)->queueNeighbor.end();
 			neighborIter++)
 		{
-			if((*neighborIter)->bInSolution)
+			if ((*neighborIter)->bInSolution)
 			{
 				this->BLS_OM.push_back(std::make_pair(*vertexIter, *neighborIter));
 				(*vertexIter)->bInOM = true;
@@ -402,22 +399,18 @@ void CGraphSolver::SetInitialPoints(std::deque<PSN_VertexSet> initialPoints)
 #else
 		// find another vertex
 		PSN_VertexSet::iterator findIter;
-		for(PSN_VertexSet::iterator vertexInCIter = this->BLS_C.begin();
+		for (PSN_VertexSet::iterator vertexInCIter = this->BLS_C.begin();
 			vertexInCIter != this->BLS_C.end();
 			vertexInCIter++)
 		{
 			findIter = std::find((*vertexIter)->queueNeighbor.begin(), (*vertexIter)->queueNeighbor.end(), *vertexInCIter);
-			if((*vertexIter)->queueNeighbor.end() != findIter)
-
-			{ continue;	}
-
+			if ((*vertexIter)->queueNeighbor.end() != findIter)	{ continue;	}
 			this->BLS_OM.push_back(std::make_pair(*vertexIter, *vertexInCIter));
 			(*vertexIter)->bInOM = true;
 			break;
 		}
 #endif
 	}
-
 	this->m_bHasInitialSolution = true;
 }
 
@@ -427,14 +420,11 @@ void CGraphSolver::SetInitialPoints(std::deque<PSN_VertexSet> initialPoints)
 /////////////////////////////////////////////////////////////////////////
 stGraphSolvingResult* CGraphSolver::Solve(void)
 {
-	if(NULL == this->m_pGraph)
-	{
-		return NULL;
-	}
+	if (NULL == this->m_pGraph) { return NULL; }
 
 	time_t timerStart = clock();
 
-	switch(nCurrentSolver)
+	switch (nCurrentSolver)
 	{
 	case PSN_GRAPH_SOLVER_BLS:
 		this->RunBLS();
@@ -487,10 +477,10 @@ void CGraphSolver::RunBLS(void)
 	size_t w = 0;
 	PSN_VertexSet Cbest, Cp;
 	
-	if(this->m_bHasInitialSolution)
+	if (this->m_bHasInitialSolution)
 	{
 		fc = 0.0;
-		for(PSN_VertexSet::iterator vertexIter = this->BLS_C.begin();
+		for (PSN_VertexSet::iterator vertexIter = this->BLS_C.begin();
 			vertexIter != this->BLS_C.end();
 			vertexIter++)
 		{
@@ -522,7 +512,7 @@ void CGraphSolver::RunBLS(void)
 	/////////////////////////////////////////////////////////////////////////////
 	// MAIN LOOP
 	/////////////////////////////////////////////////////////////////////////////
-	for(this->BLS_nIter = 0; this->BLS_nIter < maxIter; )
+	for (this->BLS_nIter = 0; this->BLS_nIter < maxIter; )
 	{
 		//------------------------------------------------------
 		// LOCAL SEARCH
@@ -563,19 +553,19 @@ void CGraphSolver::RunBLS(void)
 		//------------------------------------------------------
 		// sort for comparison
 		std::sort(this->BLS_C.begin(), this->BLS_C.end(), psnGraphComparatorVertexIDAscend);
-		if(w > BLS_T)
+		if (w > BLS_T)
 		{
 			L = Lmax;
 			w = 0;
 		}
-		else if(this->BLS_C == Cp)
+		else if (this->BLS_C == Cp)
 		{
 			L++;
 		}
 		else
 		{
 #ifdef PSN_GRAPH_MULTI_SOLUTION
-			if(!CheckSolutionExistance(this->BLS_C, fc))
+			if (!CheckSolutionExistance(this->BLS_C, fc))
 			{
 				this->m_stResult.vecSolutions.push_back(std::make_pair(this->BLS_C, fc));
 			}
@@ -621,13 +611,13 @@ void CGraphSolver::RunMCGA(void)
 #define PSN_GRAPH_SOLUTION_DUPLICATION_RESOLUTION (1.0E-5)
 bool CGraphSolver::CheckSolutionExistance(PSN_VertexSet &vertexSet, double weightSum)
 {
-	for(size_t solutionIdx = 0; solutionIdx < this->m_stResult.vecSolutions.size(); solutionIdx++)
+	for (size_t solutionIdx = 0; solutionIdx < this->m_stResult.vecSolutions.size(); solutionIdx++)
 	{
-		if(std::abs(weightSum - this->m_stResult.vecSolutions[solutionIdx].second) > PSN_GRAPH_SOLUTION_DUPLICATION_RESOLUTION)
+		if (std::abs(weightSum - this->m_stResult.vecSolutions[solutionIdx].second) > PSN_GRAPH_SOLUTION_DUPLICATION_RESOLUTION)
 		{
 			continue;
 		}
-		if(vertexSet == this->m_stResult.vecSolutions[solutionIdx].first)
+		if (vertexSet == this->m_stResult.vecSolutions[solutionIdx].first)
 		{
 			return true;
 		}
@@ -638,7 +628,7 @@ bool CGraphSolver::CheckSolutionExistance(PSN_VertexSet &vertexSet, double weigh
 double CGraphSolver::WeightSum(PSN_VertexSet &vertexSet)
 {
 	double weightSum = 0.0;
-	for(PSN_VertexSet::iterator vertexIter = vertexSet.begin();
+	for (PSN_VertexSet::iterator vertexIter = vertexSet.begin();
 		vertexIter != vertexSet.end();
 		vertexIter++)
 	{
@@ -669,7 +659,7 @@ double CGraphSolver::BLS_GenerateInitialSolution(void)
 	this->BLS_OC.clear();	// complement of the clique
 
 	PSN_VertexSet allVertex = this->m_pGraph->GetAllVerteces();
-	for(size_t insertIdx = 0; insertIdx < allVertex.size(); insertIdx++)
+	for (size_t insertIdx = 0; insertIdx < allVertex.size(); insertIdx++)
 	{
 		allVertex[insertIdx]->tabuStamp = 0;
 		allVertex[insertIdx]->countNeighborInSolution = 0;
@@ -678,14 +668,14 @@ double CGraphSolver::BLS_GenerateInitialSolution(void)
 	// construct C	
 	double objectiveValue = 0.0;
 	std::sort(allVertex.begin(), allVertex.end(), psnGraphComparatorVertexWeightDescend);
-	for(PSN_VertexSet::iterator vertexIter = allVertex.begin();
+	for (PSN_VertexSet::iterator vertexIter = allVertex.begin();
 		vertexIter != allVertex.end();
 		vertexIter++)
 	{
 #ifdef PSN_GRAPH_TYPE_MWISP
-		if(0 < (*vertexIter)->countNeighborInSolution)
+		if (0 < (*vertexIter)->countNeighborInSolution)
 #else
-		if(this->BLS_C.size() > (*vertexIter)->countNeighborInSolution)
+		if (this->BLS_C.size() > (*vertexIter)->countNeighborInSolution)
 #endif
 		{
 			this->BLS_OC.push_back(*vertexIter);
@@ -702,20 +692,20 @@ double CGraphSolver::BLS_GenerateInitialSolution(void)
 	std::sort(this->BLS_C.begin(), this->BLS_C.end(), psnGraphComparatorVertexIDAscend);
 
 	// construct OM
-	for(PSN_VertexSet::iterator vertexIter = this->BLS_OC.begin();
+	for (PSN_VertexSet::iterator vertexIter = this->BLS_OC.begin();
 		vertexIter != this->BLS_OC.end();
 		vertexIter++)
 	{
 #ifdef PSN_GRAPH_TYPE_MWISP
-		if(1 != (*vertexIter)->countNeighborInSolution)
+		if (1 != (*vertexIter)->countNeighborInSolution)
 		{ continue;	}
 
 		// find pair
-		for(PSN_VertexSet::iterator neighborIter = (*vertexIter)->queueNeighbor.begin();
+		for (PSN_VertexSet::iterator neighborIter = (*vertexIter)->queueNeighbor.begin();
 			neighborIter != (*vertexIter)->queueNeighbor.end();
 			neighborIter++)
 		{
-			if((*neighborIter)->bInSolution)
+			if ((*neighborIter)->bInSolution)
 			{
 				this->BLS_OM.push_back(std::make_pair(*vertexIter, *neighborIter));
 				(*vertexIter)->bInOM = true;
@@ -723,20 +713,16 @@ double CGraphSolver::BLS_GenerateInitialSolution(void)
 			}
 		}
 #else
-		if(this->BLS_C.size() - 1 != (*vertexIter)->countNeighborInSolution)
-		{ continue;	}
+		if (this->BLS_C.size() - 1 != (*vertexIter)->countNeighborInSolution) { continue; }
 		
 		// find another vertex
 		PSN_VertexSet::iterator findIter;
-		for(PSN_VertexSet::iterator vertexInCIter = this->BLS_C.begin();
+		for (PSN_VertexSet::iterator vertexInCIter = this->BLS_C.begin();
 			vertexInCIter != this->BLS_C.end();
 			vertexInCIter++)
 		{
 			findIter = std::find((*vertexIter)->queueNeighbor.begin(), (*vertexIter)->queueNeighbor.end(), *vertexInCIter);
-			if((*vertexIter)->queueNeighbor.end() != findIter)
-
-			{ continue;	}
-
+			if ((*vertexIter)->queueNeighbor.end() != findIter)	{ continue;	}
 			this->BLS_OM.push_back(std::make_pair(*vertexIter, *vertexInCIter));
 			(*vertexIter)->bInOM = true;
 			break;
@@ -770,10 +756,10 @@ double CGraphSolver::BLS_FindBestLocalMove(void)
 	/////////////////////////////////////////////////////////////////////////////
 	// SEARCH
 	/////////////////////////////////////////////////////////////////////////////
-	if(0 < this->BLS_PA.size())
+	if (0 < this->BLS_PA.size())
 	{
 		std::sort(this->BLS_PA.begin(), this->BLS_PA.end(), psnGraphComparatorVertexWeightDescend);
-		if(0.0 <= this->BLS_PA.front()->weight)
+		if (0.0 <= this->BLS_PA.front()->weight)
 		{
 			vertexInsert = this->BLS_PA.front();
 			maxObjectiveIncrement = vertexInsert->weight;			
@@ -781,9 +767,9 @@ double CGraphSolver::BLS_FindBestLocalMove(void)
 	}
 
 	// movement in OM
-	for(size_t pairIdx = 0; pairIdx < this->BLS_OM.size(); pairIdx++)
+	for (size_t pairIdx = 0; pairIdx < this->BLS_OM.size(); pairIdx++)
 	{
-		if(this->BLS_OM[pairIdx].first->weight - this->BLS_OM[pairIdx].second->weight <= maxObjectiveIncrement)
+		if (this->BLS_OM[pairIdx].first->weight - this->BLS_OM[pairIdx].second->weight <= maxObjectiveIncrement)
 		{
 			continue;
 		}
@@ -792,16 +778,7 @@ double CGraphSolver::BLS_FindBestLocalMove(void)
 		maxObjectiveIncrement = this->BLS_OM[pairIdx].first->weight - this->BLS_OM[pairIdx].second->weight;
 	}
 
-	if(NULL == vertexInsert)
-	{
-		return 0.0;
-	}
-
-	// DEBUG
-	//if(948 == this->BLS_nIter && 3 ==this->BLS_C.size() && this->BLS_C[0]->id == 16 && this->BLS_C[1]->id == 4 && this->BLS_C[2]->id == 15)
-	//{
-	//	int a = 0;
-	//}
+	if (NULL == vertexInsert) { return 0.0;	}
 
 	// remove (remove -> insert is more effective than insert -> remove)
 	this->BLS_VertexRemove(vertexRemove);
@@ -833,17 +810,12 @@ double CGraphSolver::BLS_Perturbation(double L, size_t w, double alphaR, double 
 {
 	double fVal = 0.0;
 	PSN_VertexSet newC;
-	if(0 == w)
-	{
-		return this->BLS_PerturbRandom(L, alphaS);
-	}
+	if (0 == w) { return this->BLS_PerturbRandom(L, alphaS); }
 	
 	double P = (double)w < BLS_wCheck? std::exp(-(double)w / (double)BLS_T) : BLS_P0;
 	double unitRand = (double)rand() / (double)RAND_MAX;
-	if(P >= unitRand)
-	{
-		return this->BLS_PerturbDirected(L);
-	}
+
+	if (P >= unitRand) { return this->BLS_PerturbDirected(L); }
 	return this->BLS_PerturbRandom(L, alphaR);
 }
 
@@ -862,7 +834,7 @@ double CGraphSolver::BLS_PerturbDirected(double L)
 	double fVal = 0.0;
 	PSN_GraphVertex *vertexInsert = NULL;
 	PSN_GraphVertex *vertexRemove = NULL;
-	for(size_t LIdx = 0; LIdx < L; LIdx++)
+	for (size_t LIdx = 0; LIdx < L; LIdx++)
 	{		
 		/////////////////////////////////////////////////////////////////////////////
 		// UPDATE M AND SELECT MOVE
@@ -870,40 +842,34 @@ double CGraphSolver::BLS_PerturbDirected(double L)
 		fVal = 0.0;
 		std::vector<std::pair<BLS_MOVE_TYPE, size_t>> queueMove;
 		queueMove.reserve(this->BLS_PA.size() + this->BLS_OM.size() + this->BLS_C.size());
-		for(size_t vertexIdx = 0; vertexIdx < this->BLS_PA.size(); vertexIdx++)
+		for (size_t vertexIdx = 0; vertexIdx < this->BLS_PA.size(); vertexIdx++)
 		{
 			// insert from PA
-			if(this->BLS_PA[vertexIdx]->tabuStamp <= this->BLS_nIter)
+			if (this->BLS_PA[vertexIdx]->tabuStamp <= this->BLS_nIter)
 			{
 				queueMove.push_back(std::make_pair(M1, vertexIdx));
 			}			
 		}
-		for(size_t vertexIdx = 0; vertexIdx < this->BLS_OM.size(); vertexIdx++)
+		for (size_t vertexIdx = 0; vertexIdx < this->BLS_OM.size(); vertexIdx++)
 		{
 			// switch
-			if(this->BLS_OM[vertexIdx].first->tabuStamp <= this->BLS_nIter)
+			if (this->BLS_OM[vertexIdx].first->tabuStamp <= this->BLS_nIter)
 			{
 				queueMove.push_back(std::make_pair(M2, vertexIdx));
 			}			
 		}
-		for(size_t vertexIdx = 0; vertexIdx < this->BLS_C.size(); vertexIdx++)
+		for (size_t vertexIdx = 0; vertexIdx < this->BLS_C.size(); vertexIdx++)
 		{
 			// remove from solution set
 			fVal += this->BLS_C[vertexIdx]->weight;
 			queueMove.push_back(std::make_pair(M3, vertexIdx));
 		}
 
-		if(0 == queueMove.size())
+		if (0 == queueMove.size())
 		{
 			this->BLS_nIter++;
 			break;
 		}
-
-		// DEBUG
-		//if(946 == this->BLS_nIter && 2 ==this->BLS_C.size() && this->BLS_C[0]->id == 1 && this->BLS_C[1]->id == 16)
-		//{
-		//	int a = 0;
-		//}
 
 		// random selection
 		size_t selectedMoveIdx = (size_t)((double)(queueMove.size() - 1) * ((double)rand() / (double)RAND_MAX));		
@@ -911,12 +877,12 @@ double CGraphSolver::BLS_PerturbDirected(double L)
 		/////////////////////////////////////////////////////////////////////////////
 		// MOVE
 		/////////////////////////////////////////////////////////////////////////////		
-		if(M1 == queueMove[selectedMoveIdx].first)
+		if (M1 == queueMove[selectedMoveIdx].first)
 		{
 			vertexInsert = this->BLS_PA[queueMove[selectedMoveIdx].second];
 			vertexRemove = NULL;
 		}
-		else if(M2 == queueMove[selectedMoveIdx].first)
+		else if (M2 == queueMove[selectedMoveIdx].first)
 		{
 			vertexInsert = this->BLS_OM[queueMove[selectedMoveIdx].second].first;
 			vertexRemove = this->BLS_OM[queueMove[selectedMoveIdx].second].second;
@@ -959,7 +925,7 @@ double CGraphSolver::BLS_PerturbRandom(double L, double alpha)
 	// calculate the objective value of current solution
 	double fVal = WeightSum(this->BLS_C);
 	PSN_GraphVertex *vertexInsert = NULL;
-	for(size_t LIdx = 0; LIdx < L; LIdx++)
+	for (size_t LIdx = 0; LIdx < L; LIdx++)
 	{
 		/////////////////////////////////////////////////////////////////////////////
 		// UPDATE M AND SELECT MOVE
@@ -967,32 +933,26 @@ double CGraphSolver::BLS_PerturbRandom(double L, double alpha)
 		std::vector<size_t> queueMove;
 		queueMove.reserve(this->BLS_OC.size());
 		
-		for(size_t vertexIdx = 0; vertexIdx < this->BLS_OC.size(); vertexIdx++)
+		for (size_t vertexIdx = 0; vertexIdx < this->BLS_OC.size(); vertexIdx++)
 		{			
-			if(this->BLS_OC[vertexIdx]->tabuStamp <= this->BLS_nIter)
+			if (this->BLS_OC[vertexIdx]->tabuStamp <= this->BLS_nIter)
 			{
 				queueMove.push_back(vertexIdx);
 				continue;
 			}
 			
 			double neighborWeightSumInC = 0.0;
-			for(PSN_VertexSet::iterator vertexIter = this->BLS_OC[vertexIdx]->queueNeighbor.begin();
+			for (PSN_VertexSet::iterator vertexIter = this->BLS_OC[vertexIdx]->queueNeighbor.begin();
 				vertexIter != this->BLS_OC[vertexIdx]->queueNeighbor.end();
 				vertexIter++)
 			{
-				if((*vertexIter)->bInSolution)
-				{
-					neighborWeightSumInC += (*vertexIter)->weight;
-				}
+				if ((*vertexIter)->bInSolution)	{ neighborWeightSumInC += (*vertexIter)->weight; }
 			}
 
-			if(neighborWeightSumInC >= alpha * fVal)
-			{
-				queueMove.push_back(vertexIdx);
-			}
+			if (neighborWeightSumInC >= alpha * fVal) {	queueMove.push_back(vertexIdx);	}
 		}
 
-		if(0 == queueMove.size())
+		if (0 == queueMove.size())
 		{
 			this->BLS_nIter++;
 			break;
@@ -1009,12 +969,6 @@ double CGraphSolver::BLS_PerturbRandom(double L, double alpha)
 #ifdef PSN_GRAPH_SOLVER_DEBUG
 		this->PrintLog(2);
 #endif
-		//// DEBUG
-		//if(927 == this->BLS_nIter && 3 == this->BLS_C.size() && this->BLS_C[0]->id == 10 && this->BLS_C[1]->id == 15 && this->BLS_C[2]->id == 9)
-		//{
-		//	int a = 0;
-		//}
-
 		// increase iteration number
 		this->BLS_nIter++;
 	}
@@ -1035,8 +989,7 @@ double CGraphSolver::BLS_PerturbRandom(double L, double alpha)
 ************************************************************************/
 double CGraphSolver::BLS_VertexRemove(PSN_GraphVertex *vertexRemove)
 {
-	if(NULL == vertexRemove)
-	{ return 0.0; }
+	if (NULL == vertexRemove) { return 0.0; }
 	
 	// remove from C
 	PSN_VertexSet::iterator removeIter = std::find(this->BLS_C.begin(), this->BLS_C.end(), vertexRemove);
@@ -1050,7 +1003,7 @@ double CGraphSolver::BLS_VertexRemove(PSN_GraphVertex *vertexRemove)
 	this->BLS_OC.push_back(vertexRemove);
 	vertexRemove->tabuStamp = this->BLS_GetMoveProhibitionNumber(this->BLS_nIter);
 
-	if(0 == this->BLS_C.size())
+	if (0 == this->BLS_C.size())
 	{
 		this->BLS_PA = this->BLS_OC;
 		this->BLS_OM.clear();
@@ -1059,11 +1012,11 @@ double CGraphSolver::BLS_VertexRemove(PSN_GraphVertex *vertexRemove)
 
 	// update OM (-> OM and PA)
 	std::deque<PSN_VertexPair> newOM;
-	for(std::deque<PSN_VertexPair>::iterator pairIter = this->BLS_OM.begin();
+	for (std::deque<PSN_VertexPair>::iterator pairIter = this->BLS_OM.begin();
 		pairIter != this->BLS_OM.end();
 		pairIter++)
 	{
-		if(vertexRemove != (*pairIter).second)
+		if (vertexRemove != (*pairIter).second)
 		{
 			newOM.push_back(*pairIter);
 			continue;
@@ -1079,23 +1032,22 @@ double CGraphSolver::BLS_VertexRemove(PSN_GraphVertex *vertexRemove)
 #endif	
 
 	// add to OM (<- non OM)
-	for(PSN_VertexSet::iterator vertexIter = this->BLS_OC.begin();
+	for (PSN_VertexSet::iterator vertexIter = this->BLS_OC.begin();
 		vertexIter != this->BLS_OC.end();
 		vertexIter++)
 	{
-		if((*vertexIter)->bInOM || (*vertexIter)->countNeighborInSolution != sizeCheckOM)
-		{ continue; }
+		if ((*vertexIter)->bInOM || (*vertexIter)->countNeighborInSolution != sizeCheckOM) { continue; }
 
 		(*vertexIter)->bInOM = true;
 //#ifdef PSN_GRAPH_SOLVER_DEBUG
 //		printf("ADDDDDDDDDDDDDDDDDDD!!!!!!!!!!!! \n");
 //#endif
 #ifdef PSN_GRAPH_TYPE_MWISP
-		for(PSN_VertexSet::iterator neighborIter = (*vertexIter)->queueNeighbor.begin();
+		for (PSN_VertexSet::iterator neighborIter = (*vertexIter)->queueNeighbor.begin();
 			neighborIter != (*vertexIter)->queueNeighbor.end();
 			neighborIter++)
 		{
-			if((*neighborIter)->bInSolution)
+			if ((*neighborIter)->bInSolution)
 			{
 				newOM.push_back(std::make_pair(*vertexIter, *neighborIter));				
 				break;
@@ -1103,12 +1055,12 @@ double CGraphSolver::BLS_VertexRemove(PSN_GraphVertex *vertexRemove)
 		}
 #else
 		PSN_VertexSet::iterator findIter;
-		for(PSN_VertexSet::iterator solutionIter = this->BLS_C.begin();
+		for (PSN_VertexSet::iterator solutionIter = this->BLS_C.begin();
 			solutionIter != this->BLS_C.end();
 			solutionIter++)
 		{
 			findIter = std::find((*vertexIter)->queueNeighbor.begin(), (*vertexIter)->queueNeighbor.end(), *solutionIter);
-			if((*vertexIter)->queueNeighbor.end() == findIter)
+			if ((*vertexIter)->queueNeighbor.end() == findIter)
 			{
 				newOM.push_back(std::make_pair(*vertexIter, *solutionIter));
 				break;
@@ -1116,11 +1068,8 @@ double CGraphSolver::BLS_VertexRemove(PSN_GraphVertex *vertexRemove)
 		}
 #endif	
 	}
-
 	this->BLS_OM = newOM;
-	newOM.clear();
-
-	
+	newOM.clear();	
 	return -vertexRemove->weight;
 }
 
@@ -1136,8 +1085,7 @@ double CGraphSolver::BLS_VertexRemove(PSN_GraphVertex *vertexRemove)
 ************************************************************************/
 double CGraphSolver::BLS_VertexInsert(PSN_GraphVertex *vertexInsert)
 {
-	if(NULL == vertexInsert)
-	{ return 0.0; }
+	if (NULL == vertexInsert) { return 0.0; }
 
 	// remove from OC
 	PSN_VertexSet::iterator removeIter = std::find(this->BLS_OC.begin(), this->BLS_OC.end(), vertexInsert);
@@ -1157,11 +1105,11 @@ double CGraphSolver::BLS_VertexInsert(PSN_GraphVertex *vertexInsert)
 
 	// update OM
 	std::deque<PSN_VertexPair> newOM;
-	for(std::deque<PSN_VertexPair>::iterator pairIter = this->BLS_OM.begin();
+	for (std::deque<PSN_VertexPair>::iterator pairIter = this->BLS_OM.begin();
 		pairIter != this->BLS_OM.end();
 		pairIter++)
 	{
-		if(sizeCheckOM == (*pairIter).first->countNeighborInSolution)
+		if (sizeCheckOM == (*pairIter).first->countNeighborInSolution)
 		{
 			newOM.push_back(*pairIter);
 		}
@@ -1171,14 +1119,13 @@ double CGraphSolver::BLS_VertexInsert(PSN_GraphVertex *vertexInsert)
 
 	// update PA
 	PSN_VertexSet newPA;
-	for(PSN_VertexSet::iterator vertexIter = this->BLS_PA.begin();
+	for (PSN_VertexSet::iterator vertexIter = this->BLS_PA.begin();
 		vertexIter != this->BLS_PA.end();
 		vertexIter++)
 	{
-		if(vertexInsert == *vertexIter)
-		{ continue; }
+		if (vertexInsert == *vertexIter) { continue; }
 
-		if(sizeCheckPA == (*vertexIter)->countNeighborInSolution)
+		if (sizeCheckPA == (*vertexIter)->countNeighborInSolution)
 		{
 			newPA.push_back(*vertexIter);
 		}
@@ -1212,7 +1159,7 @@ double CGraphSolver::BLS_VertexInsertM4(size_t vertexIdxInOC)
 	// REPAIR C
 	/////////////////////////////////////////////////////////////////////////////
 	PSN_GraphVertex *vertexInsert = this->BLS_OC[vertexIdxInOC];
-	for(PSN_VertexSet::iterator vertexIter = vertexInsert->queueNeighbor.begin();
+	for (PSN_VertexSet::iterator vertexIter = vertexInsert->queueNeighbor.begin();
 		vertexIter != vertexInsert->queueNeighbor.end();
 		vertexIter++)
 	{
@@ -1221,14 +1168,14 @@ double CGraphSolver::BLS_VertexInsertM4(size_t vertexIdxInOC)
 
 	// update C
 	PSN_VertexSet newC;
-	for(PSN_VertexSet::iterator vertexIter = this->BLS_C.begin();
+	for (PSN_VertexSet::iterator vertexIter = this->BLS_C.begin();
 		vertexIter != this->BLS_C.end();
 		vertexIter++)
 	{
 #ifndef PSN_GRAPH_TYPE_MWISP
 		(*vertexIter)->bInSolution = !(*vertexIter)->bInSolution;
 #endif
-		if((*vertexIter)->bInSolution)
+		if ((*vertexIter)->bInSolution)
 		{
 			newC.push_back(*vertexIter);
 			fVal += (*vertexIter)->weight;
@@ -1258,16 +1205,16 @@ double CGraphSolver::BLS_VertexInsertM4(size_t vertexIdxInOC)
 	/////////////////////////////////////////////////////////////////////////////
 	this->BLS_PA.clear();
 	PSN_VertexSet OMCandidate;
-	for(PSN_VertexSet::iterator vertexIter = this->BLS_OC.begin();
+	for (PSN_VertexSet::iterator vertexIter = this->BLS_OC.begin();
 		vertexIter != this->BLS_OC.end();
 		vertexIter++)
 	{
-		if(sizeCheckPA == (*vertexIter)->countNeighborInSolution	
+		if (sizeCheckPA == (*vertexIter)->countNeighborInSolution	
 			&& !(*vertexIter)->bInSolution)
 		{
 			this->BLS_PA.push_back(*vertexIter);
 		}
-		else if(sizeCheckOM == (*vertexIter)->countNeighborInSolution
+		else if (sizeCheckOM == (*vertexIter)->countNeighborInSolution
 			&& !(*vertexIter)->bInOM)
 		{
 			OMCandidate.push_back(*vertexIter);
@@ -1279,17 +1226,17 @@ double CGraphSolver::BLS_VertexInsertM4(size_t vertexIdxInOC)
 	// REPAIR OM
 	/////////////////////////////////////////////////////////////////////////////
 	std::deque<PSN_VertexPair> newOM;
-	for(std::deque<PSN_VertexPair>::iterator pairIter = this->BLS_OM.begin();
+	for (std::deque<PSN_VertexPair>::iterator pairIter = this->BLS_OM.begin();
 		pairIter != this->BLS_OM.end();
 		pairIter++)
 	{
-		if(sizeCheckOM != (*pairIter).first->countNeighborInSolution)
+		if (sizeCheckOM != (*pairIter).first->countNeighborInSolution)
 		{
 			(*pairIter).first->bInOM = false;
 			continue;
 		}
 
-		if((*pairIter).second->bInSolution)
+		if ((*pairIter).second->bInSolution)
 		{
 			newOM.push_back(*pairIter);			
 		}
@@ -1301,16 +1248,16 @@ double CGraphSolver::BLS_VertexInsertM4(size_t vertexIdxInOC)
 
 	// from OM candidate
 	PSN_VertexSet::iterator findIter;
-	for(PSN_VertexSet::iterator vertexIter = OMCandidate.begin();
+	for (PSN_VertexSet::iterator vertexIter = OMCandidate.begin();
 		vertexIter != OMCandidate.end();
 		vertexIter++)
 	{
 #ifdef PSN_GRAPH_TYPE_MWISP
-		for(PSN_VertexSet::iterator neighborIter = (*vertexIter)->queueNeighbor.begin();
+		for (PSN_VertexSet::iterator neighborIter = (*vertexIter)->queueNeighbor.begin();
 			neighborIter != (*vertexIter)->queueNeighbor.end();
 			neighborIter++)
 		{
-			if((*neighborIter)->bInSolution)
+			if ((*neighborIter)->bInSolution)
 			{
 				newOM.push_back(std::make_pair(*vertexIter, *neighborIter));
 				(*vertexIter)->bInOM = true;
@@ -1318,12 +1265,12 @@ double CGraphSolver::BLS_VertexInsertM4(size_t vertexIdxInOC)
 			}
 		}
 #else
-		for(PSN_VertexSet::iterator solutionVertexIter = this->BLS_C.begin();
+		for (PSN_VertexSet::iterator solutionVertexIter = this->BLS_C.begin();
 			solutionVertexIter != this->BLS_C.end();
 			solutionVertexIter++)
 		{
 			findIter = std::find((*vertexIter)->queueNeighbor.begin(), (*vertexIter)->queueNeighbor.end(), *solutionVertexIter);
-			if((*vertexIter)->queueNeighbor.end() != findIter)
+			if ((*vertexIter)->queueNeighbor.end() != findIter)
 			{
 				// found
 				continue;
@@ -1445,7 +1392,7 @@ void CGraphSolver::PrintLog(size_t type)
 	printf("C(%d)={", (int)this->BLS_C.size());
 	for(size_t vertexIdx = 0; vertexIdx < this->BLS_C.size(); vertexIdx++)
 	{
-		if(0 < vertexIdx){ printf(","); }
+		if (0 < vertexIdx){ printf(","); }
 		printf("%d", this->BLS_C[vertexIdx]->id);
 	}
 	printf("}\n");
@@ -1454,25 +1401,25 @@ void CGraphSolver::PrintLog(size_t type)
 	printf("PA(%d)={", (int)this->BLS_PA.size());
 	for(size_t vertexIdx = 0; vertexIdx < this->BLS_PA.size(); vertexIdx++)
 	{
-		if(0 < vertexIdx){ printf(","); }
+		if (0 < vertexIdx){ printf(","); }
 		printf("%d", this->BLS_PA[vertexIdx]->id);
 	}
 	printf("}\n");
 
 	// print OM
 	printf("OM(%d)={", (int)this->BLS_OM.size());
-	for(size_t pairIdx = 0; pairIdx < this->BLS_OM.size(); pairIdx++)
+	for (size_t pairIdx = 0; pairIdx < this->BLS_OM.size(); pairIdx++)
 	{
-		if(0 < pairIdx){ printf(","); }
+		if (0 < pairIdx){ printf(","); }
 		printf("(%d,%d)", this->BLS_OM[pairIdx].first->id, this->BLS_OM[pairIdx].second->id);
 	}
 	printf("}\n");
 
 	// print OC
 	printf("OC(%d)={", (int)this->BLS_OC.size());
-	for(size_t vertexIdx = 0; vertexIdx < this->BLS_OC.size(); vertexIdx++)
+	for (size_t vertexIdx = 0; vertexIdx < this->BLS_OC.size(); vertexIdx++)
 	{
-		if(0 < vertexIdx){ printf(","); }
+		if (0 < vertexIdx){ printf(","); }
 		printf("%d", this->BLS_OC[vertexIdx]->id);
 	}
 	printf("}\n");

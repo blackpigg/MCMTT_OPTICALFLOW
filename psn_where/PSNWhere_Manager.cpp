@@ -1094,7 +1094,6 @@ TrackTree::TrackTree()
 	: id(0)
 	, timeGeneration(0)
 	, bValid(true)
-	, bConfirmed(false)
 //	, numMeasurements(0)
 //	, maxGTProb(0.0)
 {
@@ -1112,20 +1111,6 @@ void TrackTree::Initialize(unsigned int id, Track3D *seedTrack, unsigned int tim
 	
 	treeList.push_back(*this);
 	seedTrack->tree = &treeList.back();
-	
-	//for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-	//{
-	//	if(NULL == seedTrack->curTracklet2Ds.get(camIdx))
-	//	{
-	//		continue;
-	//	}
-	//	stTracklet2DInfo newTrackletInfo;
-	//	newTrackletInfo.tracklet2D = seedTrack->curTracklet2Ds.get(camIdx);
-	//	newTrackletInfo.queueRelatedTracks.push_back(seedTrack);
-	//	seedTrack->tree->tracklet2Ds[camIdx].push_back(newTrackletInfo);
-	//	seedTrack->tree->numMeasurements++;
-	//}
-	//this->m_queueActiveTrees.push_back(seedTrack->tree);
 }
 
 /************************************************************************

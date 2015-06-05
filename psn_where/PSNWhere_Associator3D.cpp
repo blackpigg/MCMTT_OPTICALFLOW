@@ -23,10 +23,9 @@ NOTES:
 #define MIN_TRACK_IN_TREE (10)
 #define MAX_TRACK_IN_OPTIMIZATION (2000)
 #define MAX_TRACK_IN_UNCONFIRMED_TREE (2)
-#define MAX_UNCONFIRMED_TRACK (3)
 #define NUM_FRAME_FOR_GTP_CHECK (3)
 #define NUM_FRAME_FOR_CONFIRMATION (3)
-#define K_BEST_SIZE (50)
+#define K_BEST_SIZE (100)
 #define DO_BRANCH_CUT (false)
 
 // reconstruction related
@@ -488,7 +487,6 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	this->Hypothesis_Formation(queueCurrGlobalHypotheses_, &queuePrevGlobalHypotheses_);	
 	// post-pruning
 	this->Hypothesis_PruningNScanBack(nCurrentFrameIdx_, PROC_WINDOW_SIZE, &queueTracksInWindow_, &queueCurrGlobalHypotheses_);
-	//this->Hypothesis_PruningConfirmation(nCurrentFrameIdx_, &queuePtUnconfirmedTrees_);
 	this->Hypothesis_PruningTrackWithGTP(nCurrentFrameIdx_, MAX_TRACK_IN_OPTIMIZATION, &queueTracksInWindow_, &queuePtActiveTrees_);
 	this->Hypothesis_RefreshHypotheses(queueCurrGlobalHypotheses_);
 
@@ -1222,7 +1220,7 @@ void CPSNWhere_Associator3D::Tracklet2D_UpdateTracklets(std::vector<stTrack2DRes
 			newTracklet.camIdx = camIdx;
 			newTracklet.bActivated = true;
 			newTracklet.rects.push_back(curObject->box);
-			newTracklet.backprojectionLines.push_back(this->GetBackProjectionLine(curObject->box.center(), camIdx));
+			newTracklet.backprojectionLines.push_back(this->GetBackProjectionLine(curObject->box.bottomCenter(), camIdx));
 			newTracklet.timeStart = frameIdx;
 			newTracklet.timeEnd = frameIdx;			
 			newTracklet.duration = 1;
@@ -2807,11 +2805,6 @@ void CPSNWhere_Associator3D::Hypothesis_Formation(PSN_HypothesisSet &outBranchHy
 
 	// sorting and confirmaiton of track tree
 	std::sort(outBranchHypotheses.begin(), outBranchHypotheses.end(), psnSolutionLogLikelihoodDescendComparator);
-	PSN_TrackSet *tracksInBestSolution = &outBranchHypotheses.front().selectedTracks;
-	for (int trackIdx = 0; trackIdx < tracksInBestSolution->size(); trackIdx++)
-	{
-		(*tracksInBestSolution)[trackIdx]->tree->bConfirmed = true;
-	}
 }
 
 /************************************************************************
@@ -3013,33 +3006,6 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 }
 
 /************************************************************************
- Method Name: Hypothesis_PruningConfirmation
- Description: 
-	- 
- Input Arguments:
-	- 
- Return Values:
-	- 
-************************************************************************/
-void CPSNWhere_Associator3D::Hypothesis_PruningConfirmation(unsigned int nCurrentFrameIdx, std::deque<TrackTree*> *queueUnconfirmedTrees)
-{
-	for (std::deque<TrackTree*>::iterator treeIter = queueUnconfirmedTrees->begin();
-		treeIter != queueUnconfirmedTrees->end();
-		treeIter++)
-	{
-		if ((*treeIter)->bConfirmed) { continue; }
-		if (nCurrentFrameIdx < (*treeIter)->timeGeneration + NUM_FRAME_FOR_CONFIRMATION) { continue; }
-		(*treeIter)->bValid = false;
-		for (PSN_TrackSet::iterator trackIter = (*treeIter)->tracks.begin();
-			trackIter != (*treeIter)->tracks.end();
-			trackIter++)
-		{
-			(*trackIter)->bValid = false;
-		}
-	}
-}
-
-/************************************************************************
  Method Name: Hypothesis_PruningKBest
  Description: 
 	- 
@@ -3053,38 +3019,6 @@ void CPSNWhere_Associator3D::Hypothesis_PruningTrackWithGTP(unsigned int nCurren
 	int numTrackLeft = 0;
 	int numUCTrackLeft = 0;
 	
-	//// GTP ratio pruning
-	//for (std::deque<TrackTree*>::iterator treeIter = queueActiveTrackTree->begin();
-	//	treeIter != queueActiveTrackTree->end();
-	//	treeIter++)
-	//{
-	//	//// find maximum GTP
-	//	//double maxGTP = 0.0;
-	//	//for (PSN_TrackSet::iterator trackIter = (*treeIter)->tracks.begin(); 
-	//	//	trackIter != (*treeIter)->tracks.end(); 
-	//	//	trackIter++)
-	//	//{
-	//	//	if (maxGTP < (*trackIter)->GTProb) { maxGTP = (*trackIter)->GTProb; }
-	//	//}
-
-	//	//// pruning
-	//	//double GTPThreshold = maxGTP * GTP_RATIO_THRESHOLD;
-	//	//for (PSN_TrackSet::iterator trackIter = (*treeIter)->tracks.begin(); 
-	//	//	trackIter != (*treeIter)->tracks.end(); 
-	//	//	trackIter++)
-	//	//{
-	//	//	if ((*trackIter)->GTProb < GTPThreshold) { (*trackIter)->bValid = false; }
-	//	//}
-	//	
-	//	PSN_TrackSet sortedTrackSet = (*treeIter)->tracks;
-	//	std::sort(sortedTrackSet.begin(), sortedTrackSet.end(), psnTrackGTPandLLDescend);
-	//	int numMaximumTracksInTree = std::max((int)MIN_TRACK_IN_TREE, (int)(sortedTrackSet.size() * NUM_TRACK_RATIO_IN_TREE));
-	//	for (int trackIdx = numMaximumTracksInTree+1; trackIdx < sortedTrackSet.size(); trackIdx++)
-	//	{
-	//		sortedTrackSet[trackIdx]->bValid = false;
-	//	}
-	//}
-
 	// simple GTP pruning
 	std::sort(tracksInWindow->begin(), tracksInWindow->end(), psnTrackGTPandLLDescend);	
 	for (PSN_TrackSet::iterator trackIter = tracksInWindow->begin();
@@ -3092,7 +3026,6 @@ void CPSNWhere_Associator3D::Hypothesis_PruningTrackWithGTP(unsigned int nCurren
 		trackIter++)
 	{
 		if (!(*trackIter)->bValid) { continue; }
-		//if((*trackIter)->tree->timeGeneration + NUM_FRAME_FOR_CONFIRMATION > this->m_nCurrentFrameIdx && numUCTrackLeft < MAX_UNCONFIRMED_TRACK) 
 		if ((*trackIter)->tree->timeGeneration + NUM_FRAME_FOR_CONFIRMATION > nCurrentFrameIdx) 
 		{ 
 			numUCTrackLeft++;
@@ -3169,14 +3102,6 @@ void CPSNWhere_Associator3D::Hypothesis_RefreshHypotheses(PSN_HypothesisSet &ino
 		// update related track list
 		PSN_TrackSet newRelatedTracks = curHypotheis->selectedTracks;
 		newRelatedTracks.insert(newRelatedTracks.end(), unconfirmedTracks.begin(), unconfirmedTracks.end());
-
-		// TO-MHT like
-		//for (int trackIdx = 0; trackIdx < curHypotheis->relatedTracks.size(); trackIdx++)
-		//{
-		//	if (!curHypotheis->relatedTracks[trackIdx]->bValid) { continue; }
-		//	newRelatedTracks.push_back(curHypotheis->relatedTracks[trackIdx]);
-		//}
-
 		curHypotheis->relatedTracks = newRelatedTracks;
 
 		// save valid hypothesis
