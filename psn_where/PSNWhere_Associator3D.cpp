@@ -31,7 +31,7 @@ NOTES:
 // reconstruction related
 #define MIN_TRACKLET_LENGTH (1)
 #define MAX_TRACKLET_LENGTH (15)
-#define MAX_TRACKLET_DISTANCE (3000)
+#define MAX_TRACKLET_DISTANCE (2000)
 #define MAX_TRACKLET_SENSITIVITY_ERROR (20)
 
 #define MAX_HEAD_WIDTH (420)
@@ -78,7 +78,7 @@ NOTES:
 #define MAX_OUTPOINT (3)
 
 // calibration related
-#define E_DET (3)
+#define E_DET (4)
 #define E_CAL (500)
 
 // dynamic related
@@ -757,7 +757,10 @@ bool CPSNWhere_Associator3D::CheckVisibility(PSN_Point3D testPoint, unsigned int
 {
 	PSN_Point2D reprojectedPoint = this->WorldToImage(testPoint, camIdx);
 	PSN_Point2D reprojectedTopPoint = this->WorldToImage(PSN_Point3D(testPoint.x, testPoint.y, DEFAULT_HEIGHT), camIdx);
-	double halfWidth = (reprojectedTopPoint - reprojectedPoint).norm_L2() / 6;
+
+	// pad in for detection probability, no pads for just finding the position of reprojected point
+	double halfWidth = NULL == result2DPoint? (reprojectedTopPoint - reprojectedPoint).norm_L2() / 6 : 0.0;
+
 	if (NULL != result2DPoint) { *result2DPoint = reprojectedPoint; }
 	if (reprojectedPoint.x < halfWidth || reprojectedPoint.x >= (double)cCamModel_[camIdx].width() - halfWidth || 
 		reprojectedPoint.y < halfWidth || reprojectedPoint.y >= (double)cCamModel_[camIdx].height() - halfWidth)
@@ -885,7 +888,6 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 				//resultReconstruction.maxError += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 			}
 			//if (!CONSIDER_SENSITIVITY) { maxError = (double)MAX_BODY_WIDHT / 2.0; }
-			//else { maxError += E_CAL; }
 			resultReconstruction.maxError = maxError;
 			fDistance = this->NViewGroundingPointReconstruction(vecPointInfos, resultReconstruction.point);
 		}		
@@ -913,7 +915,6 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 				//resultReconstruction.maxError += matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 			}
 			if (!CONSIDER_SENSITIVITY) { maxError = (double)MAX_BODY_WIDHT / 2.0; }
-			else { maxError += E_CAL; }
 			resultReconstruction.maxError = maxError;
 			fDistance = this->NViewPointReconstruction(vecBackprojectionLines, resultReconstruction.point);
 		}
@@ -3134,7 +3135,9 @@ stTrack3DResult CPSNWhere_Associator3D::ResultWithTracks(PSN_TrackSet *trackSet,
 		Track3D *curTrack = *trackIter;
 		stObject3DInfo newObject;
 
+		//---------------------------------------------------------
 		// ID
+		//---------------------------------------------------------
 		newObject.id = curTrack->id;
 		if (1 == DISPLAY_ID_MODE)
 		{
@@ -3156,27 +3159,32 @@ stTrack3DResult CPSNWhere_Associator3D::ResultWithTracks(PSN_TrackSet *trackSet,
 			}
 		}
 		
+		//---------------------------------------------------------
+		// TRAJECTORY AND BOX
+		//---------------------------------------------------------
 		unsigned numPoint = 0;
 		//int deferredLength = std::max((int)curTrack->timeEnd - (int)nFrameIdx, 0); 
 		int deferredLength = curTrack->timeEnd - nFrameIdx;
 		if (deferredLength > curTrack->reconstructions.size()) { continue; }
-		bool bVisible[NUM_CAM];
-		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) { bVisible[camIdx] = false; }
+		for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++) { newObject.bVisibleInViews[camIdx] = false; }
 		for (std::deque<stReconstruction>::reverse_iterator pointIter = curTrack->reconstructions.rbegin() + deferredLength;
 			pointIter != curTrack->reconstructions.rend();
 			pointIter++)
 		{
 			numPoint++;
-			newObject.recentPoints.push_back((*pointIter).smoothedPoint);			
+			newObject.recentPoints.push_back((*pointIter).smoothedPoint);
 			if (DISP_TRAJECTORY3D_LENGTH < numPoint) { break; }
 
 			for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-			{
-				//newObject.point3DBox[camIdx] = this->GetHuman3DBox((*pointIter).point, 500, camIdx);
+			{			
+				// trajectory
 				PSN_Point2D reprejectedPoint(0.0, 0.0);
-				if (CheckVisibility((*pointIter).smoothedPoint, camIdx, &reprejectedPoint)) { bVisible[camIdx] = true; }
-				newObject.recentPoint2Ds[camIdx].push_back(reprejectedPoint);
+				if (CheckVisibility((*pointIter).smoothedPoint, camIdx, &reprejectedPoint)) 
+				{
+					newObject.recentPoint2Ds[camIdx].push_back(reprejectedPoint);
+				}			
 
+				// box
 				if (1 < numPoint) { continue; }
 				if (NULL == curTrack->curTracklet2Ds.get(camIdx))
 				{
@@ -3200,18 +3208,21 @@ stTrack3DResult CPSNWhere_Associator3D::ResultWithTracks(PSN_TrackSet *trackSet,
 					newObject.rectInViews[camIdx] = curTrack->curTracklet2Ds.get(camIdx)->rects.back();
 					newObject.bVisibleInViews[camIdx] = true;
 				}
+
+				// 3D box
+				//newObject.point3DBox[camIdx] = this->GetHuman3DBox((*pointIter).point, 500, camIdx);
 			}
 		}
 
-		// 2D detection position and visibillity
+		//---------------------------------------------------------
+		// 2D DETECTIONS
+		//---------------------------------------------------------
 		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 		{
 			stTracklet2D *curTracklet = curTrack->reconstructions.back().tracklet2Ds.get(camIdx);
 			PSN_Point3D detectionLocation(0.0, 0.0, 0.0);
 			if (NULL != curTracklet) { detectionLocation = this->ImageToWorld(curTracklet->rects.back().bottomCenter(), 0.0, camIdx); }
 			newObject.curDetectionPosition.push_back(detectionLocation);
-
-			if (!bVisible[camIdx]) { newObject.recentPoint2Ds[camIdx].clear(); }
 		}
 
 		result3D.object3DInfo.push_back(newObject);
@@ -3444,13 +3455,23 @@ void CPSNWhere_Associator3D::PrintResult(const char *strFilepath, std::deque<stT
 			resultIter != queueResults->end();
 			resultIter++)
 		{
-			fprintf_s(fp, "{\n\tframeIndex:%d\n\tnumObjects:%d\n", (int)(*resultIter).frameIdx, (int)(*resultIter).object3DInfo.size());
+			// first, count the visible objects
+			int numObject = 0;
 			for(std::vector<stObject3DInfo>::iterator objectIter = (*resultIter).object3DInfo.begin();
 				objectIter != (*resultIter).object3DInfo.end();
 				objectIter++)
 			{
 				if (0 == (*objectIter).recentPoints.size()) { continue; }
-				PSN_Point3D curPoint = (*objectIter).recentPoints.back();
+				numObject++;
+			}
+
+			fprintf_s(fp, "{\n\tframeIndex:%d\n\tnumObjects:%d\n", (int)(*resultIter).frameIdx, numObject);
+			for(std::vector<stObject3DInfo>::iterator objectIter = (*resultIter).object3DInfo.begin();
+				objectIter != (*resultIter).object3DInfo.end();
+				objectIter++)
+			{
+				if (0 == (*objectIter).recentPoints.size()) { continue; }
+				PSN_Point3D curPoint = (*objectIter).recentPoints.front();
 				fprintf_s(fp, "\t{id:%d,position:(%f,%f,%f)}\n", (int)(*objectIter).id, (float)curPoint.x, (float)curPoint.y, (float)curPoint.z);
 			}
 			fprintf_s(fp, "}\n");
