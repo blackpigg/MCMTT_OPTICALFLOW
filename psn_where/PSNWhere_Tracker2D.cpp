@@ -1180,6 +1180,8 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 			objectInfo.id = (*trackerIter)->id;
 			objectInfo.box = curBox;
 			objectInfo.score = 0;
+			objectInfo.featurePointsPrev = (*trackerIter)->featurePoints;
+			objectInfo.featurePointsCurr = (*trackerIter)->trackedPoints;
 			this->m_stTrack2DResult.object2DInfos.push_back(objectInfo);
 
 			continue;

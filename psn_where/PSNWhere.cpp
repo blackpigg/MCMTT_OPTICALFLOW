@@ -279,7 +279,7 @@ TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 	this->m_fProcessingTime += (double)(timer_end - timer_start)/CLOCKS_PER_SEC;
 
 	// visualize tracking result
-	this->Visualize(pDibArray, frameIdx, result2D, result3D, 2);
+	this->Visualize(pDibArray, frameIdx, result2D, result3D, 3);
 
 	// log print
 	//char strLog[128];
@@ -317,6 +317,18 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) {	
 		this->m_matResultFrames[camIdx] = pDibArray[camIdx].clone();
 
+		// display KLT tracking result
+		if (3 <= nDispMode) {
+			for (int trackletIdx = 0; trackletIdx < result2D[camIdx].object2DInfos.size(); trackletIdx++) {
+				stObject2DInfo *curTracklet = &result2D[camIdx].object2DInfos[trackletIdx];
+				if (0 == curTracklet->featurePointsCurr.size()) { continue; }
+				for (int pointIdx = 0; pointIdx < curTracklet->featurePointsPrev.size(); pointIdx++) {
+					cv::line(m_matResultFrames[camIdx], curTracklet->featurePointsPrev[pointIdx], curTracklet->featurePointsCurr[pointIdx], cv::Scalar(0, 255, 255), 1);
+					cv::circle(m_matResultFrames[camIdx], curTracklet->featurePointsCurr[pointIdx], 1, cv::Scalar(0, 0, 255), 1);
+				}
+			}
+		}
+
 		// display detections
 		if (2 <= nDispMode) {
 			for (int detectIdx = 0; detectIdx < (int)result2D[camIdx].vecDetectionRects.size(); detectIdx++) {
@@ -338,6 +350,7 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 				}
 			}
 		}
+
 		// display 2D tracklets
 		if (1 <= nDispMode)	{
 			for (size_t trackletIdx = 0; trackletIdx < result2D[camIdx].object2DInfos.size(); trackletIdx++) {
@@ -346,6 +359,7 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 				cv::rectangle(m_matResultFrames[camIdx], curTracklet2D->box.cv(), cv::Scalar(255, 255, 255), 1);
 			}
 		}
+	
 		// display 3D trajectory result
 		for (size_t trajectoryIdx = 0; trajectoryIdx < result3D.object3DInfo.size(); trajectoryIdx++) {
 			stObject3DInfo *curTrajectory = &result3D.object3DInfo[trajectoryIdx];
