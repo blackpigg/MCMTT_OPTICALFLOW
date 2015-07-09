@@ -16,7 +16,7 @@ NOTES:
 /////////////////////////////////////////////////////////////////////////
 
 // optimization related
-#define PROC_WINDOW_SIZE (3)
+#define PROC_WINDOW_SIZE (5)
 #define GTP_THRESHOLD (0.0001)
 #define GTP_RATIO_THRESHOLD (0.3)
 #define NUM_TRACK_RATIO_IN_TREE (0.01)
