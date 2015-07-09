@@ -18,8 +18,8 @@
 //#define LOAD_SNAPSHOT_
 
 //#define SAVE_SNAPSHOT_
-#define DO_RECORD
-#define SHOW_TOPVIEW
+//#define DO_RECORD
+//#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -543,7 +543,6 @@ struct stTreeCluster
 /////////////////////////////////////////////////////////////////////////
 namespace psn
 {
-
 // matrix operation
 template<typename _Tp> _Tp MatTotalSum(cv::Mat &inputMat)
 {

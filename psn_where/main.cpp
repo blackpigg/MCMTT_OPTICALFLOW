@@ -75,7 +75,6 @@
 **************************************************************************/
 #include "stdafx.h"
 #include <iostream>
-#include <omp.h>
 #include "PSNWhere.h"
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -110,7 +109,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	/////////////////////////////////////////////////////////////////
 	psnWhere = CPSNWhere();
 	psnWhere.Initialize(strDatasetPath);
-
+	
 	/////////////////////////////////////////////////////////////////
 	// MAIN LOOP
 	/////////////////////////////////////////////////////////////////
@@ -118,8 +117,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		//---------------------------------------------------
 		// FRAME GRABBING
-		//---------------------------------------------------
-#pragma omp parallel for
+		//---------------------------------------------------		
 		for(int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 		{			
 			unsigned int curCamID = CAM_ID[camIdx];
@@ -132,6 +130,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				sprintf_s(inputFilePath, sizeof(inputFilePath), "%s\\%d_%d.jpg", strDatasetPath.c_str(), curCamID, frameIdx);						
 			}
 			inputFrame[camIdx] = cv::imread(inputFilePath, cv::IMREAD_COLOR);
+			
 			if(!inputFrame[camIdx].data)
 			{
 				std::cout << "Can't open the input frame" << std::endl;

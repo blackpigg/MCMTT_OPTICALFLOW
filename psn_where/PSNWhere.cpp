@@ -262,7 +262,7 @@ TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 
 	timer_start = clock();
 #pragma omp parallel for
-	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+	for(int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{			
 		// TODO: receive detection result(밑의 예시는 file로 읽어오는 것)	
 		detectionResult = CPSNWhere_Manager::ReadDetectionResultWithTxt(this->m_strDatasetPath, CAM_ID[camIdx], frameIdx);
