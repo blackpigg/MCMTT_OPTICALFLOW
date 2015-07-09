@@ -17,7 +17,7 @@
 #define PSN_PRINT_LOG_
 //#define LOAD_SNAPSHOT_
 
-//#define SAVE_SNAPSHOT_
+#define SAVE_SNAPSHOT_
 //#define DO_RECORD
 //#define SHOW_TOPVIEW
 

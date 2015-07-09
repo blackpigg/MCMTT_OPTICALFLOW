@@ -179,7 +179,7 @@ private:
 
 	// cost calculation
 	double ComputeEnterProbability(std::vector<PSN_Point3D> &points);
-	double ComputeExitProbability(std::vector<PSN_Point3D> &points);
+	double ComputeExitProbability(std::vector<PSN_Point3D> &points, int trackLength);
 	static double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, unsigned int timeGap = 1);
 	double ComputeRGBCost(const cv::Mat *feature1, const cv::Mat *feature2, unsigned int timeGap);
 	double ComputeTrackletLinkCost(PSN_Point3D preLocation, PSN_Point3D curLocation, int timeGap);

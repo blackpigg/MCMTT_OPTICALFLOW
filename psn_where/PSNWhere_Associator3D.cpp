@@ -72,7 +72,8 @@ NOTES:
 #define P_EN_MAX (1.0E-3)
 #define P_EX_MAX (1.0E-6)
 #define P_EN_DECAY (1.0E-3)
-#define P_EX_DECAY (1.0E-3)
+#define P_EX_DECAY_DIST (1.0E-3)
+#define P_EX_DECAY_LENGTH (1.0E-2)
 #define COST_EN_MAX (200.0)
 #define COST_EX_MAX (200.0)
 #define MAX_OUTPOINT (3)
@@ -384,6 +385,8 @@ void CPSNWhere_Associator3D::Finalize(void)
 		timeStruct.tm_min, 
 		timeStruct.tm_sec);
 	std::string curFilePath;
+	char strParameter[128];
+	sprintf_s(strParameter, "K%03d_W%03d", (int)K_BEST_SIZE, (int)PROC_WINDOW_SIZE);
 
 	printf("[EVALUATION] deferred result\n");
 	for (unsigned int timeIdx = nCurrentFrameIdx_ - PROC_WINDOW_SIZE + 2; timeIdx <= nCurrentFrameIdx_; timeIdx++)
@@ -392,17 +395,17 @@ void CPSNWhere_Associator3D::Finalize(void)
 	}
 	this->m_cEvaluator.Evaluate();
 	this->m_cEvaluator.PrintResultToConsole();
-	curFilePath = "data/evaluation_deferred" + std::string(strCurrentTime) + ".txt";
+	curFilePath = "data/evaluation_deferred_" + std::string(strParameter) + "_" + std::string(strCurrentTime) + ".txt";
 	this->m_cEvaluator.PrintResultToFile(curFilePath.c_str());
-	curFilePath = "data/result_matrix_deferred" + std::string(strCurrentTime) + ".txt";
+	curFilePath = "data/result_matrix_deferred_" + std::string(strParameter) + "_" + std::string(strCurrentTime) + ".txt";
 	this->m_cEvaluator.PrintResultMatrix(curFilePath.c_str());
 
 	printf("[EVALUATION] instance result\n");	
 	this->m_cEvaluator_Instance.Evaluate();
 	this->m_cEvaluator_Instance.PrintResultToConsole();
-	curFilePath = "data/evaluation_instance" + std::string(strCurrentTime) + ".txt";
+	curFilePath = "data/evaluation_instance_" + std::string(strParameter) + "_" + std::string(strCurrentTime) + ".txt";
 	this->m_cEvaluator_Instance.PrintResultToFile(curFilePath.c_str());
-	curFilePath = "data/result_matrix_instance" + std::string(strCurrentTime) + ".txt";
+	curFilePath = "data/result_matrix_instance_" + std::string(strParameter) + "_" + std::string(strCurrentTime) + ".txt";
 	this->m_cEvaluator_Instance.PrintResultMatrix(curFilePath.c_str());
 #endif
 
@@ -1528,7 +1531,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 				if (NULL == lastReconstruction.tracklet2Ds.get(camIdx)) { continue; }
 				pointsIn3D.push_back(curTrack->lastTrackletLocation3D[camIdx]);
 			}
-			curTrack->costExit = std::min(COST_EX_MAX, -std::log(this->ComputeExitProbability(pointsIn3D)));
+			curTrack->costExit = std::min(COST_EX_MAX, -std::log(this->ComputeExitProbability(pointsIn3D, (int)curTrack->duration)));
 			curTrack->costTotal = GetCost(curTrack);
 
 			// move to time jump track list
@@ -2408,7 +2411,7 @@ double CPSNWhere_Associator3D::ComputeEnterProbability(std::vector<PSN_Point3D> 
  Return Values:
 	- 
 ************************************************************************/
-double CPSNWhere_Associator3D::ComputeExitProbability(std::vector<PSN_Point3D> &points)
+double CPSNWhere_Associator3D::ComputeExitProbability(std::vector<PSN_Point3D> &points, int tracklength)
 {
 	double distanceFromBoundary = -100.0;
 	for (int pointIdx = 0; pointIdx < points.size(); pointIdx++)
@@ -2417,7 +2420,12 @@ double CPSNWhere_Associator3D::ComputeExitProbability(std::vector<PSN_Point3D> &
 		if (distanceFromBoundary < curDistance) { distanceFromBoundary = curDistance; }
 	}
 	if (distanceFromBoundary < 0) { return 1.0; }
-	return distanceFromBoundary <= BOUNDARY_DISTANCE? P_EX_MAX : P_EX_MAX * exp(-(double)(P_EX_DECAY * std::max(0.0, distanceFromBoundary - BOUNDARY_DISTANCE)));
+	if (distanceFromBoundary < BOUNDARY_DISTANCE) { return P_EX_MAX; }
+
+	double probability = P_EX_MAX;
+	probability *= exp(-(double)(P_EX_DECAY_DIST * std::max(0.0, distanceFromBoundary - (double)BOUNDARY_DISTANCE)));	// decaying with distance
+	probability *= exp(-(double)P_EX_DECAY_LENGTH * std::max(0.0, (double)tracklength - (double)NUM_FRAME_FOR_CONFIRMATION));
+	return probability;
 }
 
 /************************************************************************
