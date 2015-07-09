@@ -16,7 +16,7 @@ NOTES:
 /////////////////////////////////////////////////////////////////////////
 
 // optimization related
-#define PROC_WINDOW_SIZE (5)
+#define PROC_WINDOW_SIZE (3)
 #define GTP_THRESHOLD (0.0001)
 #define GTP_RATIO_THRESHOLD (0.3)
 #define NUM_TRACK_RATIO_IN_TREE (0.01)
@@ -372,6 +372,19 @@ void CPSNWhere_Associator3D::Finalize(void)
 	// EVALUATION
 	/////////////////////////////////////////////////////////////////////////////
 #ifndef LOAD_SNAPSHOT_
+	char strCurrentTime[128];
+	time_t curTimer = time(NULL);
+	struct tm timeStruct;
+	localtime_s(&timeStruct, &curTimer);
+	sprintf_s(strCurrentTime, "%02d%02d%02d_%02d%02d%02d", 
+		timeStruct.tm_year + 1900, 
+		timeStruct.tm_mon+1, 
+		timeStruct.tm_mday, 
+		timeStruct.tm_hour, 
+		timeStruct.tm_min, 
+		timeStruct.tm_sec);
+	std::string curFilePath;
+
 	printf("[EVALUATION] deferred result\n");
 	for (unsigned int timeIdx = nCurrentFrameIdx_ - PROC_WINDOW_SIZE + 2; timeIdx <= nCurrentFrameIdx_; timeIdx++)
 	{
@@ -379,14 +392,18 @@ void CPSNWhere_Associator3D::Finalize(void)
 	}
 	this->m_cEvaluator.Evaluate();
 	this->m_cEvaluator.PrintResultToConsole();
-	this->m_cEvaluator.PrintResultToFile("data/evaluation_deferred.txt");
-	this->m_cEvaluator.PrintResultMatrix("data/result_matrix_deferred.txt");
+	curFilePath = "data/evaluation_deferred" + std::string(strCurrentTime) + ".txt";
+	this->m_cEvaluator.PrintResultToFile(curFilePath.c_str());
+	curFilePath = "data/result_matrix_deferred" + std::string(strCurrentTime) + ".txt";
+	this->m_cEvaluator.PrintResultMatrix(curFilePath.c_str());
 
 	printf("[EVALUATION] instance result\n");	
 	this->m_cEvaluator_Instance.Evaluate();
 	this->m_cEvaluator_Instance.PrintResultToConsole();
-	this->m_cEvaluator_Instance.PrintResultToFile("data/evaluation_instance.txt");
-	this->m_cEvaluator_Instance.PrintResultMatrix("data/result_matrix_instance.txt");
+	curFilePath = "data/evaluation_instance" + std::string(strCurrentTime) + ".txt";
+	this->m_cEvaluator_Instance.PrintResultToFile(curFilePath.c_str());
+	curFilePath = "data/result_matrix_instance" + std::string(strCurrentTime) + ".txt";
+	this->m_cEvaluator_Instance.PrintResultMatrix(curFilePath.c_str());
 #endif
 
 	/////////////////////////////////////////////////////////////////////////////

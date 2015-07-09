@@ -423,6 +423,7 @@ stGraphSolvingResult* CGraphSolver::Solve(void)
 	if (NULL == this->m_pGraph) { return NULL; }
 
 	time_t timerStart = clock();
+	//std::srand((int)std::time(NULL));
 
 	switch (nCurrentSolver)
 	{
@@ -459,6 +460,7 @@ void CGraphSolver::RunBLS(void)
 {
 	// solving information related
 	time_t timer_start = clock();
+	//std::srand((int)std::time(NULL));
 	this->m_stResult.bestIteration = 0;
 	this->m_stResult.maximumSearchInterval = 0;
 
