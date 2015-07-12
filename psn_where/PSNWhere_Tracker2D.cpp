@@ -874,7 +874,7 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 	std::vector<unsigned char> pointStatus;
 	std::vector<float> pointError;
 	std::vector<float> matchingCostArray(numDetection * this->m_queueActiveTracker2D.size(), std::numeric_limits<float>::infinity());
-	for(size_t trackIdx = 0; trackIdx < this->m_queueActiveTracker2D.size(); trackIdx++)
+	for (size_t trackIdx = 0; trackIdx < this->m_queueActiveTracker2D.size(); trackIdx++)
 	{
 		stTracker2D *curTracker = this->m_queueActiveTracker2D[trackIdx];
 		
@@ -893,29 +893,24 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 								pointError,
 								cv::Size((int)(curRect.w * PSN_2D_FEATURE_WIN_SIZE_RATIO), (int)(curRect.h * PSN_2D_FEATURE_WIN_SIZE_RATIO)));
 
+		// extract tracked feature points
 		std::vector<cv::Point2f> vecPrevFeatures, vecCurrFeatures;
 		vecPrevFeatures.reserve(pointStatus.size());
 		vecCurrFeatures.reserve(pointStatus.size());
-		for(size_t featureIdx = 0; featureIdx < pointStatus.size(); featureIdx++)
+		for (size_t featureIdx = 0; featureIdx < pointStatus.size(); featureIdx++)
 		{
-			if(!pointStatus[featureIdx])
-			{
-				continue;
-			}
+			if (!pointStatus[featureIdx]) { continue; }
 			vecPrevFeatures.push_back(curTracker->featurePoints[featureIdx]);
 			vecCurrFeatures.push_back(curTracker->trackedPoints[featureIdx]);
-		}
+		}		
+		if (PSN_2D_FEATURE_MIN_NUM_TRACK > vecCurrFeatures.size()) { continue; }
 
-		curTracker->featurePoints = vecCurrFeatures;
-		if(PSN_2D_FEATURE_MIN_NUM_TRACK > curTracker->featurePoints.size())
-		{
-			continue;
-		}
-
+		// motion estimation
 		std::vector<size_t> vecInlierIndex;
 		PSN_Rect newBox = LocalSearchKLT(curTracker->boxes.back().scale(PSN_2D_OPTICALFLOW_SCALE), vecPrevFeatures, vecCurrFeatures, vecInlierIndex);
 		newBox = newBox.scale(PSN_2D_OPTICALFLOW_SCALE_RECOVER);
 		curTracker->boxes.push_back(newBox);
+		curTracker->heads.push_back(curTracker->heads.back());
 
 #ifdef PSN_2D_DEBUG_DISPLAY_
 		
@@ -994,6 +989,10 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 			//boxCost = - std::log(forwardConfidence) - std::log(backwardConfidence);
 			matchingCostArray[costPos] = (float)boxCost;
 		}
+
+		// feature point updation
+		curTracker->featurePoints = vecPrevFeatures;
+		curTracker->trackedPoints = vecCurrFeatures;
 	}
 
 	// feature point majority check
@@ -1069,6 +1068,9 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		matchingCostArray[costIdx] = maxCost;
 	}
 
+	this->m_stTrack2DResult.object2DInfos.clear();
+	std::deque<stTracker2D*> queueNewActiveTrackers;
+
 	size_t numDetection = this->m_vecDetection2D.size();
 	CPSNWhere_Hungarian cHungarianMatcher;
 	cHungarianMatcher.Initialize(matchingCostArray, (unsigned int)numDetection, (unsigned int)this->m_queueActiveTracker2D.size());
@@ -1090,18 +1092,31 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 
 		//---------------------------------------------------
 		// TRACKER UPDATE
-		//---------------------------------------------------
+		//---------------------------------------------------		
 		curDetection->bMatchedWithTracker = true;		
 		curTracker->timeEnd = this->m_nCurrentFrameIdx;
 		curTracker->timeLastUpdate = this->m_nCurrentFrameIdx;
 		curTracker->duration = curTracker->timeEnd - curTracker->timeStart + 1;
 		curTracker->numStatic = 0;
 		curTracker->boxes.back() = curDetection->detection.box;
-		curTracker->featurePoints = curDetection->vecvecTrackedFeatures.front();
-		curTracker->trackedPoints.clear();
+		curTracker->heads.back() = curDetection->detection.vecPartBoxes.front();
+		//curTracker->featurePoints = curDetection->vecvecTrackedFeatures.front(); -> move to after result packaging
+		//curTracker->trackedPoints.clear();
 		curTracker->confidence = curConfidence;
 		curTracker->lastPosition = curDetection->location;
 		curTracker->height = curDetection->height;
+		queueNewActiveTrackers.push_back(curTracker);
+
+		//---------------------------------------------------
+		// RESULT PACKAGING
+		//---------------------------------------------------
+		stObject2DInfo objectInfo;
+		ResultWithTracker(curTracker, objectInfo);
+		this->m_stTrack2DResult.object2DInfos.push_back(objectInfo);
+
+		// update features with detection
+		curTracker->featurePoints = curDetection->vecvecTrackedFeatures.front();
+		curTracker->trackedPoints.clear();
 	}
 	cHungarianMatcher.Finalize();	
 	
@@ -1122,6 +1137,7 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		newTracker.duration = 1;
 		newTracker.numStatic = 0;
 		newTracker.boxes.push_back((*detectionIter).detection.box);
+		newTracker.heads.push_back((*detectionIter).detection.vecPartBoxes.front());
 		newTracker.featurePoints = (*detectionIter).vecvecTrackedFeatures.front();
 		newTracker.trackedPoints.clear();
 		//newTracker.confidence = (*detectionIter).bOverlapWithOtherDetection ? 0.0 : 1.0;
@@ -1134,61 +1150,27 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 
 		// insert to the data structure
 		this->m_listTracker2D.push_back(newTracker);
-		this->m_queueActiveTracker2D.push_back(&this->m_listTracker2D.back());
+		queueNewActiveTrackers.push_back(&this->m_listTracker2D.back());
 
-		//// DEBUG
-		//if ( 2 != m_nCamID || 87 != newTracker.id) { continue; }
-		//std::string debugString(std::to_string(newTracker.featurePoints.size()));
-		//debugString += ",{";
-		//for (int pointIdx = 0; pointIdx < newTracker.featurePoints.size(); pointIdx++)
-		//{
-		//	debugString += "(" + std::to_string(newTracker.featurePoints[pointIdx].x) + "," + std::to_string(newTracker.featurePoints[pointIdx].y) + ")";
-		//	if (pointIdx == newTracker.featurePoints.size() - 1) { debugString += "}"; }
-		//	else { debugString += ","; }
-		//}
-		//psn::printLog("data/features.txt", debugString);
+		//---------------------------------------------------
+		// RESULT PACKAGING
+		//---------------------------------------------------
+		stObject2DInfo objectInfo;
+		ResultWithTracker(&newTracker, objectInfo);
+		this->m_stTrack2DResult.object2DInfos.push_back(objectInfo);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
-	// TRACKER TERMINATION & RESULT PACKING
+	// TRACKER TERMINATION
 	/////////////////////////////////////////////////////////////////////////////
-	this->m_stTrack2DResult.object2DInfos.clear();
-	std::deque<stTracker2D*> queueNewActiveTrackers;
 	for (std::deque<stTracker2D*>::iterator trackerIter = this->m_queueActiveTracker2D.begin();
 		trackerIter != this->m_queueActiveTracker2D.end();
 		trackerIter++)
 	{
-		if ((*trackerIter)->timeLastUpdate == this->m_nCurrentFrameIdx)
-		{
-			PSN_Rect curBox = (*trackerIter)->boxes.back();
-			curBox.x *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
-			curBox.y *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
-			curBox.w *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
-			curBox.h *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
-			
-#ifdef PSN_2D_DEBUG_DISPLAY_			
-			//-----------------------
-			// DEBUG
-			//-----------------------
-			//cv::rectangle(testMat, (*trackerIter)->boxes.back().cv(), cv::Scalar(255, 255, 255), 1);
-			psn::DrawBoxWithID(this->m_matDebugDisplay, curBox, (*trackerIter)->id, this->m_vecColors);
-#endif
-			queueNewActiveTrackers.push_back(*trackerIter);
-
-			// result packing
-			stObject2DInfo objectInfo;
-			objectInfo.id = (*trackerIter)->id;
-			objectInfo.box = curBox;
-			objectInfo.score = 0;
-			objectInfo.featurePointsPrev = (*trackerIter)->featurePoints;
-			objectInfo.featurePointsCurr = (*trackerIter)->trackedPoints;
-			this->m_stTrack2DResult.object2DInfos.push_back(objectInfo);
-
-			continue;
-		}
-		
+		if ((*trackerIter)->timeLastUpdate == this->m_nCurrentFrameIdx) { continue; }		
 		// termination
 		(*trackerIter)->boxes.clear();
+		(*trackerIter)->heads.clear();
 		(*trackerIter)->featurePoints.clear();
 		(*trackerIter)->trackedPoints.clear();
 		//(*trackerIter)->appModel.release();
@@ -1249,6 +1231,42 @@ double CPSNWhere_Tracker2D::EstimateDetectionHeight(PSN_Point2D bottomCenter, PS
 	CPSNWhere_Manager::Triangulation(PSN_Line(P11, P12), PSN_Line(P21, P22), topPoint);
 
 	return (topPoint - P21).norm_L2() * CAM_HEIGHT_SCALE[this->m_nCamID];
+}
+
+/************************************************************************
+ Method Name: ResultWithTracker
+ Description: 
+	- 
+ Input Arguments:
+	- 
+ Return Values:
+	- 
+************************************************************************/
+void CPSNWhere_Tracker2D::ResultWithTracker(stTracker2D *curTracker, stObject2DInfo &outObjectInfo)
+{
+	PSN_Rect curBox = curTracker->boxes.back();
+	curBox.x *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+	curBox.y *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+	curBox.w *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+	curBox.h *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+	PSN_Rect curHead = curTracker->heads.back();
+	curHead.x *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+	curHead.y *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+	curHead.w *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+	curHead.h *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+	outObjectInfo.featurePointsPrev = curTracker->featurePoints;
+	outObjectInfo.featurePointsCurr = curTracker->trackedPoints;
+	for (int pointIdx = 0; pointIdx < outObjectInfo.featurePointsPrev.size(); pointIdx++)
+	{
+		outObjectInfo.featurePointsPrev[pointIdx].x *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+		outObjectInfo.featurePointsPrev[pointIdx].y *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+		outObjectInfo.featurePointsCurr[pointIdx].x *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+		outObjectInfo.featurePointsCurr[pointIdx].y *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+	}		
+	outObjectInfo.id = curTracker->id;
+	outObjectInfo.box = curBox;
+	outObjectInfo.head = curHead;
+	outObjectInfo.score = 0;
 }
 
 

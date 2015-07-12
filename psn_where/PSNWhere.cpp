@@ -323,8 +323,8 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 				stObject2DInfo *curTracklet = &result2D[camIdx].object2DInfos[trackletIdx];
 				if (0 == curTracklet->featurePointsCurr.size()) { continue; }
 				for (int pointIdx = 0; pointIdx < curTracklet->featurePointsPrev.size(); pointIdx++) {
-					cv::line(m_matResultFrames[camIdx], curTracklet->featurePointsPrev[pointIdx], curTracklet->featurePointsCurr[pointIdx], cv::Scalar(0, 255, 255), 1);
-					cv::circle(m_matResultFrames[camIdx], curTracklet->featurePointsCurr[pointIdx], 1, cv::Scalar(0, 0, 255), 1);
+					cv::line(m_matResultFrames[camIdx], curTracklet->featurePointsPrev[pointIdx], curTracklet->featurePointsCurr[pointIdx], cv::Scalar(255, 255, 255), 1);
+					cv::circle(m_matResultFrames[camIdx], curTracklet->featurePointsCurr[pointIdx], 1, cv::Scalar(0, 255, 0), 1);
 				}
 			}
 		}
@@ -332,22 +332,23 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 		// display detections
 		if (2 <= nDispMode) {
 			for (int detectIdx = 0; detectIdx < (int)result2D[camIdx].vecDetectionRects.size(); detectIdx++) {
-				PSN_Rect curDetectBox = result2D[camIdx].vecDetectionRects[detectIdx];
+				PSN_Rect curDetectBox = result2D[camIdx].vecDetectionRects[detectIdx];				
 				cv::Point curDetectBoxCenter = curDetectBox.center().cv();
 				cv::rectangle(m_matResultFrames[camIdx], curDetectBox.cv(), cv::Scalar(255, 255, 255), 1);
 
-				for (int trackIdx = 0; trackIdx < (int)result2D[camIdx].vecTrackerRects.size(); trackIdx++)	{
-					if (std::numeric_limits<float>::infinity() == result2D[camIdx].matMatchingCost.at<float>(detectIdx, trackIdx)) { continue; }
-					std::ostringstream costStringStream;
-					costStringStream << std::setprecision(5) << result2D[camIdx].matMatchingCost.at<float>(detectIdx, trackIdx);
-					std::string curCostString = costStringStream.str();
-					PSN_Rect curTrackBox = result2D[camIdx].vecTrackerRects[trackIdx];
-					cv::Point curTrackBoxCenter = curTrackBox.center().cv();
-					cv::Point curMidPoint = 0.5 * curDetectBoxCenter + 0.5 * curTrackBoxCenter;
-					cv::rectangle(m_matResultFrames[camIdx], curTrackBox.cv(), cv::Scalar(255, 255, 255), 1);
-					cv::line(m_matResultFrames[camIdx], curDetectBoxCenter, curTrackBoxCenter, cv::Scalar(255, 255, 255), 1);
-					cv::putText(m_matResultFrames[camIdx], curCostString, curMidPoint, cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 255));
-				}
+				// draw matching score
+				//for (int trackIdx = 0; trackIdx < (int)result2D[camIdx].vecTrackerRects.size(); trackIdx++)	{
+				//	if (std::numeric_limits<float>::infinity() == result2D[camIdx].matMatchingCost.at<float>(detectIdx, trackIdx)) { continue; }
+				//	std::ostringstream costStringStream;
+				//	costStringStream << std::setprecision(5) << result2D[camIdx].matMatchingCost.at<float>(detectIdx, trackIdx);
+				//	std::string curCostString = costStringStream.str();
+				//	PSN_Rect curTrackBox = result2D[camIdx].vecTrackerRects[trackIdx];
+				//	cv::Point curTrackBoxCenter = curTrackBox.center().cv();
+				//	cv::Point curMidPoint = 0.5 * curDetectBoxCenter + 0.5 * curTrackBoxCenter;
+				//	cv::rectangle(m_matResultFrames[camIdx], curTrackBox.cv(), cv::Scalar(255, 255, 255), 1);
+				//	cv::line(m_matResultFrames[camIdx], curDetectBoxCenter, curTrackBoxCenter, cv::Scalar(255, 255, 255), 1);
+				//	cv::putText(m_matResultFrames[camIdx], curCostString, curMidPoint, cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 255));
+				//}
 			}
 		}
 
@@ -355,8 +356,8 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 		if (1 <= nDispMode)	{
 			for (size_t trackletIdx = 0; trackletIdx < result2D[camIdx].object2DInfos.size(); trackletIdx++) {
 				stObject2DInfo *curTracklet2D = &result2D[camIdx].object2DInfos[trackletIdx];		
-				psn::DrawBoxWithID(m_matResultFrames[camIdx], curTracklet2D->box, curTracklet2D->id, m_vecColors);
-				cv::rectangle(m_matResultFrames[camIdx], curTracklet2D->box.cv(), cv::Scalar(255, 255, 255), 1);
+				psn::DrawBoxWithID(m_matResultFrames[camIdx], curTracklet2D->box, curTracklet2D->id, m_vecColors);				
+				cv::rectangle(m_matResultFrames[camIdx], curTracklet2D->head.cv(), cv::Scalar(255, 255, 255), 1);
 			}
 		}
 	
@@ -370,11 +371,6 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 			}
 			psn::DrawLine(m_matResultFrames[camIdx], curTrajectory->recentPoint2Ds[camIdx], curTrajectory->id, this->m_vecColors);
 		}
-
-		//// DEBUG: show world origin point
-		//PSN_Point2D cur2DPoint(0.0, 0.0);
-		//this->m_stCalibrationInfos[camIdx].cCamModel.worldToImage(0.0, 0.0, 0.0, cur2DPoint.x, cur2DPoint.y);
-		//cv::circle(this->m_matResultFrames[camIdx], cur2DPoint.cv(), 1, CV_RGB(0, 250, 0), CV_FILLED);
 
 		// image tiling
 		tileInputArray.push_back(this->m_matResultFrames[camIdx]);

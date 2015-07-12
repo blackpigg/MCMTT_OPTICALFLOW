@@ -116,6 +116,7 @@ struct stTracker2D
 	unsigned int numStatic;
 	double confidence;
 	std::deque<PSN_Rect> boxes;
+	std::deque<PSN_Rect> heads;
 	std::vector<cv::Point2f> featurePoints;
 	std::vector<cv::Point2f> trackedPoints;
 	PSN_Point3D lastPosition;
@@ -162,9 +163,10 @@ private:
 	//----------------------------------------------------------------
 	// ETC
 	//----------------------------------------------------------------
+	void ResultWithTracker(stTracker2D *curTracker, stObject2DInfo &outObjectInfo);
 	void FilePrintTracklet(void);
 	void SaveSnapshot(const char *strFilepath);
-	bool LoadSnapshot(const char *strFilepath);
+	bool LoadSnapshot(const char *strFilepath);	
 
 	/////////////////////////////////////////////////////////////////////
 	// VARIABLES
