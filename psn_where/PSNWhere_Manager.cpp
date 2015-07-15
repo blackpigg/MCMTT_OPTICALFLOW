@@ -436,6 +436,50 @@ bool psn::IsLineSegmentIntersect(PSN_Line &line1, PSN_Line &line2)
 	return false;
 }
 
+/************************************************************************
+ Method Name: Triangulation
+ Description: 
+	- 
+ Input Arguments:
+	- 
+ Return Values:
+	- 
+************************************************************************/
+double psn::Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoint3D)
+{
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Associator3D](DistanceBackProjectionLine) start\n");
+#endif
+	
+	PSN_Point3D line1Direct = line1.first - line1.second;
+	PSN_Point3D line2Direct = line2.first - line2.second;
+	PSN_Point3D lineOffset = line2.second - line1.second;
+
+	cv::Mat matA(2, 2, CV_32FC1);
+	matA.at<float>(0, 0) = (float)line1Direct.dot(line1Direct);
+	matA.at<float>(0, 1) = (float)line1Direct.dot(-line2Direct);
+	matA.at<float>(1, 0) = (float)line2Direct.dot(line1Direct);
+	matA.at<float>(1, 1) = (float)line2Direct.dot(-line2Direct);
+	
+	cv::Mat vecB(2, 1, CV_32FC1);
+	vecB.at<float>(0, 0) = (float)line1Direct.dot(lineOffset);
+	vecB.at<float>(1, 0) = (float)line2Direct.dot(lineOffset);
+
+	cv::Mat vecT = matA.inv() * vecB;
+
+	line1Direct *= (double)vecT.at<float>(0, 0);
+	line2Direct *= (double)vecT.at<float>(1, 0);
+	PSN_Point3D closePoint1 = line1.second + line1Direct;
+	PSN_Point3D closePoint2 = line2.second + line2Direct;
+
+	midPoint3D = (closePoint1 + closePoint2) / 2;
+
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Associator3D](DistanceBackProjectionLine) return:%f\n", fDistance);
+#endif
+	return (closePoint1 - closePoint2).norm_L2();
+}
+
 std::vector<cv::Scalar> psn::GenerateColors(unsigned int numColor)
 {
 	// refer: http://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
@@ -637,6 +681,97 @@ void psn::DrawLine(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, un
 	}
 }
 
+/************************************************************************
+ Method Name: MakeMatTile
+ Description: 
+	- Make one result image for multi-camera input for visualization
+ Input Arguments:
+	- imageArray: 
+	- numRows: number of rows in tile image
+	- numCols: number of colums in tile image
+ Return Values:
+	- cv::Mat: result image
+************************************************************************/
+cv::Mat psn::MakeMatTile(std::vector<cv::Mat> *imageArray, unsigned int numRows, unsigned int numCols)
+{
+
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Manager](MakeMatTile) start\n");
+#endif
+	// column first arrangement
+	unsigned int numImage = (unsigned int)imageArray->size();	
+	unsigned int acturalNumCols = numImage < numCols ? numImage : numCols;
+	unsigned int acturalNumRows = (0 == numImage % numCols) ? numImage / numCols : numImage / numCols + 1;
+
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Manager](MakeMatTile) numImage:%d, numRows:%d, numCols:%d\n", numImage, acturalNumRows, acturalNumCols);
+#endif
+
+	// find maximum size image
+	cv::Size maxSize = (*imageArray)[0].size();
+	for(unsigned int imageIdx = 0; imageIdx < numImage; imageIdx++)
+	{
+		if((*imageArray)[imageIdx].rows > maxSize.height){ maxSize.height = (*imageArray)[imageIdx].rows; }
+		if((*imageArray)[imageIdx].cols > maxSize.width){ maxSize.width = (*imageArray)[imageIdx].cols; }
+	}
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Manager](MakeMatTile) maxWidth:%d, maxHeight:%d\n", maxSize.width, maxSize.height);
+#endif
+
+	// make augmenting matrix
+	std::vector<cv::Mat> augMats;
+	cv::Mat baseMat;
+	if(1 == (*imageArray)[0].channels()){	baseMat = cv::Mat::zeros(maxSize, CV_8UC1); }
+	else{ baseMat = cv::Mat::zeros(maxSize, CV_8UC3); }	
+	//for(unsigned int imageIdx = 0; imageIdx < numImage; imageIdx++)
+	//{
+	//	cv::Mat augMat = baseMat.clone();
+	//	(*imageArray)[imageIdx].copyTo(augMat(cv::Rect(0, 0, (*imageArray)[imageIdx].cols, (*imageArray)[imageIdx].rows)));
+	//	augMats.push_back(augMat);
+	//}
+	unsigned int numAugMats = acturalNumRows * acturalNumCols;
+	for(unsigned int imageIdx = 0; imageIdx < numAugMats; imageIdx++)
+	{
+		cv::Mat augMat = baseMat.clone();
+		if(imageIdx < numImage)
+		{
+			(*imageArray)[imageIdx].copyTo(augMat(cv::Rect(0, 0, (*imageArray)[imageIdx].cols, (*imageArray)[imageIdx].rows)));
+		}
+		augMats.push_back(augMat);
+	}
+
+	// matrix concatenation
+	cv::Mat hConcatMat;
+	cv::Mat resultMat;
+	for(unsigned int rowIdx = 0; rowIdx < acturalNumRows; rowIdx++)
+	{
+		unsigned int startIdx = rowIdx * acturalNumCols;		
+		for(unsigned int colIdx = 0; colIdx < acturalNumCols; colIdx++)
+		{
+			if(0 == colIdx)
+			{
+				hConcatMat = augMats[startIdx].clone();
+				continue;
+			}
+			cv::hconcat(hConcatMat, augMats[startIdx + colIdx], hConcatMat);
+		}
+
+		if(0 == rowIdx)
+		{
+			resultMat = hConcatMat.clone();
+			continue;
+		}
+		cv::vconcat(resultMat, hConcatMat, resultMat);
+	}
+
+#ifdef PSN_DEBUG_MODE_
+	//printf("[CPSNWhere_Manager](MakeMatTile) end\n");
+#endif
+
+	return resultMat;
+}
+
+
 PSN_Point2D psn::GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint, bool bZoom)
 {
 	// more detail, refer MATLAB code, LocationOnTopView
@@ -667,6 +802,26 @@ PSN_Point2D psn::GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint, bool bZoom
 	}
 
 	return PSN_Point2D(resultVec.at<double>(0, 0), resultVec.at<double>(1, 0));
+}
+
+/************************************************************************
+ Method Name: IsDirectoryExists
+ Description: 
+	- Check wheter the directory exists or not
+ Input Arguments:
+	- dirName: directory path
+ Return Values:
+	- true: exists / false: non-exists
+************************************************************************/
+bool psn::CreateDirectoryForWindows(const std::string &dirName)
+{
+	std::wstring wideStrDirName = L"";
+	wideStrDirName.assign(dirName.begin(), dirName.end());
+	if (CreateDirectory(wideStrDirName.c_str(), NULL) || ERROR_ALREADY_EXISTS == GetLastError())
+	{
+		return true;
+	}
+	return false;
 }
 
 /************************************************************************
@@ -1438,141 +1593,6 @@ CPSNWhere_Manager::CPSNWhere_Manager(void)
 ************************************************************************/
 CPSNWhere_Manager::~CPSNWhere_Manager(void)
 {
-}
-
-/************************************************************************
- Method Name: Triangulation
- Description: 
-	- 
- Input Arguments:
-	- 
- Return Values:
-	- 
-************************************************************************/
-double CPSNWhere_Manager::Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoint3D)
-{
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Associator3D](DistanceBackProjectionLine) start\n");
-#endif
-	
-	PSN_Point3D line1Direct = line1.first - line1.second;
-	PSN_Point3D line2Direct = line2.first - line2.second;
-	PSN_Point3D lineOffset = line2.second - line1.second;
-
-	cv::Mat matA(2, 2, CV_32FC1);
-	matA.at<float>(0, 0) = (float)line1Direct.dot(line1Direct);
-	matA.at<float>(0, 1) = (float)line1Direct.dot(-line2Direct);
-	matA.at<float>(1, 0) = (float)line2Direct.dot(line1Direct);
-	matA.at<float>(1, 1) = (float)line2Direct.dot(-line2Direct);
-	
-	cv::Mat vecB(2, 1, CV_32FC1);
-	vecB.at<float>(0, 0) = (float)line1Direct.dot(lineOffset);
-	vecB.at<float>(1, 0) = (float)line2Direct.dot(lineOffset);
-
-	cv::Mat vecT = matA.inv() * vecB;
-
-	line1Direct *= (double)vecT.at<float>(0, 0);
-	line2Direct *= (double)vecT.at<float>(1, 0);
-	PSN_Point3D closePoint1 = line1.second + line1Direct;
-	PSN_Point3D closePoint2 = line2.second + line2Direct;
-
-	midPoint3D = (closePoint1 + closePoint2) / 2;
-
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Associator3D](DistanceBackProjectionLine) return:%f\n", fDistance);
-#endif
-	return (closePoint1 - closePoint2).norm_L2();
-}
-
-
-/************************************************************************
- Method Name: MakeMatTile
- Description: 
-	- Make one result image for multi-camera input for visualization
- Input Arguments:
-	- imageArray: 
-	- numRows: number of rows in tile image
-	- numCols: number of colums in tile image
- Return Values:
-	- cv::Mat: result image
-************************************************************************/
-cv::Mat CPSNWhere_Manager::MakeMatTile(std::vector<cv::Mat> *imageArray, unsigned int numRows, unsigned int numCols)
-{
-
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Manager](MakeMatTile) start\n");
-#endif
-	// column first arrangement
-	unsigned int numImage = (unsigned int)imageArray->size();	
-	unsigned int acturalNumCols = numImage < numCols ? numImage : numCols;
-	unsigned int acturalNumRows = (0 == numImage % numCols) ? numImage / numCols : numImage / numCols + 1;
-
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Manager](MakeMatTile) numImage:%d, numRows:%d, numCols:%d\n", numImage, acturalNumRows, acturalNumCols);
-#endif
-
-	// find maximum size image
-	cv::Size maxSize = (*imageArray)[0].size();
-	for(unsigned int imageIdx = 0; imageIdx < numImage; imageIdx++)
-	{
-		if((*imageArray)[imageIdx].rows > maxSize.height){ maxSize.height = (*imageArray)[imageIdx].rows; }
-		if((*imageArray)[imageIdx].cols > maxSize.width){ maxSize.width = (*imageArray)[imageIdx].cols; }
-	}
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Manager](MakeMatTile) maxWidth:%d, maxHeight:%d\n", maxSize.width, maxSize.height);
-#endif
-
-	// make augmenting matrix
-	std::vector<cv::Mat> augMats;
-	cv::Mat baseMat;
-	if(1 == (*imageArray)[0].channels()){	baseMat = cv::Mat::zeros(maxSize, CV_8UC1); }
-	else{ baseMat = cv::Mat::zeros(maxSize, CV_8UC3); }	
-	//for(unsigned int imageIdx = 0; imageIdx < numImage; imageIdx++)
-	//{
-	//	cv::Mat augMat = baseMat.clone();
-	//	(*imageArray)[imageIdx].copyTo(augMat(cv::Rect(0, 0, (*imageArray)[imageIdx].cols, (*imageArray)[imageIdx].rows)));
-	//	augMats.push_back(augMat);
-	//}
-	unsigned int numAugMats = acturalNumRows * acturalNumCols;
-	for(unsigned int imageIdx = 0; imageIdx < numAugMats; imageIdx++)
-	{
-		cv::Mat augMat = baseMat.clone();
-		if(imageIdx < numImage)
-		{
-			(*imageArray)[imageIdx].copyTo(augMat(cv::Rect(0, 0, (*imageArray)[imageIdx].cols, (*imageArray)[imageIdx].rows)));
-		}
-		augMats.push_back(augMat);
-	}
-
-	// matrix concatenation
-	cv::Mat hConcatMat;
-	cv::Mat resultMat;
-	for(unsigned int rowIdx = 0; rowIdx < acturalNumRows; rowIdx++)
-	{
-		unsigned int startIdx = rowIdx * acturalNumCols;		
-		for(unsigned int colIdx = 0; colIdx < acturalNumCols; colIdx++)
-		{
-			if(0 == colIdx)
-			{
-				hConcatMat = augMats[startIdx].clone();
-				continue;
-			}
-			cv::hconcat(hConcatMat, augMats[startIdx + colIdx], hConcatMat);
-		}
-
-		if(0 == rowIdx)
-		{
-			resultMat = hConcatMat.clone();
-			continue;
-		}
-		cv::vconcat(resultMat, hConcatMat, resultMat);
-	}
-
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Manager](MakeMatTile) end\n");
-#endif
-
-	return resultMat;
 }
 
 std::vector<stDetection> CPSNWhere_Manager::ReadDetectionResultWithTxt(std::string strDatasetPath, unsigned int camIdx, unsigned int frameIdx) {

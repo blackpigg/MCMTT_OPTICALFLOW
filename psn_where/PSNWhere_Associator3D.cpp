@@ -15,6 +15,8 @@ NOTES:
 // PARAMETERS (unit: mm)
 /////////////////////////////////////////////////////////////////////////
 
+#define PSN_PRINT_TRACKS (0) // 0: no print / 1: print
+
 // optimization related
 #define PROC_WINDOW_SIZE (10)
 #define GTP_THRESHOLD (0.0001)
@@ -277,54 +279,31 @@ void CPSNWhere_Associator3D::Initialize(std::string datasetPath, std::vector<stC
 		precomputedQsets.push_back(CPSNWhere_SGSmooth::CalculateQ(windowSize));
 	}
 
-	// logging related
+	// time and date record
 	time_t curTimer = time(NULL);
 	struct tm timeStruct;
 	localtime_s(&timeStruct, &curTimer);
-	sprintf_s(strLogFileName_, "logs/PSN_Log_%02d%02d%02d_%02d%02d%02d.txt", 
+	char strTimeChar[128];
+	sprintf_s(strTimeChar, "%02d%02d%02d_%02d%02d%02d", 
 		timeStruct.tm_year + 1900, 
 		timeStruct.tm_mon+1, 
 		timeStruct.tm_mday, 
 		timeStruct.tm_hour, 
 		timeStruct.tm_min, 
 		timeStruct.tm_sec);
+	strTime_ = std::string(strTimeChar);
 
-	sprintf_s(strTrackLogFileName_, "%stracks/PSN_tracks_%02d%02d%02d_%02d%02d%02d.txt",
-		RESULT_SAVE_PATH,
-		timeStruct.tm_year + 1900, 
-		timeStruct.tm_mon+1, 
-		timeStruct.tm_mday, 
-		timeStruct.tm_hour, 
-		timeStruct.tm_min, 
-		timeStruct.tm_sec);
+	// create folders
+	psn::CreateDirectoryForWindows("logs/");
+	psn::CreateDirectoryForWindows(std::string(RESULT_SAVE_PATH));
 
-	sprintf_s(strResultLogFileName_, "%stracking/PSN_BatchResult_%04d%02d%02d%02d%02d%02d.txt", 
-		RESULT_SAVE_PATH,
-		timeStruct.tm_year + 1900, 
-		timeStruct.tm_mon+1, 
-		timeStruct.tm_mday, 
-		timeStruct.tm_hour, 
-		timeStruct.tm_min, 
-		timeStruct.tm_sec);
+	// file path
+	strLogFileName_ = "logs/PSN_Log_" + strTime_ + ".txt";		
+	strTrackLogFileName_ = std::string(RESULT_SAVE_PATH) + "PSN_tracks_" + strTime_ + "txt";
+	strDefferedResultFileName_ = std::string(RESULT_SAVE_PATH) + "PSN_result_deferred_" + strTime_ + ".txt";
+	strInstantResultFileName_ = std::string(RESULT_SAVE_PATH) + "PSN_result_instance_" + strTime_ + ".txt";
 
-	sprintf_s(strDefferedResultFileName_, "%stracking/PSN_DefferedResult_%04d%02d%02d%02d%02d%02d.txt", 
-		RESULT_SAVE_PATH,
-		timeStruct.tm_year + 1900, 
-		timeStruct.tm_mon+1, 
-		timeStruct.tm_mday, 
-		timeStruct.tm_hour, 
-		timeStruct.tm_min, 
-		timeStruct.tm_sec);
-
-	sprintf_s(strInstantResultFileName_, "%stracking/PSN_CurrentResult_%04d%02d%02d%02d%02d%02d.txt", 
-		RESULT_SAVE_PATH,
-		timeStruct.tm_year + 1900, 
-		timeStruct.tm_mon+1, 
-		timeStruct.tm_mday, 
-		timeStruct.tm_hour, 
-		timeStruct.tm_min, 
-		timeStruct.tm_sec);
-
+	// init flag
 	bInit_ = true;
 
 #ifdef PSN_DEBUG_MODE_
@@ -350,6 +329,7 @@ void CPSNWhere_Associator3D::Finalize(void)
 	
 	if (!bInit_) { return; }
 #ifdef SAVE_SNAPSHOT_
+	psn::CreateDirectoryForWindows(std::string(SNAPSHOT_PATH));
 	this->SaveSnapshot(SNAPSHOT_PATH);
 #endif
 	/////////////////////////////////////////////////////////////////////////////
@@ -366,46 +346,37 @@ void CPSNWhere_Associator3D::Finalize(void)
 	}
 
 	// print results
-	this->PrintResult(strInstantResultFileName_, &queueTrackingResult_);
-	this->PrintResult(strDefferedResultFileName_, &queueDeferredTrackingResult_);
+	this->PrintResult(strInstantResultFileName_.c_str(), &queueTrackingResult_);
+	this->PrintResult(strDefferedResultFileName_.c_str(), &queueDeferredTrackingResult_);
 
 	/////////////////////////////////////////////////////////////////////////////
 	// EVALUATION
 	/////////////////////////////////////////////////////////////////////////////
 #ifndef LOAD_SNAPSHOT_
-	char strCurrentTime[128];
-	time_t curTimer = time(NULL);
-	struct tm timeStruct;
-	localtime_s(&timeStruct, &curTimer);
-	sprintf_s(strCurrentTime, "%02d%02d%02d_%02d%02d%02d", 
-		timeStruct.tm_year + 1900, 
-		timeStruct.tm_mon+1, 
-		timeStruct.tm_mday, 
-		timeStruct.tm_hour, 
-		timeStruct.tm_min, 
-		timeStruct.tm_sec);
 	std::string curFilePath;
 	char strParameter[128];
 	sprintf_s(strParameter, "K%03d_W%03d", (int)K_BEST_SIZE, (int)PROC_WINDOW_SIZE);
+	std::string strSuffix = "_" + std::string(strParameter) + "_" + strTime_ + ".txt";
 
+	psn::CreateDirectoryForWindows(std::string(EVALUATION_PATH));
 	printf("[EVALUATION] deferred result\n");
-	for (unsigned int timeIdx = nCurrentFrameIdx_ - PROC_WINDOW_SIZE + 2; timeIdx <= nCurrentFrameIdx_; timeIdx++)
+	for (unsigned int timeIdx = (unsigned int)std::max(0, (int)nCurrentFrameIdx_ - PROC_WINDOW_SIZE + 2); timeIdx <= nCurrentFrameIdx_; timeIdx++)
 	{
 		this->m_cEvaluator.SetResult(queueTracksInBestSolution_, timeIdx);
 	}
 	this->m_cEvaluator.Evaluate();
 	this->m_cEvaluator.PrintResultToConsole();
-	curFilePath = "data/evaluation_deferred_" + std::string(strParameter) + "_" + std::string(strCurrentTime) + ".txt";
+	curFilePath = std::string(EVALUATION_PATH) + "evaluation_deferred" + strSuffix;
 	this->m_cEvaluator.PrintResultToFile(curFilePath.c_str());
-	curFilePath = "data/result_matrix_deferred_" + std::string(strParameter) + "_" + std::string(strCurrentTime) + ".txt";
+	curFilePath = std::string(EVALUATION_PATH) + "result_matrix_deferred" + strSuffix;
 	this->m_cEvaluator.PrintResultMatrix(curFilePath.c_str());
 
 	printf("[EVALUATION] instance result\n");	
 	this->m_cEvaluator_Instance.Evaluate();
 	this->m_cEvaluator_Instance.PrintResultToConsole();
-	curFilePath = "data/evaluation_instance_" + std::string(strParameter) + "_" + std::string(strCurrentTime) + ".txt";
+	curFilePath = std::string(EVALUATION_PATH) + "evaluation_instance" + strSuffix;
 	this->m_cEvaluator_Instance.PrintResultToFile(curFilePath.c_str());
-	curFilePath = "data/result_matrix_instance_" + std::string(strParameter) + "_" + std::string(strCurrentTime) + ".txt";
+	curFilePath = std::string(EVALUATION_PATH) + "result_matrix_instance" + strSuffix;
 	this->m_cEvaluator_Instance.PrintResultMatrix(curFilePath.c_str());
 #endif
 
@@ -576,14 +547,8 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	strLog += std::to_string(nCountUCTrackInOptimization_) + ",";
 	strLog += std::to_string(fCurrentProcessingTime_) + ",";
 	strLog += std::to_string(fCurrentSolvingTime_) + ",";
-	//sprintf_s(strLog, "%d,%d,%d,%f,%f", 
-	//nCurrentFrameIdx_, 
-	//nCountTrackInOptimization_,
-	//nCountUCTrackInOptimization_,
-	//fCurrentProcessingTime_,
-	//fCurrentSolvingTime_);
 	strLog += "\n";
-	psn::printLog(strLogFileName_, strLog);
+	psn::printLog(strLogFileName_.c_str(), strLog);
 	fCurrentSolvingTime_ = 0.0;
 #endif
 
@@ -1457,10 +1422,13 @@ void CPSNWhere_Associator3D::Track3D_Management(PSN_TrackSet &outputSeedTracks)
 		this->Track3D_BranchTracks(&outputSeedTracks);
 	}
 
+#if PSN_PRINT_TRACKS == 1
 	// track print
-	char strTrackFileName[128];
-	sprintf_s(strTrackFileName, "logs/tracks/%04d.txt", nCurrentFrameIdx_);
+	psn::CreateDirectoryForWindows(std::string(TRACK_SAVE_PATH));
+	char strTrackFileName[128];	
+	sprintf_s(strTrackFileName, "%s%04d.txt", TRACK_SAVE_PATH, nCurrentFrameIdx_);
 	PrintTracks(queueTracksInWindow_, strTrackFileName, false);
+#endif
 }
 
 /************************************************************************

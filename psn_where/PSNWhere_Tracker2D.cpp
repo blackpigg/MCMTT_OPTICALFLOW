@@ -180,6 +180,7 @@ void CPSNWhere_Tracker2D::Finalize(void)
 	}
 
 #ifdef SAVE_SNAPSHOT_
+	psn::CreateDirectoryForWindows(std::string(SNAPSHOT_PATH));
 	this->SaveSnapshot(SNAPSHOT_PATH);
 #endif
 
@@ -1228,7 +1229,7 @@ double CPSNWhere_Tracker2D::EstimateDetectionHeight(PSN_Point2D bottomCenter, PS
 	}
 
 	PSN_Point3D topPoint(0.0, 0.0, 0.0);
-	CPSNWhere_Manager::Triangulation(PSN_Line(P11, P12), PSN_Line(P21, P22), topPoint);
+	psn::Triangulation(PSN_Line(P11, P12), PSN_Line(P21, P22), topPoint);
 
 	return (topPoint - P21).norm_L2() * CAM_HEIGHT_SCALE[this->m_nCamID];
 }
@@ -1255,18 +1256,19 @@ void CPSNWhere_Tracker2D::ResultWithTracker(stTracker2D *curTracker, stObject2DI
 	curHead.w *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
 	curHead.h *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
 	outObjectInfo.featurePointsPrev = curTracker->featurePoints;
-	outObjectInfo.featurePointsCurr = curTracker->trackedPoints;
-	for (int pointIdx = 0; pointIdx < outObjectInfo.featurePointsPrev.size(); pointIdx++)
-	{
-		outObjectInfo.featurePointsPrev[pointIdx].x *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
-		outObjectInfo.featurePointsPrev[pointIdx].y *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
-		outObjectInfo.featurePointsCurr[pointIdx].x *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
-		outObjectInfo.featurePointsCurr[pointIdx].y *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
-	}		
+	outObjectInfo.featurePointsCurr = curTracker->trackedPoints;	
 	outObjectInfo.id = curTracker->id;
 	outObjectInfo.box = curBox;
 	outObjectInfo.head = curHead;
 	outObjectInfo.score = 0;
+	for (int pointIdx = 0; pointIdx < outObjectInfo.featurePointsPrev.size(); pointIdx++)
+	{
+		outObjectInfo.featurePointsPrev[pointIdx].x *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+		outObjectInfo.featurePointsPrev[pointIdx].y *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+		if (pointIdx >= outObjectInfo.featurePointsCurr.size()) { continue; }
+		outObjectInfo.featurePointsCurr[pointIdx].x *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+		outObjectInfo.featurePointsCurr[pointIdx].y *= (float)PSN_2D_DEBUG_DISPLAY_SCALE;
+	}	
 }
 
 

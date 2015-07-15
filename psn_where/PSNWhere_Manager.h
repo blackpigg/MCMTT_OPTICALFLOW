@@ -24,12 +24,16 @@
 /////////////////////////////////////////////////////////////////////////
 // PATH
 /////////////////////////////////////////////////////////////////////////
+// input
 //#define DATASET_PATH ("D:\\Workspace\\Dataset\\ETRI\\P5\\")
 #define CALIBRATION_PATH ("/calibrationInfos/")
 #define DETECTION_PATH ("/detectionResult/")
 #define TRACKLET_PATH ("/trackletInput/")
-#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/150124_[C++]_PETS_Result_ICIP/")
-#define SNAPSHOT_PATH ("data/")
+// output
+#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009/")
+#define SNAPSHOT_PATH ("logs/snapshot/")
+#define EVALUATION_PATH ("logs/evaluation/")
+#define TRACK_SAVE_PATH ("logs/tracks/")
 
 /////////////////////////////////////////////////////////////////////////
 // EXPERIMENTAL PRESETS
@@ -615,6 +619,7 @@ double erf(double x);
 double erfc(double x);
 cv::Mat histogram(cv::Mat singleChannelImage, int numBin);
 bool IsLineSegmentIntersect(PSN_Line &line1, PSN_Line &line2);
+double Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoint3D);
 
 // display related
 std::vector<cv::Scalar> GenerateColors(unsigned int numColor);
@@ -625,11 +630,13 @@ void DrawBoxWithLargeID(cv::Mat &imageFrame, PSN_Rect curRect, unsigned int nID,
 void Draw3DBoxWithID(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, unsigned int nID, std::vector<cv::Scalar> &vecColors);
 void DrawTriangleWithID(cv::Mat &imageFrame, PSN_Point2D &point, unsigned int nID, std::vector<cv::Scalar> &vecColors);
 void DrawLine(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, unsigned int nID, std::vector<cv::Scalar> &vecColors, int lineThickness = 2);
+cv::Mat MakeMatTile(std::vector<cv::Mat> *imageArray, unsigned int numRows, unsigned int numCols);
 
 // database related coordinate transformation
 PSN_Point2D GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint, bool bZoom = false);
 
 // file interface related
+bool CreateDirectoryForWindows(const std::string &dirName);
 void printLog(const char *filename, std::string strLog);
 std::string MakeTrackIDList(PSN_TrackSet *tracks);
 }
@@ -648,7 +655,6 @@ public:
 	CPSNWhere_Manager(void);
 	~CPSNWhere_Manager(void);
 	
-	
 	//////////////////////////////////////////////////////////////////////////
 	// STATIC METHODS
 	//////////////////////////////////////////////////////////////////////////
@@ -657,10 +663,8 @@ public:
 	//----------------------------------------------------------------
 	// Helpers
 	//----------------------------------------------------------------
-	static cv::Mat MakeMatTile(std::vector<cv::Mat> *imageArray, unsigned int numRows, unsigned int numCols);
 	static std::vector<stDetection> ReadDetectionResultWithTxt(std::string strDatasetPath, unsigned int camIdx, unsigned int frameIdx);
 	static std::vector<stTrack2DResult> Read2DTrackResultWithTxt(std::string strDatasetPath, unsigned int frameIdx);
-	static double Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoint3D);
 };
 
 

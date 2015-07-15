@@ -279,14 +279,7 @@ TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 	this->m_fProcessingTime += (double)(timer_end - timer_start)/CLOCKS_PER_SEC;
 
 	// visualize tracking result
-	this->Visualize(pDibArray, frameIdx, result2D, result3D, 3);
-
-	// log print
-	//char strLog[128];
-	//char strLogFilePath[128];
-	//sprintf_s(strLog, "%f", this->m_fProcessingTime);
-	//sprintf_s(strLogFilePath, "logs/log.csv");
-	//psn::printLog(strLogFilePath, strLog);
+	this->Visualize(pDibArray, frameIdx, result2D, result3D, 1);
 
 	return (TrackInfoArray *)0;
 }
@@ -335,20 +328,6 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 				PSN_Rect curDetectBox = result2D[camIdx].vecDetectionRects[detectIdx];				
 				cv::Point curDetectBoxCenter = curDetectBox.center().cv();
 				cv::rectangle(m_matResultFrames[camIdx], curDetectBox.cv(), cv::Scalar(255, 255, 255), 1);
-
-				// draw matching score
-				//for (int trackIdx = 0; trackIdx < (int)result2D[camIdx].vecTrackerRects.size(); trackIdx++)	{
-				//	if (std::numeric_limits<float>::infinity() == result2D[camIdx].matMatchingCost.at<float>(detectIdx, trackIdx)) { continue; }
-				//	std::ostringstream costStringStream;
-				//	costStringStream << std::setprecision(5) << result2D[camIdx].matMatchingCost.at<float>(detectIdx, trackIdx);
-				//	std::string curCostString = costStringStream.str();
-				//	PSN_Rect curTrackBox = result2D[camIdx].vecTrackerRects[trackIdx];
-				//	cv::Point curTrackBoxCenter = curTrackBox.center().cv();
-				//	cv::Point curMidPoint = 0.5 * curDetectBoxCenter + 0.5 * curTrackBoxCenter;
-				//	cv::rectangle(m_matResultFrames[camIdx], curTrackBox.cv(), cv::Scalar(255, 255, 255), 1);
-				//	cv::line(m_matResultFrames[camIdx], curDetectBoxCenter, curTrackBoxCenter, cv::Scalar(255, 255, 255), 1);
-				//	cv::putText(m_matResultFrames[camIdx], curCostString, curMidPoint, cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 255));
-				//}
 			}
 		}
 
@@ -356,7 +335,8 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 		if (1 <= nDispMode)	{
 			for (size_t trackletIdx = 0; trackletIdx < result2D[camIdx].object2DInfos.size(); trackletIdx++) {
 				stObject2DInfo *curTracklet2D = &result2D[camIdx].object2DInfos[trackletIdx];		
-				psn::DrawBoxWithID(m_matResultFrames[camIdx], curTracklet2D->box, curTracklet2D->id, m_vecColors);				
+				psn::DrawBoxWithID(m_matResultFrames[camIdx], curTracklet2D->box, curTracklet2D->id, m_vecColors);
+				cv::rectangle(m_matResultFrames[camIdx], curTracklet2D->box.cv(), cv::Scalar(255, 255, 255), 1); // overlay the white box
 				cv::rectangle(m_matResultFrames[camIdx], curTracklet2D->head.cv(), cv::Scalar(255, 255, 255), 1);
 			}
 		}
@@ -377,7 +357,7 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 		this->m_matResultFrames[camIdx].release();
 	}
 	// tiling images
-	cv::Mat displayMat = CPSNWhere_Manager::MakeMatTile(&tileInputArray, 2, 2);		
+	cv::Mat displayMat = psn::MakeMatTile(&tileInputArray, 2, 2);		
 	// writing frame info
 	char strFrameInfo[100];
 	sprintf_s(strFrameInfo, "Frame: %04d", frameIdx);
@@ -469,7 +449,7 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 		localtime_s(&timeStruct, &curTimer);
 		char resultFileDate[256];
 		char resultOutputFileName[256];
-		sprintf_s(resultFileDate, "%stracking/result_video_%02d%02d%02d_%02d%02d%02d", 
+		sprintf_s(resultFileDate, "%sresult_video_%02d%02d%02d_%02d%02d%02d", 
 			RESULT_SAVE_PATH,
 			timeStruct.tm_year + 1900, 
 			timeStruct.tm_mon+1, 

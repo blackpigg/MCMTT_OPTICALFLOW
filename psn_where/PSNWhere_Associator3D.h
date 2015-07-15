@@ -243,11 +243,11 @@ private:
 	double fCurrentSolvingTime_;
 
 	// logging related
-	char strLogFileName_[128];
-	char strTrackLogFileName_[128];
-	char strResultLogFileName_[128];
-	char strDefferedResultFileName_[128];
-	char strInstantResultFileName_[128];
+	std::string strTime_;
+	std::string strLogFileName_;
+	std::string strTrackLogFileName_;
+	std::string strDefferedResultFileName_;
+	std::string strInstantResultFileName_;
 	
 	//----------------------------------------------------------------
 	// 2D tracklet related

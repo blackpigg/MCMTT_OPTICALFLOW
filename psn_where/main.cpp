@@ -77,6 +77,9 @@
 #include <iostream>
 #include "PSNWhere.h"
 
+// DEBUG
+#include "Evaluator.h"
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	CPSNWhere psnWhere;
@@ -102,8 +105,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	// PETS2009
 	int frameIdxStart = 0;
-	//int frameIdxEnd = 30;
 	int frameIdxEnd = 794;
+	//int frameIdxEnd = 20;
 
 	/////////////////////////////////////////////////////////////////
 	// INITIALIZATION
@@ -159,6 +162,12 @@ int _tmain(int argc, _TCHAR* argv[])
 	// TERMINATION
 	/////////////////////////////////////////////////////////////////
 	psnWhere.Finalize();
+
+/*	CEvaluator cEvaluator_;
+	cEvaluator_.Initialize(strDatasetPath);
+	cEvaluator_.LoadResultFromText(std::string("D:/Workspace/GitHub/MCMTT_OPTICALFLOW/psn_where/logs/evaluation/result_matrix_instance_K100_W010_20150715_154042.txt"));
+	cEvaluator_.Evaluate();
+	cEvaluator_.PrintResultToConsole();*/
 
 	return 0;
 }
