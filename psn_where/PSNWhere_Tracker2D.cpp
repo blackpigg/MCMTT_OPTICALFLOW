@@ -1231,7 +1231,7 @@ double CPSNWhere_Tracker2D::EstimateDetectionHeight(PSN_Point2D bottomCenter, PS
 	PSN_Point3D topPoint(0.0, 0.0, 0.0);
 	psn::Triangulation(PSN_Line(P11, P12), PSN_Line(P21, P22), topPoint);
 
-	return (topPoint - P21).norm_L2() * CAM_HEIGHT_SCALE[this->m_nCamID];
+	return (topPoint - P21).norm_L2();
 }
 
 /************************************************************************

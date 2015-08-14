@@ -18,7 +18,7 @@ NOTES:
 #define PSN_PRINT_TRACKS (0) // 0: no print / 1: print
 
 // optimization related
-#define PROC_WINDOW_SIZE (10)
+#define PROC_WINDOW_SIZE (10) // <=============== PARAMAETER
 #define GTP_THRESHOLD (0.0001)
 #define GTP_RATIO_THRESHOLD (0.3)
 #define NUM_TRACK_RATIO_IN_TREE (0.01)
@@ -27,7 +27,7 @@ NOTES:
 #define MAX_TRACK_IN_UNCONFIRMED_TREE (2)
 #define NUM_FRAME_FOR_GTP_CHECK (3)
 #define NUM_FRAME_FOR_CONFIRMATION (3)
-#define K_BEST_SIZE (100)
+#define K_BEST_SIZE (100)  
 #define DO_BRANCH_CUT (false)
 
 // reconstruction related
@@ -345,6 +345,11 @@ void CPSNWhere_Associator3D::Finalize(void)
 		queueResultTracks.push_back(*trackIter);
 	}
 
+	for (unsigned int timeIdx = (unsigned int)std::max(0, (int)nCurrentFrameIdx_ - PROC_WINDOW_SIZE + 2); timeIdx <= nCurrentFrameIdx_; timeIdx++)
+	{
+		queueDeferredTrackingResult_.push_back(queueTrackingResult_[timeIdx]);
+	}
+
 	// print results
 	this->PrintResult(strInstantResultFileName_.c_str(), &queueTrackingResult_);
 	this->PrintResult(strDefferedResultFileName_.c_str(), &queueDeferredTrackingResult_);
@@ -358,7 +363,7 @@ void CPSNWhere_Associator3D::Finalize(void)
 	sprintf_s(strParameter, "K%03d_W%03d", (int)K_BEST_SIZE, (int)PROC_WINDOW_SIZE);
 	std::string strSuffix = "_" + std::string(strParameter) + "_" + strTime_ + ".txt";
 
-	psn::CreateDirectoryForWindows(std::string(EVALUATION_PATH));
+	psn::CreateDirectoryForWindows(std::string(RESULT_SAVE_PATH));
 	printf("[EVALUATION] deferred result\n");
 	for (unsigned int timeIdx = (unsigned int)std::max(0, (int)nCurrentFrameIdx_ - PROC_WINDOW_SIZE + 2); timeIdx <= nCurrentFrameIdx_; timeIdx++)
 	{
@@ -366,17 +371,17 @@ void CPSNWhere_Associator3D::Finalize(void)
 	}
 	this->m_cEvaluator.Evaluate();
 	this->m_cEvaluator.PrintResultToConsole();
-	curFilePath = std::string(EVALUATION_PATH) + "evaluation_deferred" + strSuffix;
+	curFilePath = std::string(RESULT_SAVE_PATH) + "evaluation_deferred" + strSuffix;
 	this->m_cEvaluator.PrintResultToFile(curFilePath.c_str());
-	curFilePath = std::string(EVALUATION_PATH) + "result_matrix_deferred" + strSuffix;
+	curFilePath = std::string(RESULT_SAVE_PATH) + "result_matrix_deferred" + strSuffix;
 	this->m_cEvaluator.PrintResultMatrix(curFilePath.c_str());
 
 	printf("[EVALUATION] instance result\n");	
 	this->m_cEvaluator_Instance.Evaluate();
 	this->m_cEvaluator_Instance.PrintResultToConsole();
-	curFilePath = std::string(EVALUATION_PATH) + "evaluation_instance" + strSuffix;
+	curFilePath = std::string(RESULT_SAVE_PATH) + "evaluation_instance" + strSuffix;
 	this->m_cEvaluator_Instance.PrintResultToFile(curFilePath.c_str());
-	curFilePath = std::string(EVALUATION_PATH) + "result_matrix_instance" + strSuffix;
+	curFilePath = std::string(RESULT_SAVE_PATH) + "result_matrix_instance" + strSuffix;
 	this->m_cEvaluator_Instance.PrintResultMatrix(curFilePath.c_str());
 #endif
 
@@ -3183,7 +3188,7 @@ stTrack3DResult CPSNWhere_Associator3D::ResultWithTracks(PSN_TrackSet *trackSet,
 				{
 					PSN_Rect curRect(0.0, 0.0, 0.0, 0.0);
 					PSN_Point3D topCenterInWorld((*pointIter).smoothedPoint);
-					topCenterInWorld.z = 1700 / CAM_HEIGHT_SCALE[camIdx];
+					topCenterInWorld.z = 1700;
 					PSN_Point2D bottomCenterInImage = this->WorldToImage((*pointIter).smoothedPoint, camIdx);
 					PSN_Point2D topCenterInImage = this->WorldToImage(topCenterInWorld, camIdx);
 					

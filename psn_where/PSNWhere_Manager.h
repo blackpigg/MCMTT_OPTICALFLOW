@@ -18,8 +18,8 @@
 //#define LOAD_SNAPSHOT_
 
 //#define SAVE_SNAPSHOT_
-#define DO_RECORD
-#define SHOW_TOPVIEW
+//#define DO_RECORD
+//#define SHOW_TOPVIEW
 
 /////////////////////////////////////////////////////////////////////////
 // PATH
@@ -32,7 +32,6 @@
 // output
 #define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009/")
 #define SNAPSHOT_PATH ("logs/snapshot/")
-#define EVALUATION_PATH ("logs/evaluation/")
 #define TRACK_SAVE_PATH ("logs/tracks/")
 
 /////////////////////////////////////////////////////////////////////////
@@ -44,14 +43,13 @@
 #if 0 == PSN_INPUT_TYPE
 	// ETRI Testbed setting
 	define NUM_CAM (4)
-	const unsigned int CAM_ID[NUM_CAM] = {0, 1, 2, 3};
-	const double CAM_HEIGHT_SCALE[NUM_CAM] = {1.0, 1.0, 1.0, 1.0};
+	const unsigned int CAM_ID[NUM_CAM] = {0, 1, 2, 3};	
 #else
 	// PETS.S2.L1 setting
-	#define NUM_CAM (3)
-	const unsigned int CAM_ID[NUM_CAM] = {1, 5, 7};
-	//const double CAM_HEIGHT_SCALE[NUM_CAM] = {1.0, 0.77, 0.77};
-	const double CAM_HEIGHT_SCALE[NUM_CAM] = {1.0, 1.0, 1.0};
+	//#define NUM_CAM (3)
+	//const unsigned int CAM_ID[NUM_CAM] = {1, 5, 7};
+	#define NUM_CAM (1)
+	const unsigned int CAM_ID[NUM_CAM] = {1};
 #endif
 
 #define NUM_DETECTION_PART (8)
