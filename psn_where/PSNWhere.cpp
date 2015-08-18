@@ -21,7 +21,6 @@ CPSNWhere::~CPSNWhere(void)
 {
 }
 
-
 /*******************************************************************
  Name: Initialize
  Input:
@@ -180,7 +179,6 @@ bool CPSNWhere::Initialize(std::string datasetPath)
 	return true;
 }
 
-
 /*******************************************************************
  Name: Finalize
  Input:
@@ -239,7 +237,6 @@ void CPSNWhere::Finalize()
 	this->m_bInit = false;
 }
 
-
 /*******************************************************************
  Name: TrackPeople
  Input:
@@ -265,7 +262,7 @@ TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 	for(int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{			
 		// TODO: receive detection result(밑의 예시는 file로 읽어오는 것)	
-		detectionResult = CPSNWhere_Manager::ReadDetectionResultWithTxt(this->m_strDatasetPath, CAM_ID[camIdx], frameIdx);
+		detectionResult = psn::ReadDetectionResultWithTxt(this->m_strDatasetPath, CAM_ID[camIdx], frameIdx);
 		
 		// 2D tracklet
 		result2D.push_back(this->m_cTracker2D[camIdx]->Run(detectionResult, &pDibArray[camIdx], frameIdx));
@@ -283,7 +280,6 @@ TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 
 	return (TrackInfoArray *)0;
 }
-
 
 /*******************************************************************
  Name: Visualize
@@ -335,7 +331,7 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 		if (1 <= nDispMode)	{
 			for (size_t trackletIdx = 0; trackletIdx < result2D[camIdx].object2DInfos.size(); trackletIdx++) {
 				stObject2DInfo *curTracklet2D = &result2D[camIdx].object2DInfos[trackletIdx];		
-				psn::DrawBoxWithID(m_matResultFrames[camIdx], curTracklet2D->box, curTracklet2D->id, m_vecColors);
+				psn::DrawBoxWithID(m_matResultFrames[camIdx], curTracklet2D->box, curTracklet2D->id, 1, 0, &m_vecColors);
 				cv::rectangle(m_matResultFrames[camIdx], curTracklet2D->box.cv(), cv::Scalar(255, 255, 255), 1); // overlay the white box
 				cv::rectangle(m_matResultFrames[camIdx], curTracklet2D->head.cv(), cv::Scalar(255, 255, 255), 1);
 			}
@@ -345,11 +341,11 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 		for (size_t trajectoryIdx = 0; trajectoryIdx < result3D.object3DInfo.size(); trajectoryIdx++) {
 			stObject3DInfo *curTrajectory = &result3D.object3DInfo[trajectoryIdx];
 			if (curTrajectory->bVisibleInViews[camIdx]) {
-				psn::DrawBoxWithLargeID(m_matResultFrames[camIdx], curTrajectory->rectInViews[camIdx], curTrajectory->id, this->m_vecColors);
+				psn::DrawBoxWithID(m_matResultFrames[camIdx], curTrajectory->rectInViews[camIdx], curTrajectory->id, 1, 1, &this->m_vecColors);
 			} else {
-				psn::DrawBoxWithLargeID(m_matResultFrames[camIdx], curTrajectory->rectInViews[camIdx], curTrajectory->id, this->m_vecColors, true);
+				psn::DrawBoxWithID(m_matResultFrames[camIdx], curTrajectory->rectInViews[camIdx], curTrajectory->id, 0, 1, &this->m_vecColors);
 			}
-			psn::DrawLine(m_matResultFrames[camIdx], curTrajectory->recentPoint2Ds[camIdx], curTrajectory->id, this->m_vecColors);
+			psn::DrawLine(m_matResultFrames[camIdx], curTrajectory->recentPoint2Ds[camIdx], curTrajectory->id, 1, &this->m_vecColors);
 		}
 
 		// image tiling
@@ -479,7 +475,6 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 	tileInputArray.clear();
 }
 
-
 /************************************************************************
  Method Name: ReadProjectionSensitivity
  Description: 
@@ -527,7 +522,6 @@ bool CPSNWhere::ReadProjectionSensitivity(cv::Mat &matSensitivity, unsigned int 
 	}
 	return false;
 }
-
 
 /************************************************************************
  Method Name: ReadDistanceFromBoundary

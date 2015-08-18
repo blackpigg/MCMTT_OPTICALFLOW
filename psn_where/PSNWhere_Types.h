@@ -11,73 +11,7 @@
 #include "opencv2\imgproc\imgproc.hpp"
 #include "calibration\cameraModel.h"
 #include "PSNWhere_SGSmooth.h"
-
-#define PSN_DEBUG_MODE_
-#define PSN_MONITOR_MODE_
-#define PSN_PRINT_LOG_
-//#define LOAD_SNAPSHOT_
-
-//#define SAVE_SNAPSHOT_
-//#define DO_RECORD
-//#define SHOW_TOPVIEW
-
-/////////////////////////////////////////////////////////////////////////
-// PATH
-/////////////////////////////////////////////////////////////////////////
-// input
-//#define DATASET_PATH ("D:\\Workspace\\Dataset\\ETRI\\P5\\")
-#define CALIBRATION_PATH ("/calibrationInfos/")
-#define DETECTION_PATH ("/detectionResult/")
-#define TRACKLET_PATH ("/trackletInput/")
-// output
-#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009/")
-#define SNAPSHOT_PATH ("logs/snapshot/")
-#define TRACK_SAVE_PATH ("logs/tracks/")
-
-/////////////////////////////////////////////////////////////////////////
-// EXPERIMENTAL PRESETS
-/////////////////////////////////////////////////////////////////////////
-#define PSN_INPUT_TYPE (1)	// 0:ETRI / 1:PETS2009
-#define PSN_DETECTION_TYPE (1)	// 0:Head / 1:Full-body
-
-#if 0 == PSN_INPUT_TYPE
-	// ETRI Testbed setting
-	define NUM_CAM (4)
-	const unsigned int CAM_ID[NUM_CAM] = {0, 1, 2, 3};	
-#else
-	// PETS.S2.L1 setting
-	//#define NUM_CAM (3)
-	//const unsigned int CAM_ID[NUM_CAM] = {1, 5, 7};
-	#define NUM_CAM (1)
-	const unsigned int CAM_ID[NUM_CAM] = {1};
-#endif
-
-#define NUM_DETECTION_PART (8)
-const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", "GR", "S2", "A1", "A2", "F2"};
-
-/////////////////////////////////////////////////////////////////////////
-// PREDEFINED VALUES
-/////////////////////////////////////////////////////////////////////////
-#define PSN_P_INF_SI (INT_MAX)
-#define PSN_N_INF_SI (INT_MIN)
-#define PSN_P_INF_F (FLT_MAX)
-#define PSN_N_INF_F (FLT_MIN)
-#define PSN_PI (3.1415926535897);
-
-/////////////////////////////////////////////////////////////////////////
-// VISUALIZATION SETTTING
-/////////////////////////////////////////////////////////////////////////
-#define DISP_TRAJECTORY3D_LENGTH (40)
-#define DISPLAY_ID_MODE (1) // 0: raw track id, 1: id for visualization
-
-/////////////////////////////////////////////////////////////////////////
-// EVALUATION SETTING
-/////////////////////////////////////////////////////////////////////////
-#define CROP_ZONE_X_MIN (-14069.6)
-#define CROP_ZONE_X_MAX (4981.3)
-#define CROP_ZONE_Y_MIN (-14274.0)
-#define CROP_ZONE_Y_MAX (1733.5)
-#define CROP_ZONE_MARGIN (1000.0)
+#include "PSNWhere_Defines.h"
 
 /////////////////////////////////////////////////////////////////////////
 // TYPEDEFS
@@ -85,7 +19,6 @@ const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", 
 class PSN_Point2D
 {
 public:
-
 	// data
 	double x;
 	double y;
@@ -425,9 +358,8 @@ public:
 	Track3D();
 	~Track3D();
 
-	void Initialize(unsigned int id, Track3D *parentTrack, unsigned int timeGeneration, CTrackletCombination &trackletCombination);
+	void Initialize(CTrackletCombination &trackletCombination, unsigned int id, unsigned int timeGeneration, Track3D *parentTrack = NULL);
 	void RemoveFromTree();
-	static std::deque<Track3D*> GatherValidChildrenTracks(Track3D* validParentTrack, std::deque<Track3D*> &targetChildrenTracks);
 	//void SetKalmanFilter(PSN_Point3D &initialPoint);
 
 	unsigned int id;
@@ -517,7 +449,7 @@ public:
 	TrackTree();
 	~TrackTree();
 
-	void Initialize(unsigned int id, Track3D *seedTrack, unsigned int timeGeneration, std::list<TrackTree> &treeList);
+	void Initialize(Track3D *seedTrack, unsigned int id, unsigned int timeGeneration, std::list<TrackTree> &treeList);
 	void ResetGlobalTrackProbInTree();
 
 	Track3D* FindPruningPoint(unsigned int timeWindowStart, Track3D *rootOfBranch = NULL);
@@ -540,129 +472,6 @@ struct stTreeCluster
 	unsigned int id;
 	size_t numTrees;
 	std::deque<TrackTree*> trees;
-};
-
-
-/////////////////////////////////////////////////////////////////////////
-// OPERATOR
-/////////////////////////////////////////////////////////////////////////
-namespace psn
-{
-// matrix operation
-template<typename _Tp> _Tp MatTotalSum(cv::Mat &inputMat)
-{
-	_Tp resultSum = 0;
-	for(int rowIdx = 0; rowIdx < inputMat.rows; rowIdx++)
-	{
-		for(int colIdx = 0; colIdx < inputMat.cols; colIdx++)
-		{
-			resultSum += inputMat.at<_Tp>(rowIdx, colIdx);
-		}
-	}
-	return resultSum;
-}
-
-template<typename _Tp> bool MatLowerThan(cv::Mat &inputMat, _Tp compValue)
-{
-	//_Tp maxValue = std::max_element(inputMat.begin(), inputMat.end());
-	//for(int rowIdx = 0; rowIdx < inputMat.rows; rowIdx++)
-	//{
-	//	for(int colIdx = 0; colIdx < inputMat.cols; colIdx++)
-	//	{
-	//		if(inputMat.at<_Tp>(rowIdx, colIdx) >= compValue)
-	//		{
-	//			return false;
-	//		}
-	//	}
-	//}
-	return (std::max_element(inputMat.begin(), inputMat.end()) < compValue) ? true : false;
-}
-
-template<typename _Tp> bool MatContainLowerThan(cv::Mat &inputMat, _Tp compValue)
-{
-	for(int rowIdx = 0; rowIdx < inputMat.rows; rowIdx++)
-	{
-		for(int colIdx = 0; colIdx < inputMat.cols; colIdx++)
-		{
-			if(inputMat.at<_Tp>(rowIdx, colIdx) < compValue)
-			{
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
-template<typename _Tp> std::vector<_Tp> mat2vec_C1(cv::Mat &inputMat)
-{
-	std::vector<_Tp> vecResult;
-
-	for(int rowIdx = 0; rowIdx < inputMat.rows; rowIdx++)
-	{
-		for(int colIdx = 0; colIdx < inputMat.cols; colIdx++)
-		{
-			vecResult.push_back(inputMat.at<_Tp>(rowIdx, colIdx));
-		}
-	}
-	
-	return vecResult;
-}
-
-void appendRow(cv::Mat &dstMat, cv::Mat &row);
-void appendCol(cv::Mat &dstMat, cv::Mat &col);
-
-// math things
-void nchoosek(int n, int k, std::deque<std::vector<unsigned int>> &outputCombinations);
-double erf(double x);
-double erfc(double x);
-cv::Mat histogram(cv::Mat singleChannelImage, int numBin);
-bool IsLineSegmentIntersect(PSN_Line &line1, PSN_Line &line2);
-double Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoint3D);
-
-// display related
-std::vector<cv::Scalar> GenerateColors(unsigned int numColor);
-cv::Scalar hsv2rgb(double h, double s, double v);
-cv::Scalar getColorByID(std::vector<cv::Scalar> &vecColors, unsigned int nID);
-void DrawBoxWithID(cv::Mat &imageFrame, PSN_Rect curRect, unsigned int nID, std::vector<cv::Scalar> &vecColors);
-void DrawBoxWithLargeID(cv::Mat &imageFrame, PSN_Rect curRect, unsigned int nID, std::vector<cv::Scalar> &vecColors, bool bDashed = false);
-void Draw3DBoxWithID(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, unsigned int nID, std::vector<cv::Scalar> &vecColors);
-void DrawTriangleWithID(cv::Mat &imageFrame, PSN_Point2D &point, unsigned int nID, std::vector<cv::Scalar> &vecColors);
-void DrawLine(cv::Mat &imageFrame, std::vector<PSN_Point2D> &pointArray, unsigned int nID, std::vector<cv::Scalar> &vecColors, int lineThickness = 2);
-cv::Mat MakeMatTile(std::vector<cv::Mat> *imageArray, unsigned int numRows, unsigned int numCols);
-
-// database related coordinate transformation
-PSN_Point2D GetLocationOnTopView_PETS2009(PSN_Point3D &curPoint, bool bZoom = false);
-
-// file interface related
-bool CreateDirectoryForWindows(const std::string &dirName);
-void printLog(const char *filename, std::string strLog);
-std::string MakeTrackIDList(PSN_TrackSet *tracks);
-}
-
-class CPSNWhere_Manager
-{
-	//////////////////////////////////////////////////////////////////////////
-	// INSTANCE VARIABLES
-	//////////////////////////////////////////////////////////////////////////
-private:
-
-	//////////////////////////////////////////////////////////////////////////
-	// INSTANCE METHODS
-	//////////////////////////////////////////////////////////////////////////
-public:
-	CPSNWhere_Manager(void);
-	~CPSNWhere_Manager(void);
-	
-	//////////////////////////////////////////////////////////////////////////
-	// STATIC METHODS
-	//////////////////////////////////////////////////////////////////////////
-public:
-
-	//----------------------------------------------------------------
-	// Helpers
-	//----------------------------------------------------------------
-	static std::vector<stDetection> ReadDetectionResultWithTxt(std::string strDatasetPath, unsigned int camIdx, unsigned int frameIdx);
-	static std::vector<stTrack2DResult> Read2DTrackResultWithTxt(std::string strDatasetPath, unsigned int frameIdx);
 };
 
 

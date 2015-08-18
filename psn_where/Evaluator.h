@@ -1,4 +1,4 @@
-#include "PSNWhere_Manager.h"
+#include "PSNWhere_Types.h"
 #pragma once
 
 typedef std::pair<unsigned int, PSN_Point3D> pointInfo;

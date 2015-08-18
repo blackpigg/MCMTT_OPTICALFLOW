@@ -19,15 +19,10 @@ NOTES:
 
 // optimization related
 #define PROC_WINDOW_SIZE (10) // <=============== PARAMAETER
-#define GTP_THRESHOLD (0.0001)
-#define GTP_RATIO_THRESHOLD (0.3)
-#define NUM_TRACK_RATIO_IN_TREE (0.01)
-#define MIN_TRACK_IN_TREE (10)
+#define K_BEST_SIZE (100)
 #define MAX_TRACK_IN_OPTIMIZATION (2000)
 #define MAX_TRACK_IN_UNCONFIRMED_TREE (2)
-#define NUM_FRAME_FOR_GTP_CHECK (3)
 #define NUM_FRAME_FOR_CONFIRMATION (3)
-#define K_BEST_SIZE (100)  
 #define DO_BRANCH_CUT (false)
 
 // reconstruction related
@@ -547,12 +542,7 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 #ifdef PSN_PRINT_LOG_
 	// PRINT LOG
 	std::string strLog = "";
-	strLog += std::to_string(nCurrentFrameIdx_) + ",";
-	strLog += std::to_string(nCountTrackInOptimization_) + ",";
-	strLog += std::to_string(nCountUCTrackInOptimization_) + ",";
-	strLog += std::to_string(fCurrentProcessingTime_) + ",";
-	strLog += std::to_string(fCurrentSolvingTime_) + ",";
-	strLog += "\n";
+	strLog += std::to_string(fCurrentProcessingTime_) + "\n";
 	psn::printLog(strLogFileName_.c_str(), strLog);
 	fCurrentSolvingTime_ = 0.0;
 #endif
@@ -1353,9 +1343,6 @@ void CPSNWhere_Associator3D::GenerateTrackletCombinations(std::vector<bool> *vec
 {
 	if (camIdx >= NUM_CAM)
 	{
-#ifdef PSN_DEBUG_MODE
-		//combination.print();
-#endif
 		combinationQueue.push_back(combination);
 		return;
 	}
@@ -1845,7 +1832,7 @@ void CPSNWhere_Associator3D::Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeed
 	{
 		// generate track
 		Track3D newTrack;
-		newTrack.Initialize(nNewTrackID_, NULL, nCurrentFrameIdx_, queueSeeds[seedIdx]);
+		newTrack.Initialize(queueSeeds[seedIdx], nNewTrackID_, nCurrentFrameIdx_, NULL);
 
 		// tracklet information
 		newTrack.costRGB = 0.0;
@@ -1890,7 +1877,7 @@ void CPSNWhere_Associator3D::Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeed
 
 		// generate a new track tree
 		TrackTree newTree;
-		newTree.Initialize(nNewTreeID_++, curTrack, nCurrentFrameIdx_, listTrackTree_);		
+		newTree.Initialize(curTrack, nNewTreeID_++, nCurrentFrameIdx_, listTrackTree_);		
 		queuePtActiveTrees_.push_back(curTrack->tree);
 		queuePtUnconfirmedTrees_.push_back(curTrack->tree);
 

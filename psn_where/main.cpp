@@ -77,97 +77,69 @@
 #include <iostream>
 #include "PSNWhere.h"
 
-// DEBUG
-#include "Evaluator.h"
-
 int _tmain(int argc, _TCHAR* argv[])
 {
-	CPSNWhere psnWhere;
-	cv::Mat inputFrame[NUM_CAM];
-	char inputFilePath[300];
-
 	// argument handling
 #ifdef _UNICODE
 	std::wstring wstrDatasetPath(argv[1]);
-
 	std::string strDatasetPath(wstrDatasetPath.begin(), wstrDatasetPath.end());
 #else
 	std::string strDatasetPath = argv[1];
 #endif
-
-	// input frame range
-	//int frameIdxStart = 0;
-	//int frameIdxEnd = 300;
-	
-	// P6S1
-	//int frameIdxStart = 100;
-	//int frameIdxEnd = 430;
-
-	// PETS2009
-	int frameIdxStart = 0;
-	int frameIdxEnd = 794;
-	//int frameIdxEnd = 20;
-
-	/////////////////////////////////////////////////////////////////
-	// INITIALIZATION
-	/////////////////////////////////////////////////////////////////
-	psnWhere = CPSNWhere();
-	psnWhere.Initialize(strDatasetPath);
-	
-	/////////////////////////////////////////////////////////////////
-	// MAIN LOOP
-	/////////////////////////////////////////////////////////////////
-	for(int frameIdx = frameIdxStart; frameIdx <= frameIdxEnd; frameIdx++)
+	char inputFilePath[300];
+	for (int expIdx = 0; expIdx < NUM_EXPERIMENTS; expIdx++)
 	{
-		//---------------------------------------------------
-		// FRAME GRABBING
-		//---------------------------------------------------		
-		for(int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-		{			
-			unsigned int curCamID = CAM_ID[camIdx];
-			if (PSN_INPUT_TYPE)
-			{
-				sprintf_s(inputFilePath, sizeof(inputFilePath), "%s\\View_%03d\\frame_%04d.jpg", strDatasetPath.c_str(), curCamID, frameIdx);						
-			}
-			else
-			{
-				sprintf_s(inputFilePath, sizeof(inputFilePath), "%s\\%d_%d.jpg", strDatasetPath.c_str(), curCamID, frameIdx);						
-			}
-			inputFrame[camIdx] = cv::imread(inputFilePath, cv::IMREAD_COLOR);
-			
-			if(!inputFrame[camIdx].data)
-			{
-				std::cout << "Can't open the input frame" << std::endl;
-				inputFrame[camIdx].release();
-				return -1;
-			}
-		}
-		
-		//---------------------------------------------------
-		// TRACKING
-		//---------------------------------------------------
-		psnWhere.TrackPeople(inputFrame, frameIdx);
+		/////////////////////////////////////////////////////////////////
+		// INITIALIZATION
+		/////////////////////////////////////////////////////////////////	
+		CPSNWhere psnWhere = CPSNWhere();
+		psnWhere.Initialize(strDatasetPath);
+		cv::Mat inputFrame[NUM_CAM];
 
-		//---------------------------------------------------
-		// MEMORY CLEARING
-		//---------------------------------------------------
-		for(int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+		// PETS2009 S2L1
+		int frameIdxStart = 0;
+		int frameIdxEnd = 794;	
+	
+		/////////////////////////////////////////////////////////////////
+		// MAIN LOOP
+		/////////////////////////////////////////////////////////////////
+		for (int frameIdx = frameIdxStart; frameIdx <= frameIdxEnd; frameIdx++) 
 		{
-			inputFrame[camIdx].release();
+			//---------------------------------------------------
+			// FRAME GRABBING
+			//---------------------------------------------------		
+			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) 
+			{
+				unsigned int curCamID = CAM_ID[camIdx];				
+				if (PSN_INPUT_TYPE)
+					sprintf_s(inputFilePath, sizeof(inputFilePath), "%s\\View_%03d\\frame_%04d.jpg", strDatasetPath.c_str(), curCamID, frameIdx);						
+				else 
+					sprintf_s(inputFilePath, sizeof(inputFilePath), "%s\\%d_%d.jpg", strDatasetPath.c_str(), curCamID, frameIdx);
+				inputFrame[camIdx] = cv::imread(inputFilePath, cv::IMREAD_COLOR);
+				if (!inputFrame[camIdx].data) 
+				{
+					std::cout << "Can't open the input frame" << std::endl;
+					inputFrame[camIdx].release();
+					return -1;
+				}
+			}
+		
+			//---------------------------------------------------
+			// TRACKING
+			//---------------------------------------------------
+			psnWhere.TrackPeople(inputFrame, frameIdx);
+
+			//---------------------------------------------------
+			// MEMORY CLEARING
+			//---------------------------------------------------
+			for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) { inputFrame[camIdx].release(); }
 		}
+	
+		/////////////////////////////////////////////////////////////////
+		// TERMINATION
+		/////////////////////////////////////////////////////////////////
+		psnWhere.Finalize();
 	}
-
-
-	/////////////////////////////////////////////////////////////////
-	// TERMINATION
-	/////////////////////////////////////////////////////////////////
-	psnWhere.Finalize();
-
-/*	CEvaluator cEvaluator_;
-	cEvaluator_.Initialize(strDatasetPath);
-	cEvaluator_.LoadResultFromText(std::string("D:/Workspace/GitHub/MCMTT_OPTICALFLOW/psn_where/logs/evaluation/result_matrix_instance_K100_W010_20150715_154042.txt"));
-	cEvaluator_.Evaluate();
-	cEvaluator_.PrintResultToConsole();*/
 
 	return 0;
 }

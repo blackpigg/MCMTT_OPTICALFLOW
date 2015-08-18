@@ -81,7 +81,7 @@
 #pragma once
 
 #include "stdafx.h"
-#include "PSNWhere_Manager.h"
+#include "PSNWhere_Utils.h"
 #include "opencv2/features2d/features2d.hpp"
 #include <deque>
 #include <list>

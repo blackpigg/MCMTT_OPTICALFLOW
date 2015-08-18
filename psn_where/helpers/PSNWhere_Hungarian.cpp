@@ -265,7 +265,7 @@ stMatchInfo* CPSNWhere_Hungarian::Match()
 		{
 			if(_finitef(m_matPCond[rowIdx][colIdx]))
 			{
-				matEdge[rowIdx][colIdx] = 0.0f; 
+				matEdge[rowIdx][colIdx] = 0.0f;
 				if(m_matPCond[rowIdx][colIdx] > fPMaxVal)
 				{
 					fPMaxVal = m_matPCond[rowIdx][colIdx];
