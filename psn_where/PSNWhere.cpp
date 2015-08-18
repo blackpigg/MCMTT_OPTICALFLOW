@@ -190,14 +190,11 @@ bool CPSNWhere::Initialize(std::string datasetPath)
 *******************************************************************/
 void CPSNWhere::Finalize()
 {
-	if(!this->m_bInit)
-	{
-		return;
-	}
+	if (!this->m_bInit) { return; }
 
-	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+	for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{
-		if(NULL != this->m_cTracker2D[camIdx])
+		if (NULL != this->m_cTracker2D[camIdx])
 		{ 
 			this->m_cTracker2D[camIdx]->Finalize();
 			delete m_cTracker2D[camIdx];
@@ -208,7 +205,7 @@ void CPSNWhere::Finalize()
 		this->m_stCalibrationInfos[camIdx].matDistanceFromBoundary.release();
 	}
 
-	if(NULL != this->m_cAssociator3D)
+	if (NULL != this->m_cAssociator3D)
 	{ 
 		this->m_cAssociator3D->Finalize();
 		delete this->m_cAssociator3D; 

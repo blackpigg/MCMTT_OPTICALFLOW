@@ -89,6 +89,11 @@ int _tmain(int argc, _TCHAR* argv[])
 	char inputFilePath[300];
 	for (int expIdx = 0; expIdx < NUM_EXPERIMENTS; expIdx++)
 	{
+		// show experiment label
+		cv::Mat expLabel = cv::Mat::zeros(40, 60, CV_8UC1);
+		cv::putText(expLabel, std::to_string(expIdx), cv::Point(0, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 255));
+		cv::imshow("experiment label", expLabel);
+
 		/////////////////////////////////////////////////////////////////
 		// INITIALIZATION
 		/////////////////////////////////////////////////////////////////	
