@@ -1129,6 +1129,7 @@ void CEvaluator::PrintResultToFile(const char *strFilepathAndName)
 			this->m_stResult.fMOTA * 100, 
 			this->m_stResult.fMOTP * 100, 
 			this->m_stResult.fMOTAL * 100);
+		fclose(fp);
 	}
 	catch (DWORD dwError)
 	{

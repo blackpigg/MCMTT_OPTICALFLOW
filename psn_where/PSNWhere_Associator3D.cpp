@@ -19,7 +19,7 @@ NOTES:
 
 // optimization related
 #define PROC_WINDOW_SIZE (10) // <=============== PARAMAETER
-#define K_BEST_SIZE (100)
+#define K_BEST_SIZE (50)
 #define MAX_TRACK_IN_OPTIMIZATION (2000)
 #define MAX_TRACK_IN_UNCONFIRMED_TREE (2)
 #define NUM_FRAME_FOR_CONFIRMATION (3)
@@ -2966,11 +2966,51 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 	if (NULL == ptQueueHypothesis) { return; }
 	if (0 >= (*ptQueueHypothesis).size()) { return; }
 
-	// DEBUG
-	//PrintHypotheses(*ptQueueHypothesis, "data/hypotheses.txt", nCurrentFrameIdx);
-
-	// track tree branch pruning
 	int nTimeBranchPruning = (int)nCurrentFrameIdx - (int)N;
+	if (nTimeBranchPruning < 0) { return; }
+
+	// N-scan back prunin for ordinary trees
+	for (std::deque<TrackTree*>::iterator treeIter = queuePtActiveTrees_.begin();
+		treeIter != queuePtActiveTrees_.end();
+		treeIter++)
+	{
+		// skip unconfirmed track tree
+		if ((*treeIter)->timeGeneration + NUM_FRAME_FOR_CONFIRMATION > nCurrentFrameIdx){ continue; }
+
+		// find max GTP track
+		Track3D *maxGTPTrack = NULL;
+		double maxGTP = 0.0;
+		for (PSN_TrackSet::iterator trackIter = (*treeIter)->tracks.begin();
+			trackIter != (*treeIter)->tracks.end();
+			trackIter++)
+		{
+			if ((*trackIter)->GTProb > maxGTP)
+			{
+				maxGTPTrack = *trackIter;
+				maxGTP = (*trackIter)->GTProb;
+			}
+			if ((int)(*trackIter)->timeGeneration < nTimeBranchPruning) { continue; }
+			(*trackIter)->bValid = false;
+		}
+		if (NULL == maxGTP)
+		{
+			// prune the entire track tree when there is no track has GTP larget than zero
+			TrackTree::SetValidityFlagInTrackBranch((*treeIter)->tracks[0], false);
+			continue; 
+		}
+
+		// find brach seed
+		Track3D *branchSeed = maxGTPTrack;
+		while (true)
+		{
+			if ((int)maxGTPTrack->timeGeneration <= nTimeBranchPruning || NULL == branchSeed->parentTrack) { break; }
+			if ((int)branchSeed->parentTrack->timeGeneration < nTimeBranchPruning) { break; }
+			branchSeed = branchSeed->parentTrack;
+		}
+		TrackTree::SetValidityFlagInTrackBranch(branchSeed, true);
+	}
+	
+	// set tracks in the best solution
 	PSN_TrackSet *tracksInBestSolution = &(*ptQueueHypothesis).front().selectedTracks;
 	Track3D *brachSeedTrack = NULL;
 	for (int trackIdx = 0; trackIdx < tracksInBestSolution->size(); trackIdx++)
