@@ -31,7 +31,7 @@ CPSNWhere::~CPSNWhere(void)
 	- 변수 초기화
 	- 기하 정보 입력
 *******************************************************************/
-bool CPSNWhere::Initialize(std::string datasetPath)
+bool CPSNWhere::Initialize(std::string datasetPath, stConfiguration_Associator3D *stConfig3D)
 {
 	if(this->m_bInit)
 	{
@@ -155,7 +155,7 @@ bool CPSNWhere::Initialize(std::string datasetPath)
 	{ 
 		this->m_cAssociator3D = new CPSNWhere_Associator3D; 
 	}
-	this->m_cAssociator3D->Initialize(datasetPath, vecCalibInfos);
+	this->m_cAssociator3D->Initialize(datasetPath, vecCalibInfos, stConfig3D);
 
 
 	///////////////////////////////////////////////////////////

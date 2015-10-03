@@ -437,6 +437,7 @@ public:
 	unsigned int id;
 	unsigned int timeGeneration;
 	bool bValid;
+	bool bConfirmed;	// for confirmation
 	std::deque<Track3D*> tracks; // seed at the first
 
 	//unsigned int numMeasurements;
@@ -473,5 +474,17 @@ struct stTreeCluster
 	size_t numTrees;
 	std::deque<TrackTree*> trees;
 };
+
+struct stConfiguration_Associator3D
+{
+	// all minus values mean that the variable uses default value.
+	// optimization related
+	int nProcWindowSize;
+	int nKBestSize;
+	int nMaxTrackInOptimization;
+	int nMaxTrackInUnconfirmedTrackTree;
+	int nNumFrameForConfirmation;
+};
+
 
 

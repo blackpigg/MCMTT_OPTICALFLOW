@@ -127,7 +127,7 @@ class CPSNWhere_Associator3D
 public:
 	CPSNWhere_Associator3D(void);
 	~CPSNWhere_Associator3D(void);
-	void Initialize(std::string datasetPath, std::vector<stCalibrationInfo*> &vecStCalibInfo);
+	void Initialize(std::string datasetPath, std::vector<stCalibrationInfo*> &vecStCalibInfo, stConfiguration_Associator3D *stConfig3D = NULL);
 	void Finalize(void);
 	stTrack3DResult Run(std::vector<stTrack2DResult> &curTrack2DResult, cv::Mat *curFrame, int frameIdx);
 
@@ -223,6 +223,7 @@ private:
 	//////////////////////////////////////////////////////////////////////////
 	// VARIABLES
 	//////////////////////////////////////////////////////////////////////////
+	stConfiguration_Associator3D stConfiguration_;
 	bool bInit_;
 	bool bSnapshotReaded_;
 	Etiseo::CameraModel cCamModel_[NUM_CAM];

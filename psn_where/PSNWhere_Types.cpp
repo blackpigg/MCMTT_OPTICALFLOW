@@ -429,9 +429,9 @@ void Track3D::Initialize(CTrackletCombination &trackletCombination, unsigned int
 	this->timeGeneration = timeGeneration;
 	if (NULL == parentTrack)
 	{
-		this->timeStart = timeGeneration;		
+		this->timeStart = timeGeneration;
 		return;
-	}
+	}	
 	this->duration = this->timeEnd - this->timeStart + 1;
 	this->tree = parentTrack->tree;
 	this->parentTrack = parentTrack;
@@ -516,8 +516,9 @@ void Track3D::RemoveFromTree()
 /////////////////////////////////////////////////////////////////////////
 TrackTree::TrackTree()
 	: id(0)
-	, timeGeneration(0)
+	, timeGeneration(0)	
 	, bValid(true)
+	, bConfirmed(false)
 //	, numMeasurements(0)
 //	, maxGTProb(0.0)
 {

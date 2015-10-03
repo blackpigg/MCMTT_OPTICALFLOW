@@ -41,7 +41,7 @@ public:
 	~CPSNWhere(void);
 
 	// init & destroy
-	bool Initialize(std::string datasetPath);
+	bool Initialize(std::string datasetPath, stConfiguration_Associator3D *stConfig3D = NULL);
 	void Finalize();
 
 	// tracking
