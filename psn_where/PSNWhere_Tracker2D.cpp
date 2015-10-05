@@ -386,6 +386,8 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 #endif
 	this->m_matDebugDisplay.release();
 #endif
+	// save tracklet result
+	this->FilePrintResult(&this->m_stTrack2DResult);
 
 	return this->m_stTrack2DResult;
 }
@@ -1271,6 +1273,90 @@ void CPSNWhere_Tracker2D::ResultWithTracker(stTracker2D *curTracker, stObject2DI
 	}	
 }
 
+/************************************************************************
+ Method Name: FilePrintResult
+ Description: 
+	- Save current result to the file
+ Input Arguments:
+	- none	
+ Return Values:
+	- none
+************************************************************************/
+void CPSNWhere_Tracker2D::FilePrintResult(stTrack2DResult *curResult)
+{
+	psn::CreateDirectoryForWindows(std::string(RESULT_SAVE_PATH) + "tracklets");
+
+	char strFilePathAndName[128];
+	FILE *fp;
+	try
+	{		
+		sprintf_s(strFilePathAndName, "%stracklets/track2D_result_cam%d_frame%04d.txt", RESULT_SAVE_PATH, (int)curResult->camID, (int)curResult->frameIdx);
+		fopen_s(&fp, strFilePathAndName, "w");
+
+		// frame infos
+		fprintf_s(fp, "camIdx:%d\nframeIdx:%d\n", (int)curResult->camID, (int)curResult->frameIdx);
+
+		// object infos
+		fprintf_s(fp, "numObjectInfos:%d{\n", (int)curResult->object2DInfos.size());
+		for (size_t objIdx = 0; objIdx < curResult->object2DInfos.size(); objIdx++)
+		{
+			stObject2DInfo *curObject = &curResult->object2DInfos[objIdx];			
+			fprintf_s(fp, "\t{\n");
+			////////////////
+			fprintf_s(fp, "\t\tid:%d\n", curObject->id);
+			fprintf_s(fp, "\t\tbox:(%f,%f,%f,%f)\n", curObject->box.x, curObject->box.y, curObject->box.w, curObject->box.h);
+			fprintf_s(fp, "\t\thead:(%f,%f,%f,%f)\n", curObject->head.x, curObject->head.y, curObject->head.w, curObject->head.h);
+			fprintf_s(fp, "\t\tscore:%f\n", curObject->score);
+
+			fprintf_s(fp, "\t\tfeaturePointsPrev:%d,{", (int)curObject->featurePointsPrev.size());
+			for (size_t fIdx = 0; fIdx < curObject->featurePointsPrev.size(); fIdx++)
+			{
+				cv::Point2f *curPoint = &curObject->featurePointsPrev[fIdx];
+				fprintf_s(fp, "(%f,%f)", curPoint->x, curPoint->y);
+				if (curObject->featurePointsPrev.size() > fIdx + 1) { fprintf_s(fp, ","); }
+			}
+			fprintf_s(fp, "}\n");
+			fprintf_s(fp, "\t\tfeaturePointsCurr:%d,{", (int)curObject->featurePointsCurr.size());
+			for (size_t fIdx = 0; fIdx < curObject->featurePointsCurr.size(); fIdx++)
+			{
+				cv::Point2f *curPoint = &curObject->featurePointsCurr[fIdx];
+				fprintf_s(fp, "(%f,%f)", curPoint->x, curPoint->y);
+				if (curObject->featurePointsCurr.size() > fIdx + 1) { fprintf_s(fp, ","); }
+			}
+			fprintf_s(fp, "}\n");
+			////////////////
+			fprintf_s(fp, "\t}\n");
+		}
+		fprintf_s(fp, "}\n");
+
+		// detection rects	
+		fprintf_s(fp, "detectionRects:%d,{", (int)curResult->vecDetectionRects.size());
+		for(size_t rectIdx = 0; rectIdx < curResult->vecDetectionRects.size(); rectIdx++)
+		{
+			PSN_Rect *curBox = &curResult->vecDetectionRects[rectIdx];
+			fprintf_s(fp, "(%f,%f,%f,%f)", curBox->x, curBox->y, curBox->w, curBox->h);
+			if (curResult->vecDetectionRects.size() > rectIdx + 1) { fprintf_s(fp, ","); }
+		}
+		fprintf_s(fp, "}\n");
+
+		// tracker rects	
+		fprintf_s(fp, "trackerRects:%d,{", (int)curResult->vecTrackerRects.size());
+		for(size_t rectIdx = 0; rectIdx < curResult->vecTrackerRects.size(); rectIdx++)
+		{
+			PSN_Rect *curBox = &curResult->vecTrackerRects[rectIdx];
+			fprintf_s(fp, "(%f,%f,%f,%f)", curBox->x, curBox->y, curBox->w, curBox->h);
+			if (curResult->vecTrackerRects.size() > rectIdx + 1) { fprintf_s(fp, ","); }
+		}
+		fprintf_s(fp, "}\n");
+
+		fclose(fp);
+	}
+	catch(DWORD dwError)
+	{
+		printf("[ERROR](FilePrintResult) cannot open file! error code %d\n", dwError);
+		return;
+	}
+}
 
 /************************************************************************
  Method Name: FilePrintTracklet
@@ -1287,7 +1373,7 @@ void CPSNWhere_Tracker2D::FilePrintTracklet(void)
 	FILE *fp;
 	try
 	{		
-		sprintf_s(strFilePathAndName, "%stracklets/track2D_result_cam%d_frame%04d.txt", RESULT_SAVE_PATH, (int)this->m_nCamID, (int)this->m_nCurrentFrameIdx);
+		sprintf_s(strFilePathAndName, "%stracklets/tracklet_cam%d_frame%04d.txt", RESULT_SAVE_PATH, (int)this->m_nCamID, (int)this->m_nCurrentFrameIdx);
 		fopen_s(&fp, strFilePathAndName, "w");
 
 		fprintf_s(fp, "camIdx:%d\nframeIdx:%d\nnumModel:%d\n", (int)this->m_nCamID, (int)this->m_nCurrentFrameIdx, (int)this->m_queueActiveTracker2D.size());

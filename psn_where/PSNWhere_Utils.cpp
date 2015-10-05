@@ -1110,7 +1110,7 @@ std::vector<stDetection> psn::ReadDetectionResultWithTxt(std::string strDatasetP
 }
 
 /************************************************************************
- Method Name: Triangulation
+ Method Name: Read2DTrackResultWithTxt
  Description: 
 	- 
  Input Arguments:
@@ -1156,6 +1156,109 @@ std::vector<stTrack2DResult> psn::Read2DTrackResultWithTxt(std::string strDatase
 	}
 
 	return resultSet;
+}
+
+/************************************************************************
+ Method Name: Read2DTrackResultWithTxt
+ Description: 
+	- 
+ Input Arguments:
+	- 
+ Return Values:
+	- 
+************************************************************************/
+stTrack2DResult psn::Read2DTrackResultWithTxt(std::string strDataPath, unsigned int camID, unsigned int frameIdx)
+{
+	char strFilename[128];
+	sprintf_s(strFilename, "track2D_result_cam%d_frame%04d.txt", (int)camID, (int)frameIdx);
+	std::string strFilePathAndName = strDataPath + std::string(strFilename);
+
+	stTrack2DResult result;
+	result.camID = camID;
+	result.frameIdx = frameIdx;
+
+	int readInt1 = 0, readInt2 = 0;
+	float readFloat = 0.0f;
+	float x = 0.0f, y = 0.0f, w = 0.0f, h = 0.0f;
+
+	FILE *fp;
+	try
+	{
+		fopen_s(&fp, strFilePathAndName.c_str(), "r");
+
+		// frame infos
+		fscanf_s(fp, "camIdx:%d\nframeIdx:%d\n", &readInt1, &readInt2);
+
+		// object infos
+		int numObj = 0;
+		fscanf_s(fp, "numObjectInfos:%d{\n", &numObj);		
+		result.object2DInfos.reserve(numObj);
+
+		for (size_t objIdx = 0; objIdx < numObj; objIdx++)
+		{
+			stObject2DInfo curObject;			
+
+			fscanf_s(fp, "\t{\n");
+			////////////////
+			fscanf_s(fp, "\t\tid:%d\n", &readInt1);						curObject.id = (unsigned int)readInt1;
+			fscanf_s(fp, "\t\tbox:(%f,%f,%f,%f)\n", &x, &y, &w, &h);	curObject.box = PSN_Rect((double)x, (double)y, (double)w, (double)h);
+			fscanf_s(fp, "\t\thead:(%f,%f,%f,%f)\n", &x, &y, &w, &h);	curObject.head = PSN_Rect((double)x, (double)y, (double)w, (double)h);			
+			fscanf_s(fp, "\t\tscore:%f\n", &readFloat);					curObject.score = (double)readFloat;
+
+			fscanf_s(fp, "\t\tfeaturePointsPrev:%d,{", &readInt1);		curObject.featurePointsPrev.reserve(readInt1);
+			for (size_t fIdx = 0; fIdx < readInt1; fIdx++)
+			{
+				fscanf_s(fp, "(%f,%f)", &x, &y);
+				if (readInt1 > fIdx + 1) { fscanf_s(fp, ","); }
+				curObject.featurePointsPrev.push_back(cv::Point2f(x, y));
+			}
+			fscanf_s(fp, "}\n");
+			fscanf_s(fp, "\t\tfeaturePointsCurr:%d,{", &readInt1);		curObject.featurePointsCurr.reserve(readInt1);
+			for (size_t fIdx = 0; fIdx < readInt1; fIdx++)
+			{				
+				fscanf_s(fp, "(%f,%f)", &x, &y);
+				if (readInt1 > fIdx + 1) { fscanf_s(fp, ","); }
+				curObject.featurePointsCurr.push_back(cv::Point2f(x, y));
+			}
+			fscanf_s(fp, "}\n");
+			////////////////
+			fscanf_s(fp, "\t}\n");
+
+			result.object2DInfos.push_back(curObject);
+		}
+		fscanf_s(fp, "}\n");
+
+		// detection rects	
+		fscanf_s(fp, "detectionRects:%d,{", &readInt1);
+		result.vecDetectionRects.reserve(readInt1);
+		for(size_t rectIdx = 0; rectIdx < readInt1; rectIdx++)
+		{
+			fscanf_s(fp, "(%f,%f,%f,%f)", &x, &y, &w, &h);
+			result.vecDetectionRects.push_back(PSN_Rect((double)x, (double)y, (double)w, (double)h));
+			if (readInt1 > rectIdx + 1) { fscanf_s(fp, ","); }
+		}
+		fscanf_s(fp, "}\n");
+
+		// tracker rects
+		fscanf_s(fp, "trackerRects:%d,{", &readInt1);
+		result.vecTrackerRects.reserve(readInt1);
+		for(size_t rectIdx = 0; rectIdx < readInt1; rectIdx++)
+		{
+			fscanf_s(fp, "(%f,%f,%f,%f)", &x, &y, &w, &h);
+			result.vecTrackerRects.push_back(PSN_Rect((double)x, (double)y, (double)w, (double)h));
+			if (readInt1 > rectIdx + 1) { fscanf_s(fp, ","); }
+		}
+		fscanf_s(fp, "}\n");
+
+		fclose(fp);
+	}
+	catch(DWORD dwError)
+	{
+		printf("[ERROR](FilePrintResult) cannot open file! error code %d\n", dwError);
+		return result;
+	}
+
+	return result;
 }
 
 //()()

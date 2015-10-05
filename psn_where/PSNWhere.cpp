@@ -44,6 +44,7 @@ bool CPSNWhere::Initialize(std::string datasetPath, stConfiguration_Associator3D
 	// CAMERA MODEL INITIALIZATION
 	///////////////////////////////////////////////////////////
 	std::ifstream is;
+	std::vector<stCalibrationInfo*> vecCalibInfos;
 	//Etiseo::UtilXml::Init();
 #pragma omp parallel for
 	for(int camIdx = 0; camIdx < NUM_CAM; camIdx++)
@@ -129,25 +130,20 @@ bool CPSNWhere::Initialize(std::string datasetPath, stConfiguration_Associator3D
 #ifdef PSN_DEBUG_MODE_
 			std::cout << " fail" << std::endl;
 #endif
-		}	
+		}
+
+		vecCalibInfos.push_back(&this->m_stCalibrationInfos[camIdx]);
 	}
 
 
 	///////////////////////////////////////////////////////////
 	// SUB-MODULE INITIALIZATION
 	///////////////////////////////////////////////////////////
-	// CPSNWhere_Tracker2D
-	std::vector<stCalibrationInfo*> vecCalibInfos;
+	// CPSNWhere_Tracker2D	
 	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{
-		if(NULL == this->m_cTracker2D[camIdx])
-		{ 
-			this->m_cTracker2D[camIdx] = new CPSNWhere_Tracker2D;
-		}
+		if (NULL == this->m_cTracker2D[camIdx]) { this->m_cTracker2D[camIdx] = new CPSNWhere_Tracker2D; }
 		this->m_cTracker2D[camIdx]->Initialize(camIdx, &this->m_stCalibrationInfos[camIdx]);
-
-		// for 3D associator
-		vecCalibInfos.push_back(&this->m_stCalibrationInfos[camIdx]);
 	}
 
 	// CPSWhere_Associator3D
@@ -263,6 +259,7 @@ TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 		
 		// 2D tracklet
 		result2D.push_back(this->m_cTracker2D[camIdx]->Run(detectionResult, &pDibArray[camIdx], frameIdx));
+		//result2D.push_back(psn::Read2DTrackResultWithTxt(this->m_strDatasetPath + std::string(TRACKLET_PATH), camIdx, frameIdx));
 	}
 	
 	// 3D association

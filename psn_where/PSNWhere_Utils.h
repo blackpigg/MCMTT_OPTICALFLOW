@@ -91,6 +91,7 @@ PSN_Point2D GetLocationOnTopView_PETS2009(PSN_Point3D location, bool bZoom = fal
 // file interface related
 std::vector<stDetection> ReadDetectionResultWithTxt(std::string strDatasetPath, unsigned int camIdx, unsigned int frameIdx);
 std::vector<stTrack2DResult> Read2DTrackResultWithTxt(std::string strDatasetPath, unsigned int frameIdx);
+stTrack2DResult Read2DTrackResultWithTxt(std::string strDataPath, unsigned int camID, unsigned int frameIdx);
 bool CreateDirectoryForWindows(const std::string &dirName);
 void printLog(const char *filename, std::string strLog);
 std::string MakeTrackIDList(PSN_TrackSet *tracks);

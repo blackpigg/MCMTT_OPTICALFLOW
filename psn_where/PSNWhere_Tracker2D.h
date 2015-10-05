@@ -164,6 +164,7 @@ private:
 	// ETC
 	//----------------------------------------------------------------
 	void ResultWithTracker(stTracker2D *curTracker, stObject2DInfo &outObjectInfo);
+	void FilePrintResult(stTrack2DResult *curResult);
 	void FilePrintTracklet(void);
 	void SaveSnapshot(const char *strFilepath);
 	bool LoadSnapshot(const char *strFilepath);	
