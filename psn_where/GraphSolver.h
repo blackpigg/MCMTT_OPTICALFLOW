@@ -200,7 +200,7 @@ private:
 	double WeightSum(PSN_VertexSet &vertexSet);
 
 	// BLS related
-	double BLS_GenerateInitialSolution(void);
+	double BLS_GenerateInitialSolution(bool bGreedy = true);
 	double BLS_FindBestLocalMove(void);
 	double BLS_Perturbation(double L, size_t w, double alphaR, double alphaS);
 	double BLS_PerturbDirected(double L);

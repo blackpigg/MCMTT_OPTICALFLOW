@@ -649,11 +649,11 @@ double CGraphSolver::WeightSum(PSN_VertexSet &vertexSet)
  Description: 
 	- find initial solution of clique
  Input Arguments:
-	- bMWISP: graph type
+	- bGreedy: select the method of generating initial solution
  Return Values:
 	- double: objective value of solution set
 ************************************************************************/
-double CGraphSolver::BLS_GenerateInitialSolution(void)
+double CGraphSolver::BLS_GenerateInitialSolution(bool bGreedy)
 {
 	this->BLS_C.clear();	// solution set
 	this->BLS_PA.clear();	// outer vertex fully connected with C
@@ -667,9 +667,13 @@ double CGraphSolver::BLS_GenerateInitialSolution(void)
 		allVertex[insertIdx]->countNeighborInSolution = 0;
 	}
 	
-	// construct C	
+	// construct C
 	double objectiveValue = 0.0;
-	std::sort(allVertex.begin(), allVertex.end(), psnGraphComparatorVertexWeightDescend);
+	if (bGreedy)
+		std::sort(allVertex.begin(), allVertex.end(), psnGraphComparatorVertexWeightDescend);
+	else
+		std::random_shuffle(allVertex.begin(), allVertex.end());
+	
 	for (PSN_VertexSet::iterator vertexIter = allVertex.begin();
 		vertexIter != allVertex.end();
 		vertexIter++)
