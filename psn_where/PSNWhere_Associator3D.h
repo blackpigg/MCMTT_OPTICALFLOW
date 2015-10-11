@@ -209,9 +209,6 @@ private:
 	void PrintHypotheses(PSN_HypothesisSet &queueHypotheses, char *strFilePathAndName, unsigned int frameIdx);
 	void PrintCurrentTrackTrees(const char *strFilePath);
 	void PrintResult(const char *strFilepath, std::deque<stTrack3DResult> *queueResults);
-//	void FilePrintInstantResult(void);
-//	void SaveDefferedResult(unsigned int deferredLength);
-//	void SaveInstantResult(void);
 
 	//----------------------------------------------------------------
 	// ETC
@@ -247,8 +244,6 @@ private:
 	std::string strTime_;
 	std::string strLogFileName_;
 	std::string strTrackLogFileName_;
-	std::string strDefferedResultFileName_;
-	std::string strInstantResultFileName_;
 	
 	//----------------------------------------------------------------
 	// 2D tracklet related
@@ -277,11 +272,9 @@ private:
 
 	// for result saving
 	std::deque<stTrack3DResult> queueTrackingResult_;
-	std::deque<stTrack3DResult> queueDeferredTrackingResult_;
 	
 	// optimization related
 	CGraphSolver cGraphSolver_;
-	//std::deque<stGraphSolution> queueStGraphSolutions_;
 	PSN_HypothesisSet queuePrevGlobalHypotheses_;
 	PSN_HypothesisSet queueCurrGlobalHypotheses_;
 	std::vector<stHypothesisSolvingInfo> vectorSolvingInfo_;
@@ -291,8 +284,8 @@ private:
 	std::deque<PAIR_UINT> queuePairTreeIDToVisualizationID_;	
 
 	// evaluation
-	CEvaluator m_cEvaluator;
-	CEvaluator m_cEvaluator_Instance;
+	std::vector<CEvaluator> m_vecEvaluator;
+	
 
 	// for debugging
 	int nCountTrackInOptimization_;

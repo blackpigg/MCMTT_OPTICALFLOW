@@ -282,8 +282,11 @@ void CPSNWhere_Associator3D::Initialize(std::string datasetPath,
 	}
 	
 	// evaluation
-	this->m_cEvaluator.Initialize(datasetPath);
-	this->m_cEvaluator_Instance.Initialize(datasetPath);
+	this->m_vecEvaluator.resize(PROC_WINDOW_SIZE+1);
+	for (int evalIdx = 0; evalIdx < this->m_vecEvaluator.size(); evalIdx++)
+	{
+		m_vecEvaluator[evalIdx].Initialize(datasetPath);
+	}	
 
 	// smoothing related
 	for (int windowSize = 1; windowSize <= SGS_DEFAULT_SPAN; windowSize++)
@@ -310,10 +313,8 @@ void CPSNWhere_Associator3D::Initialize(std::string datasetPath,
 	psn::CreateDirectoryForWindows(std::string(RESULT_SAVE_PATH));
 
 	// file path
-	strLogFileName_ = "logs/PSN_Log_" + strTime_ + ".txt";		
+	strLogFileName_ = "logs/" + strTime_ + "_log.txt";		
 	strTrackLogFileName_ = std::string(RESULT_SAVE_PATH) + "PSN_tracks_" + strTime_ + "txt";
-	strDefferedResultFileName_ = std::string(RESULT_SAVE_PATH) + "PSN_result_deferred_" + strTime_ + ".txt";
-	strInstantResultFileName_ = std::string(RESULT_SAVE_PATH) + "PSN_result_instance_" + strTime_ + ".txt";
 
 	// init flag
 	bInit_ = true;
@@ -357,16 +358,8 @@ void CPSNWhere_Associator3D::Finalize(void)
 		queueResultTracks.push_back(*trackIter);
 	}
 
-	for (unsigned int timeIdx = (unsigned int)std::max(0, (int)nCurrentFrameIdx_ - stConfiguration_.nProcWindowSize + 2); 
-		timeIdx <= nCurrentFrameIdx_; 
-		timeIdx++)
-	{
-		queueDeferredTrackingResult_.push_back(queueTrackingResult_[timeIdx]);
-	}
-
 	// print results
-	//this->PrintResult(strInstantResultFileName_.c_str(), &queueTrackingResult_);
-	//this->PrintResult(strDefferedResultFileName_.c_str(), &queueDeferredTrackingResult_);
+	//this->PrintResult(strInstantResultFileName_.c_str(), &queueTrackingResult_);	
 
 	/////////////////////////////////////////////////////////////////////////////
 	// EVALUATION
@@ -378,33 +371,34 @@ void CPSNWhere_Associator3D::Finalize(void)
 	std::string strSuffix = "_" + std::string(strParameter) + "_" + strTime_ + ".txt";
 
 	psn::CreateDirectoryForWindows(std::string(RESULT_SAVE_PATH));
-	printf("[EVALUATION] deferred result\n");
-	for (unsigned int timeIdx = (unsigned int)std::max(0, (int)nCurrentFrameIdx_ - stConfiguration_.nProcWindowSize + 2); 
-		timeIdx <= nCurrentFrameIdx_; 
-		timeIdx++)
+	for (int evalIdx = 0; evalIdx < this->m_vecEvaluator.size(); evalIdx++)
 	{
-		this->m_cEvaluator.SetResult(queueTracksInBestSolution_, timeIdx);
-	}
-	this->m_cEvaluator.Evaluate();
-	this->m_cEvaluator.PrintResultToConsole();
-	curFilePath = std::string(RESULT_SAVE_PATH) + "evaluation_deferred" + strSuffix;
-	this->m_cEvaluator.PrintResultToFile(curFilePath.c_str());
-	//curFilePath = std::string(RESULT_SAVE_PATH) + "result_matrix_deferred" + strSuffix;
-	//this->m_cEvaluator.PrintResultMatrix(curFilePath.c_str());
+		// fill the result
+		for (unsigned int timeIdx = (unsigned int)std::max(0, (int)nCurrentFrameIdx_ - evalIdx + 1); 
+			timeIdx <= nCurrentFrameIdx_; timeIdx++)
+		{
+			this->m_vecEvaluator[evalIdx].SetResult(queueTracksInBestSolution_, timeIdx);
+		}
+		this->m_vecEvaluator[evalIdx].Evaluate();
 
-	printf("[EVALUATION] instance result\n");	
-	this->m_cEvaluator_Instance.Evaluate();
-	this->m_cEvaluator_Instance.PrintResultToConsole();
-	curFilePath = std::string(RESULT_SAVE_PATH) + "evaluation_instance" + strSuffix;
-	this->m_cEvaluator_Instance.PrintResultToFile(curFilePath.c_str());
-	/*curFilePath = std::string(RESULT_SAVE_PATH) + "result_matrix_instance" + strSuffix;
-	this->m_cEvaluator_Instance.PrintResultMatrix(curFilePath.c_str());*/
+		// print to file
+		sprintf_s(strParameter, "K%03d_W%03d_", (int)stConfiguration_.nKBestSize, evalIdx);
+		curFilePath = std::string(RESULT_SAVE_PATH) + strTime_ + "_evaluation_" + strParameter + ".txt";
+		this->m_vecEvaluator[evalIdx].PrintResultToFile(curFilePath.c_str());
+		//curFilePath = std::string(RESULT_SAVE_PATH) + strTime_ + "result_matrix_" + strParameter + ".txt";
+		//this->m_vecEvaluator[evalIdx].PrintResultMatrix(curFilePath.c_str());
+
+		// print to console
+		if (this->m_vecEvaluator.size() - 1 == evalIdx) { printf("[EVALUATION] deferred result\n"); }
+		else if (0 == evalIdx) { printf("[EVALUATION] instance result\n"); }
+		else { continue; }
+		this->m_vecEvaluator[evalIdx].PrintResultToConsole();
+	}
 #endif
 
 	/////////////////////////////////////////////////////////////////////////////
 	// FINALIZE
 	/////////////////////////////////////////////////////////////////////////////
-
 	// clean-up camera model
 	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{
@@ -412,7 +406,6 @@ void CPSNWhere_Associator3D::Finalize(void)
 		matProjectionSensitivity_[camIdx].release();
 		matDistanceFromBoundary_[camIdx].release();
 	}
-
 	fCurrentProcessingTime_ = 0.0;
 	nCurrentFrameIdx_ = 0;
 
@@ -454,7 +447,7 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 											int frameIdx)
 {
 #ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](Run) start with frame: %d\n", frameIdx);
+	printf(">> start the association at frame: %d\n", frameIdx);
 #endif
 	assert(bInit_);
 
@@ -467,7 +460,6 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 		return curResult;
 	}
 #endif
-
 	clock_t timer_start;
 	clock_t timer_end;
 	timer_start = clock();
@@ -516,8 +508,8 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	if (0 < queueCurrGlobalHypotheses_.size()) 
 	{
 		queueTracksInBestSolution_ = queueCurrGlobalHypotheses_.front().selectedTracks;
-	} 
-	else 
+	}
+	else
 	{
 		queueTracksInBestSolution_.clear();
 	}
@@ -525,40 +517,30 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	// instance result
 	stTrack3DResult currentResult = this->ResultWithTracks(&queueTracksInBestSolution_, frameIdx, processingTime);
 	queueTrackingResult_.push_back(currentResult);
-
-	// deferred result
-	if (frameIdx + 1 >= stConfiguration_.nProcWindowSize)
-	{
-		queueDeferredTrackingResult_.push_back(this->ResultWithTracks(&queueTracksInBestSolution_, frameIdx + 1 - stConfiguration_.nProcWindowSize, processingTime));
-	}
 	
 	/////////////////////////////////////////////////////////////////////////////
 	// EVALUATION
 	/////////////////////////////////////////////////////////////////////////////
-	int timeDeferred = (int)nCurrentFrameIdx_ - stConfiguration_.nProcWindowSize + 1;
-	if (0 <= timeDeferred)
+	for (int evalIdx = 0; evalIdx < this->m_vecEvaluator.size(); evalIdx++)
 	{
-		this->m_cEvaluator.SetResult(queueTracksInBestSolution_, timeDeferred);
+		int timeDeferred = (int)nCurrentFrameIdx_ - evalIdx;
+		if (0 > timeDeferred) { continue; }
+		this->m_vecEvaluator[evalIdx].SetResult(queueTracksInBestSolution_, timeDeferred);
 	}
-	this->m_cEvaluator_Instance.SetResult(queueTracksInBestSolution_, nCurrentFrameIdx_);
 
 	/////////////////////////////////////////////////////////////////////////////
 	// WRAP-UP
 	/////////////////////////////////////////////////////////////////////////////
-
 	// memory clean-up
-	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-	{
-		ptMatCurrentFrames_[camIdx] = NULL;
-	}
+	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) { ptMatCurrentFrames_[camIdx] = NULL; }
 
 	// hypothesis backup
 	queuePrevGlobalHypotheses_ = queueCurrGlobalHypotheses_;
 	queueCurrGlobalHypotheses_.clear();
 
 #ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](Run) processingTime:%f sec\n", fCurrentProcessingTime_);
-	printf("[CPSNWhere_Associator3D](Run) total candidate tracks:%d\n", listTrack3D_.size());
+	printf(">> processingTime:%f sec\n", fCurrentProcessingTime_);
+	printf(">> total candidate tracks:%d\n", listTrack3D_.size());
 	printf("==================================================\n");
 #endif
 
@@ -3974,84 +3956,6 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 			fprintf_s(fpResult, "\t\t}\n\t}\n");
 		}
 		fprintf_s(fpResult, "}\n");
-
-		// deferred result
-		fprintf_s(fpResult, "queueDeferredTrackingResult:%d,\n{\n", (int)queueDeferredTrackingResult_.size());
-		for (int resultIdx = 0; resultIdx < queueDeferredTrackingResult_.size(); resultIdx++)
-		{
-			stTrack3DResult *curResult = &queueDeferredTrackingResult_[resultIdx];
-			fprintf_s(fpResult, "\t{\n\t\tframeIdx:%d\n", curResult->frameIdx);
-			fprintf_s(fpResult, "\t\tprocessingTime:%f\n", curResult->processingTime);			
-
-			// object info
-			fprintf_s(fpResult, "\t\tobjectInfo:%d,\n\t\t{\n", (int)curResult->object3DInfo.size());
-			for (int objIdx = 0; objIdx < curResult->object3DInfo.size(); objIdx++)
-			{
-				stObject3DInfo *curObject = &curResult->object3DInfo[objIdx];
-				fprintf_s(fpResult, "\t\t\t{\n\t\t\t\tid:%d\n", curObject->id);
-
-				// points
-				fprintf_s(fpResult, "\t\t\t\trecentPoints:%d,{", (int)curObject->recentPoints.size());
-				for (int pointIdx = 0; pointIdx < curObject->recentPoints.size(); pointIdx++)
-				{
-					PSN_Point3D curPoint = curObject->recentPoints[pointIdx];
-					fprintf_s(fpResult, "(%f,%f,%f)", (float)curPoint.x, (float)curPoint.y, (float)curPoint.z);
-					if (pointIdx < curObject->recentPoints.size() - 1) { fprintf_s(fpResult, ","); }
-				}
-				fprintf_s(fpResult, "}\n");
-
-				// 2D points
-				fprintf_s(fpResult, "\t\t\t\trecentPoint2Ds:\n\t\t\t\t{\n");
-				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-				{					
-					fprintf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", camIdx, (int)curObject->recentPoint2Ds[camIdx].size());
-					for (int pointIdx = 0; pointIdx < curObject->recentPoint2Ds[camIdx].size(); pointIdx++)
-					{
-						PSN_Point2D curPoint = curObject->recentPoint2Ds[camIdx][pointIdx];
-						fprintf_s(fpResult, "(%f,%f)", (float)curPoint.x, (float)curPoint.y);
-						if (pointIdx < curObject->recentPoint2Ds[camIdx].size() - 1) { fprintf_s(fpResult, ","); }
-					}
-					fprintf_s(fpResult, "}\n");
-				}
-				fprintf_s(fpResult, "\t\t\t\t}\n");
-
-				// 3D box points in each view
-				fprintf_s(fpResult, "\t\t\t\tpoint3DBox:\n\t\t\t\t{\n");
-				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-				{					
-					fprintf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", camIdx, (int)curObject->point3DBox[camIdx].size());
-					for (int pointIdx = 0; pointIdx < curObject->point3DBox[camIdx].size(); pointIdx++)
-					{
-						PSN_Point2D curPoint = curObject->point3DBox[camIdx][pointIdx];
-						fprintf_s(fpResult, "(%f,%f)", (float)curPoint.x, (float)curPoint.y);
-						if (pointIdx < curObject->recentPoint2Ds[camIdx].size() - 1) { fprintf_s(fpResult, ","); }
-					}
-					fprintf_s(fpResult, "}\n");
-				}
-				fprintf_s(fpResult, "\t\t\t\t}\n");
-
-				// rects
-				fprintf_s(fpResult, "\t\t\t\trectInViews:{");
-				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-				{
-					PSN_Rect curRect = curObject->rectInViews[camIdx];
-					fprintf_s(fpResult, "(%f,%f,%f,%f)", (float)curRect.x, (float)curRect.y, (float)curRect.w, (float)curRect.h);
-					if (camIdx < NUM_CAM - 1) { fprintf_s(fpResult, ","); }
-				}
-				fprintf_s(fpResult, "}\n");
-
-				// visibility
-				fprintf_s(fpResult, "\t\t\t\tbVisibleInViews:{");
-				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-				{
-					fprintf_s(fpResult, "%d", (int)curObject->bVisibleInViews[camIdx]);
-					if (camIdx < NUM_CAM - 1) { fprintf_s(fpResult, ","); }
-				}
-				fprintf_s(fpResult, "}\n\t\t\t}\n");
-			}
-			fprintf_s(fpResult, "\t\t}\n\t}\n");
-		}
-		fprintf_s(fpResult, "}\n");
 		fclose(fpResult);
 
 		//---------------------------------------------------------
@@ -4915,110 +4819,6 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			printf("\r>> Reading instant results: %3.1f%%", 100.0 * (double)(resultIdx + 1.0) / (double)numTrackingResults);
 #endif
 		}
-		fscanf_s(fpResult, "}\n");
-#ifdef PSN_DEBUG_MODE_
-		printf("\n>> Reading deferred results: %3.1f%%", 0);
-#endif
-
-		// deferred result
-		numTrackingResults = 0;
-		queueDeferredTrackingResult_.clear();
-		fscanf_s(fpResult, "queueDeferredTrackingResult:%d,\n{\n", &numTrackingResults);
-		for (int resultIdx = 0; resultIdx < numTrackingResults; resultIdx++)
-		{
-			stTrack3DResult curResult;
-			fscanf_s(fpResult, "\t{\n\t\tframeIdx:%d\n", &readingInt);
-			curResult.frameIdx = (unsigned int)readingInt;
-			fscanf_s(fpResult, "\t\tprocessingTime:%f\n", &readingFloat);
-			curResult.processingTime = (double)readingFloat;
-
-			// object info
-			int numObjects = 0;
-			fscanf_s(fpResult, "\t\tobjectInfo:%d,\n\t\t{\n", &numObjects);
-			for (int objIdx = 0; objIdx < numObjects; objIdx++)
-			{
-				stObject3DInfo curObject;
-				fscanf_s(fpResult, "\t\t\t{\n\t\t\t\tid:%d\n", &readingInt);
-				curObject.id = (unsigned int)readingInt;
-
-				// points
-				int numPoints = 0;
-				fscanf_s(fpResult, "\t\t\t\trecentPoints:%d,{", &numPoints);
-				for (int pointIdx = 0; pointIdx < numPoints; pointIdx++)
-				{
-					float x, y, z;
-					fscanf_s(fpResult, "(%f,%f,%f)", &x, &y, &z);
-					if (pointIdx < numPoints - 1) { fscanf_s(fpResult, ","); }
-					curObject.recentPoints.push_back(PSN_Point3D((double)x, (double)y, (double)z));
-				}
-				fscanf_s(fpResult, "}\n");
-
-				// 2D points
-				fscanf_s(fpResult, "\t\t\t\trecentPoint2Ds:\n\t\t\t\t{\n");
-				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-				{					
-					fscanf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", &readingInt, &numPoints);
-					for (int pointIdx = 0; pointIdx < numPoints; pointIdx++)
-					{
-						float x, y;
-						fscanf_s(fpResult, "(%f,%f)", &x, &y);
-						if (pointIdx < numPoints - 1) { fscanf_s(fpResult, ","); }
-						curObject.recentPoint2Ds[camIdx].push_back(PSN_Point2D((double)x, (double)y));
-					}
-					fscanf_s(fpResult, "}\n");
-				}
-				fscanf_s(fpResult, "\t\t\t\t}\n");
-
-				// 3D box points in each view
-				fscanf_s(fpResult, "\t\t\t\tpoint3DBox:\n\t\t\t\t{\n");
-				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-				{					
-					fscanf_s(fpResult, "\t\t\t\t\tcam%d:%d,{", &readingInt, &numPoints);
-					for (int pointIdx = 0; pointIdx < numPoints; pointIdx++)
-					{
-						float x, y;
-						fscanf_s(fpResult, "(%f,%f)", &x, &y);
-						if (pointIdx < numPoints - 1) { fscanf_s(fpResult, ","); }
-						curObject.point3DBox[camIdx].push_back(PSN_Point2D((double)x, (double)y));
-					}
-					fscanf_s(fpResult, "}\n");
-				}
-				fscanf_s(fpResult, "\t\t\t\t}\n");
-
-				// rects
-				fscanf_s(fpResult, "\t\t\t\trectInViews:{");
-				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-				{
-					float x, y, w, h;
-					fscanf_s(fpResult, "(%f,%f,%f,%f)", &x, &y, &w, &h);
-					if (camIdx < NUM_CAM - 1) { fscanf_s(fpResult, ","); }
-					curObject.rectInViews[camIdx] = PSN_Rect((double)x, (double)y, (double)w, (double)h);
-				}
-				fscanf_s(fpResult, "}\n");
-
-				// visibility
-				fscanf_s(fpResult, "\t\t\t\tbVisibleInViews:{");
-				for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-				{
-					fscanf_s(fpResult, "%d", &readingInt);
-					if (camIdx < NUM_CAM - 1) { fscanf_s(fpResult, ","); }
-					curObject.bVisibleInViews[camIdx] = 0 < readingInt ? true : false;
-				}
-				fscanf_s(fpResult, "}\n\t\t\t}\n");
-
-				curResult.object3DInfo.push_back(curObject);
-			}
-			fscanf_s(fpResult, "\t\t}\n\t}\n");
-
-			queueDeferredTrackingResult_.push_back(curResult);
-
-#ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading deferred results: %3.1f%%", 100.0 * (double)(resultIdx + 1.0) / (double)numTrackingResults);
-#endif
-		}
-#ifdef PSN_DEBUG_MODE_
-		printf("\n");
-#endif
 		fscanf_s(fpResult, "}\n");
 		fclose(fpResult);
 
