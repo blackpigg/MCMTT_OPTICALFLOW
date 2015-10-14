@@ -367,10 +367,11 @@ void CPSNWhere_Associator3D::Finalize(void)
 #ifndef LOAD_SNAPSHOT_
 	std::string curFilePath;
 	char strParameter[128];
-	sprintf_s(strParameter, "K%03d_W%03d", (int)stConfiguration_.nKBestSize, (int)stConfiguration_.nProcWindowSize);
+	sprintf_s(strParameter, "K%03d", (int)stConfiguration_.nKBestSize);
 	std::string strSuffix = "_" + std::string(strParameter) + "_" + strTime_ + ".txt";
 
-	psn::CreateDirectoryForWindows(std::string(RESULT_SAVE_PATH));
+	std::string strResultPath = std::string(RESULT_SAVE_PATH) + std::string(strParameter) + "/";
+	psn::CreateDirectoryForWindows(strResultPath);
 	for (int evalIdx = 0; evalIdx < this->m_vecEvaluator.size(); evalIdx++)
 	{
 		// fill the result
@@ -382,8 +383,8 @@ void CPSNWhere_Associator3D::Finalize(void)
 		this->m_vecEvaluator[evalIdx].Evaluate();
 
 		// print to file
-		sprintf_s(strParameter, "K%03d_W%03d_", (int)stConfiguration_.nKBestSize, evalIdx);
-		curFilePath = std::string(RESULT_SAVE_PATH) + strTime_ + "_evaluation_" + strParameter + ".txt";
+		sprintf_s(strParameter, "K%03d_W%03d", (int)stConfiguration_.nKBestSize, evalIdx);
+		curFilePath = strResultPath + strTime_ + "_evaluation_" + strParameter + ".txt";
 		this->m_vecEvaluator[evalIdx].PrintResultToFile(curFilePath.c_str());
 		//curFilePath = std::string(RESULT_SAVE_PATH) + strTime_ + "result_matrix_" + strParameter + ".txt";
 		//this->m_vecEvaluator[evalIdx].PrintResultMatrix(curFilePath.c_str());
