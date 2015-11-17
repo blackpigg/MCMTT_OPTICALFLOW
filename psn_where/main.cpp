@@ -88,8 +88,8 @@ int _tmain(int argc, _TCHAR* argv[])
 #endif
 	char inputFilePath[300];
 
-	static const int arr[] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30};
-	//static const int arr[] = {50};
+	//static const int arr[] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30};
+	static const int arr[] = {100};
 	std::vector<int> parameters(arr, arr + sizeof(arr)/sizeof(arr[0]));
 	
 	for (int configIdx = 0; configIdx < parameters.size(); configIdx++)
@@ -99,7 +99,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		curConfig3D.nKBestSize = parameters[configIdx];
 		curConfig3D.nMaxTrackInOptimization = -1;
 		curConfig3D.nMaxTrackInUnconfirmedTrackTree = -1;
-		curConfig3D.nNumFrameForConfirmation = -1;
+		curConfig3D.nNumFrameForConfirmation = 3;
 
 		for (int expIdx = 0; expIdx < NUM_EXPERIMENTS; expIdx++)
 		{
@@ -107,6 +107,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			cv::Mat expLabel = cv::Mat::zeros(40, 60, CV_8UC1);
 			cv::putText(expLabel, std::to_string(expIdx), cv::Point(0, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 255));
 			cv::imshow("experiment label", expLabel);
+			cv::waitKey(1);
 
 			/////////////////////////////////////////////////////////////////
 			// INITIALIZATION

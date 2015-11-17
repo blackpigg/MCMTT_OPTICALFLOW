@@ -242,6 +242,9 @@ void CPSNWhere::Finalize()
 *******************************************************************/
 TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 {
+#ifdef PSN_DEBUG_MODE_
+	printf("frame %04d...", frameIdx);
+#endif
 	clock_t timer_start;
 	clock_t timer_end;
 	this->m_fProcessingTime = 0;
@@ -270,7 +273,11 @@ TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 	this->m_fProcessingTime += (double)(timer_end - timer_start)/CLOCKS_PER_SEC;
 
 	// visualize tracking result
-	this->Visualize(pDibArray, frameIdx, result2D, result3D, 1);
+	//this->Visualize(pDibArray, frameIdx, result2D, result3D, 1);
+
+#ifdef PSN_DEBUG_MODE_
+	printf("%02d targets, %f sec elapsed\n", (int)result3D.object3DInfo.size(), this->m_fProcessingTime);
+#endif
 
 	return (TrackInfoArray *)0;
 }

@@ -213,9 +213,6 @@ void CPSNWhere_Associator3D::Initialize(std::string datasetPath,
 										std::vector<stCalibrationInfo*> &vecStCalibInfo, 
 										stConfiguration_Associator3D *stConfig3D)
 {
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](Initialize) start\n");
-#endif
 	if (bInit_) { return; }
 	bSnapshotReaded_ = false;
 
@@ -318,10 +315,6 @@ void CPSNWhere_Associator3D::Initialize(std::string datasetPath,
 
 	// init flag
 	bInit_ = true;
-
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](Initialize) end\n");
-#endif
 }
 
 
@@ -336,10 +329,6 @@ void CPSNWhere_Associator3D::Initialize(std::string datasetPath,
 ************************************************************************/
 void CPSNWhere_Associator3D::Finalize(void)
 {
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](Finalize) start\n");
-#endif
-	
 	if (!bInit_) { return; }
 #ifdef SAVE_SNAPSHOT_
 	psn::CreateDirectoryForWindows(std::string(SNAPSHOT_PATH));
@@ -426,10 +415,6 @@ void CPSNWhere_Associator3D::Finalize(void)
 	// 3D track related
 	nNewTrackID_ = 0;
 	nNewTreeID_ = 0;
-
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](Finalize) end\n");
-#endif
 }
 
 
@@ -447,9 +432,6 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 											cv::Mat *curFrame, 
 											int frameIdx)
 {
-#ifdef PSN_DEBUG_MODE_
-	printf(">> start the association at frame: %d\n", frameIdx);
-#endif
 	assert(bInit_);
 
 #ifdef LOAD_SNAPSHOT_
@@ -538,12 +520,6 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	// hypothesis backup
 	queuePrevGlobalHypotheses_ = queueCurrGlobalHypotheses_;
 	queueCurrGlobalHypotheses_.clear();
-
-#ifdef PSN_DEBUG_MODE_
-	printf(">> processingTime:%f sec\n", fCurrentProcessingTime_);
-	printf(">> total candidate tracks:%d\n", listTrack3D_.size());
-	printf("==================================================\n");
-#endif
 
 #ifdef PSN_PRINT_LOG_
 	// PRINT LOG
@@ -953,9 +929,6 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 ************************************************************************/
 double CPSNWhere_Associator3D::NViewPointReconstruction(std::vector<PSN_Line> &vecLines, PSN_Point3D &outputPoint)
 {	
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Associator3D](MultiViewPointReconstruction) start\n");
-#endif
 	unsigned int numLines = (unsigned int)vecLines.size();
 	if(numLines < 2)
 	{
@@ -1004,10 +977,6 @@ double CPSNWhere_Associator3D::NViewPointReconstruction(std::vector<PSN_Line> &v
 		diffPoint.z = diffVec.at<double>(2, 0);
 		resultError += (1/(double)numLines)*diffPoint.norm_L2();
 	}
-
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Associator3D](MultiViewPointReconstruction) return (%f, %f, %f) with error %f\n", outputPoint.x, outputPoint.y, outputPoint.z, resultError);
-#endif
 
 	return resultError;
 }
@@ -1073,26 +1042,6 @@ double CPSNWhere_Associator3D::NViewGroundingPointReconstruction(std::vector<PSN
 			resultError += (1.0/(double)numPoints) * (outputPoint - vecReconstructedPoints[pointIdx]).norm_L2();
 	}
 
-	//outputPoint = PSN_Point3D(0, 0, 0);
-	//for(unsigned int pointIdx = 0; pointIdx < numPoints; pointIdx++)
-	//{
-	//	PSN_Point2D curPoint = vecPointInfos[pointIdx].first;
-	//	unsigned int curCamIdx = vecPointInfos[pointIdx].second;
-
-	//	vecReconstructedPoints.push_back(this->ImageToWorld(curPoint, 0, curCamIdx));
-	//	outputPoint += vecReconstructedPoints.back() * (1.0/(double)numPoints);
-	//}
-	//
-	//if(2 > numPoints)
-	//{
-	//	return MAX_TRACKLET_DISTANCE/2.0;
-	//}
-
-	//for(unsigned int pointIdx = 0; pointIdx < numPoints; pointIdx++)
-	//{
-	//	resultError = (1.0/(double)numPoints) * (outputPoint - vecReconstructedPoints[pointIdx]).norm_L2();
-	//}
-
 	return resultError;
 }
 
@@ -1149,11 +1098,6 @@ double CPSNWhere_Associator3D::GetDistanceFromBoundary(PSN_Point3D point)
 ************************************************************************/
 void CPSNWhere_Associator3D::Tracklet2D_UpdateTracklets(std::vector<stTrack2DResult> &curTrack2DResult, unsigned int frameIdx)
 {
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](Update2DTracklets) start\n");
-	time_t timer_start = clock();
-#endif
-
 	bReceiveNewMeasurement_ = false;
 	nNumTotalActive2DTracklet_ = 0;
 
@@ -1322,12 +1266,6 @@ void CPSNWhere_Associator3D::Tracklet2D_UpdateTracklets(std::vector<stTrack2DRes
 			}
 		}
 	}
-
-#ifdef PSN_DEBUG_MODE_
-	time_t timer_end = clock();
-	double processingTime = (double)(timer_end - timer_start) / CLOCKS_PER_SEC;
-	printf("[CPSNWhere_Associator3D](Update2DTracklets) processing time: %f\n", processingTime);
-#endif
 }
 
 /************************************************************************
@@ -1440,10 +1378,6 @@ void CPSNWhere_Associator3D::Track3D_Management(PSN_TrackSet &outputSeedTracks)
 ************************************************************************/
 void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 {
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](UpdateTracks) start\n");
-	time_t timer_start = clock();
-#endif
 	std::deque<Track3D*> queueNewTracks;
 
 	//---------------------------------------------------------
@@ -1778,12 +1712,6 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		}
 		trackIter = listTrack3D_.erase(trackIter);
 	}
-
-#ifdef PSN_DEBUG_MODE_
-	time_t timer_end = clock();
-	double processingTime = (double)(timer_end - timer_start) / CLOCKS_PER_SEC;
-	printf("[CPSNWhere_Associator3D](UpdateTracks) activeTrack: %d, time: %fs\n", queueActiveTrack_.size(), processingTime);
-#endif
 }
 
 
@@ -1798,12 +1726,6 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 ************************************************************************/
 void CPSNWhere_Associator3D::Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeedTracks)
 {
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](GenerateSeeds) start\n");
-	time_t timer_start = clock();
-	unsigned int numPrevTracks = nNewTrackID_;
-#endif
-
 	// initialization
 	outputSeedTracks.clear();
 
@@ -1894,12 +1816,6 @@ void CPSNWhere_Associator3D::Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeed
 		// insert to queues
 		outputSeedTracks.push_back(curTrack);		
 	}
-
-#ifdef PSN_DEBUG_MODE_
-	time_t timer_end = clock();
-	double processingTime = (double)(timer_end - timer_start) / CLOCKS_PER_SEC;
-	printf("[CPSNWhere_Associator3D](GenerateSeeds) newTrack: %d, time: %fs\n", outputSeedTracks.size(), processingTime);
-#endif
 }
 
 
@@ -1915,11 +1831,6 @@ void CPSNWhere_Associator3D::Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeed
 ************************************************************************/
 void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 {
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](BranchTracks) start\n");
-	time_t timer_start = clock();
-#endif
-
 	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{
 		// TODO: 브랜치 뜬 track을, tracklet 안에서 visual feature distance가 가장 작은 것부터 sorting, 점증적으로 cost 주기
@@ -2328,13 +2239,6 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 	// add seed tracks to active track list
 	queueActiveTrack_.insert(queueActiveTrack_.end(), seedTracks->begin(), seedTracks->end());
 	queueTracksInWindow_.insert(queueTracksInWindow_.end(), seedTracks->begin(), seedTracks->end());
-
-#ifdef PSN_DEBUG_MODE_
-	time_t timer_end = clock();
-	double processingTime = (double)(timer_end - timer_start) / CLOCKS_PER_SEC;
-	numBranches = queueActiveTrack_.size() - numBranches;
-	printf("[CPSNWhere_Associator3D](BranchTracks) new branches: %d, time: %fs\n", numBranches, processingTime);
-#endif
 }
 
 /************************************************************************
@@ -2816,18 +2720,7 @@ void CPSNWhere_Associator3D::Hypothesis_Formation(PSN_HypothesisSet &outBranchHy
 #define PSN_GRAPH_SOLUTION_DUPLICATION_RESOLUTION (1.0E-5)
 void CPSNWhere_Associator3D::Hypothesis_BranchHypotheses(PSN_HypothesisSet &outBranchHypotheses, PSN_TrackSet *tracks, PSN_TrackSet *initialselectedTracks)
 {
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](Hypothesis_BranchHypotheses) start\n");
-	time_t timer_start = clock();
-#endif
-
-	if (0 == tracks->size())
-	{ 
-#ifdef PSN_DEBUG_MODE_ 
-		printf("[CPSNWhere_Associator3D](Hypothesis_BranchHypotheses) end with no tracks\n"); 
-#endif
-		return; 
-	}
+	if (0 == tracks->size()) { return; }
 
 	//---------------------------------------------------------
 	// GRAPH CONSTRUCTION
@@ -2889,13 +2782,6 @@ void CPSNWhere_Associator3D::Hypothesis_BranchHypotheses(PSN_HypothesisSet &outB
 		delete curGraph;
 		return;
 	}
-
-#ifdef PSN_DEBUG_MODE_
-	time_t timer_end = clock();
-	double constructionTime = (double)(timer_end - timer_start) / CLOCKS_PER_SEC;
-	printf("[CPSNWhere_Associator3D](Hypothesis_BranchHypotheses) Vertex:%d, Edge:%d, time:%f\n", curGraph->Size(), curGraph->NumEdge(), constructionTime);
-	time_t timer_solver = clock();
-#endif	
 	
 	//---------------------------------------------------------
 	// GRAPH SOLVING
@@ -2903,12 +2789,6 @@ void CPSNWhere_Associator3D::Hypothesis_BranchHypotheses(PSN_HypothesisSet &outB
 	cGraphSolver_.SetGraph(curGraph);
 	cGraphSolver_.SetInitialPoints(initialSolutionSet);
 	stGraphSolvingResult *curResult = cGraphSolver_.Solve();
-
-#ifdef PSN_DEBUG_MODE_
-	timer_end = clock();
-	fCurrentSolvingTime_ = (double)(timer_end - timer_solver) / CLOCKS_PER_SEC;
-	size_t numHypothesesBefore = outBranchHypotheses.size();
-#endif
 
 	//---------------------------------------------------------
 	// SOLUTION CONVERSION AND DUPLICATION CHECK
@@ -2950,12 +2830,6 @@ void CPSNWhere_Associator3D::Hypothesis_BranchHypotheses(PSN_HypothesisSet &outB
 	// WRAP-UP
 	//---------------------------------------------------------
 	delete curGraph;
-
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](Hypothesis_BranchHypotheses) solving\n");
-	printf(" - num. of solutions: %d\n", outBranchHypotheses.size() - numHypothesesBefore);
-	printf(" - time: %f sec\n", fCurrentSolvingTime_);
-#endif
 }
 
 /************************************************************************
@@ -2979,7 +2853,7 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 	int nTimeBranchPruning = (int)nCurrentFrameIdx - (int)N;
 	if (nTimeBranchPruning < 0) { return; }
 
-	// N-scan back prunin for ordinary trees
+	// N-scan back pruning for ordinary trees
 	for (std::deque<TrackTree*>::iterator treeIter = queuePtActiveTrees_.begin();
 		treeIter != queuePtActiveTrees_.end();
 		treeIter++)
@@ -3002,11 +2876,11 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 			if ((int)(*trackIter)->timeGeneration < nTimeBranchPruning) { continue; }
 			(*trackIter)->bValid = false;
 		}
-		if (NULL == maxGTP)
+		if (NULL == maxGTPTrack)
 		{
 			// prune the entire track tree when there is no track has GTP larget than zero
 			TrackTree::SetValidityFlagInTrackBranch((*treeIter)->tracks[0], false);
-			continue; 
+			continue;
 		}
 
 		// find brach seed
@@ -3019,6 +2893,11 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 		}
 		TrackTree::SetValidityFlagInTrackBranch(branchSeed, true);
 	}
+	//// [REPLACEMENT OF CODES ABOVE] clear validity flags in all trees
+	//for (std::deque<TrackTree*>::iterator treeIter = queuePtActiveTrees_.begin();
+	//	treeIter != queuePtActiveTrees_.end();
+	//	treeIter++)
+	//{ TrackTree::SetValidityFlagInTrackBranch((*treeIter)->tracks[0], false); }
 	
 	// set tracks in the best solution
 	PSN_TrackSet *tracksInBestSolution = &(*ptQueueHypothesis).front().selectedTracks;
@@ -3067,7 +2946,7 @@ void CPSNWhere_Associator3D::Hypothesis_PruningTrackWithGTP(unsigned int nCurren
 			numUCTrackLeft++;
 			continue; 
 		}
-		if (numTrackLeft < stConfiguration_.nMaxTrackInOptimization && (*trackIter)->GTProb > 0) 
+		if (numTrackLeft < stConfiguration_.nMaxTrackInOptimization && (*trackIter)->GTProb > 0.0) 
 		{ 	
 			numTrackLeft++;
 			continue;
@@ -3085,11 +2964,6 @@ void CPSNWhere_Associator3D::Hypothesis_PruningTrackWithGTP(unsigned int nCurren
 			sortedTrackQueue[trackIdx]->bValid = false;
 		}
 	}
-
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Associator3D](Hypothesis_PruningTrackWithGTP)\n");
-	if (stConfiguration_.nMaxTrackInOptimization <= numTrackLeft) { printf("*** Tracks are truncated!!! ****\n"); }
-#endif
 }
 
 /************************************************************************
@@ -4046,9 +3920,6 @@ void CPSNWhere_Associator3D::SaveSnapshot(const char *strFilepath)
 ************************************************************************/
 bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 {
-#ifdef PSN_DEBUG_MODE_
-	printf(">> Reading snapshot......\n");
-#endif
 	FILE *fpTracklet, *fpTrack, *fpHypothesis, *fpResult, *fpInfo;
 	char strFilename[128] = "";
 	int readingInt = 0;
@@ -4074,9 +3945,6 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 		fscanf_s(fpTracklet, "vecTracklet2DSet:\n{\n");
 		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 		{
-#ifdef PSN_DEBUG_MODE_
-			printf(">> Reading 2D tracklet set at cam %d: %3.1f%%", camIdx, 0);
-#endif
 			int numTrackletSet = 0;
 			fscanf_s(fpTracklet, "\t{\n\t\ttracklets:%d,\n\t\t{\n", &numTrackletSet);
 			vecTracklet2DSet_[camIdx].tracklets.clear();
@@ -4159,13 +4027,7 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 				}
 				fscanf_s(fpTracklet, "\t\t\t}\n");
 				vecTracklet2DSet_[camIdx].tracklets.push_back(newTracklet);
-#ifdef PSN_DEBUG_MODE_
-				printf("\r>> Reading 2D tracklet set at cam %d: %3.1f%%", camIdx, 100.0 * (double)(trackletIdx + 1.0) / (double)numTrackletSet);
-#endif
 			}
-#ifdef PSN_DEBUG_MODE_
-			printf("\n");
-#endif
 
 			int numActiveTracklet = 0;
 			vecTracklet2DSet_[camIdx].activeTracklets.clear();
@@ -4212,9 +4074,6 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 		//---------------------------------------------------------
 		// 3D TRACK RELATED
 		//---------------------------------------------------------
-#ifdef PSN_DEBUG_MODE_
-		printf(">> Reading 3D tracks: %3.1f%%", 0);
-#endif
 		// file open
 		sprintf_s(strFilename, "%ssnapshot_3D_track.txt", strFilepath);		
 		fopen_s(&fpTrack, strFilename, "r"); 
@@ -4479,15 +4338,8 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			listTrack3D_.push_back(newTrack);
 			treeIDPair.push_back(std::make_pair(&listTrack3D_.back(), (unsigned int)treeID));
 			childrenTrackIDPair.push_back(std::make_pair(&listTrack3D_.back(), childrenTrackID));
-
-#ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading 3D tracks: %3.1f%%", 100.0 * (double)(trackIdx + 1.0) / (double)numTrack);
-#endif
 		}
 		fscanf_s(fpTrack, "}\n");
-#ifdef PSN_DEBUG_MODE_
-		printf("\n");
-#endif
 		
 		// children track
 		for (int queueIdx = 0; queueIdx < childrenTrackIDPair.size(); queueIdx++)
@@ -4507,9 +4359,6 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			}
 		}
 
-#ifdef PSN_DEBUG_MODE_
-		printf(">> Reading 3D track trees: %3.1f%%", 0);
-#endif
 		// track tree
 		int numTree = 0;
 		listTrackTree_.clear();
@@ -4544,15 +4393,8 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			fscanf_s(fpTrack, "}\n");
 			fscanf_s(fpTrack, "\t}\n");
 			listTrackTree_.push_back(newTree);
-
-#ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading 3D tracks: %3.1f%%", 100.0 * (double)(treeIdx + 1.0) / (double)numTree);
-#endif
 		}
 		fscanf_s(fpTrack, "}\n");
-#ifdef PSN_DEBUG_MODE_
-		printf("\n");
-#endif
 
 		// set track's tree pointers
 		for (int pairIdx = 0; pairIdx < treeIDPair.size(); pairIdx++)
@@ -4712,9 +4554,6 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 		//---------------------------------------------------------
 		// RESULTS
 		//---------------------------------------------------------
-#ifdef PSN_DEBUG_MODE_
-		printf(">> Reading instant results: %3.1f%%", 0);
-#endif
 		// file open
 		sprintf_s(strFilename, "%ssnapshot_3D_result.txt", strFilepath);		
 		fopen_s(&fpResult, strFilename, "r"); 
@@ -4815,10 +4654,6 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			fscanf_s(fpResult, "\t\t}\n\t}\n");
 
 			queueTrackingResult_.push_back(curResult);
-
-#ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading instant results: %3.1f%%", 100.0 * (double)(resultIdx + 1.0) / (double)numTrackingResults);
-#endif
 		}
 		fscanf_s(fpResult, "}\n");
 		fclose(fpResult);
@@ -4835,9 +4670,6 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 		fscanf_s(fpHypothesis, "frameIndex:%d\n\n", &readingInt);
 		nCurrentFrameIdx_ = (unsigned int)readingInt;
 
-#ifdef PSN_DEBUG_MODE_
-		printf(">> Reading previous hypotheses: %3.1f%%", 0);
-#endif
 		// queuePrevGlobalHypotheses
 		int numPrevGH = 0;
 		queuePrevGlobalHypotheses_.clear();
@@ -4890,15 +4722,9 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 
 			queuePrevGlobalHypotheses_.push_back(newHypothesis);
 
-#ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading previous hypotheses: %3.1f%%", 100.0 * (double)(hypothesisIdx + 1.0) / (double)numPrevGH);
-#endif
 		}
 		fscanf_s(fpHypothesis, "}\n");
 
-#ifdef PSN_DEBUG_MODE_
-		printf("\n>> Reading current hypotheses: %3.1f%%", 0);
-#endif
 		// queueCurrGlobalHypotheses
 		int numCurrGH = 0;
 		queueCurrGlobalHypotheses_.clear();
@@ -4950,15 +4776,9 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 			newHypothesis.bValid = 0 < readingInt ? true : false;
 
 			queueCurrGlobalHypotheses_.push_back(newHypothesis);
-#ifdef PSN_DEBUG_MODE_
-			printf("\r>> Reading current hypotheses: %3.1f%%", 100.0 * (double)(hypothesisIdx + 1.0) / (double)numCurrGH);
-#endif
 		}
 		fscanf_s(fpHypothesis, "}\n");
 		fclose(fpHypothesis);
-#ifdef PSN_DEBUG_MODE_
-		printf("\n");
-#endif
 
 		//---------------------------------------------------------
 		// VISUALIZATION
@@ -4994,9 +4814,6 @@ bool CPSNWhere_Associator3D::LoadSnapshot(const char *strFilepath)
 		return false;
 	}
 
-#ifdef PSN_DEBUG_MODE_
-	printf("done!\n");
-#endif
 	return true;
 }
 

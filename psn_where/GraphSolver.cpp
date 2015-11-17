@@ -492,6 +492,7 @@ void CGraphSolver::RunBLS(void)
 	else
 	{
 		fc = this->BLS_GenerateInitialSolution();
+		//fc = this->BLS_GenerateInitialSolution(false);
 	}
 	Cbest = this->BLS_C;
 	fbest = fc;

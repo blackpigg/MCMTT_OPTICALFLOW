@@ -498,10 +498,6 @@ bool psn::IsLineSegmentIntersect(PSN_Line &line1, PSN_Line &line2)
 ************************************************************************/
 double psn::Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoint3D)
 {
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Associator3D](DistanceBackProjectionLine) start\n");
-#endif
-	
 	PSN_Point3D line1Direct = line1.first - line1.second;
 	PSN_Point3D line2Direct = line2.first - line2.second;
 	PSN_Point3D lineOffset = line2.second - line1.second;
@@ -525,9 +521,6 @@ double psn::Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoin
 
 	midPoint3D = (closePoint1 + closePoint2) / 2;
 
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Associator3D](DistanceBackProjectionLine) return:%f\n", fDistance);
-#endif
 	return (closePoint1 - closePoint2).norm_L2();
 }
 
@@ -853,10 +846,6 @@ cv::Mat psn::MakeMatTile(std::vector<cv::Mat> *imageArray, unsigned int numRows,
 		cv::vconcat(resultMat, hConcatMat, resultMat);
 	}
 
-#ifdef PSN_DEBUG_MODE_
-	//printf("[CPSNWhere_Manager](MakeMatTile) end\n");
-#endif
-
 	return resultMat;
 }
 
@@ -1012,16 +1001,11 @@ std::vector<stDetection> psn::ReadDetectionResultWithTxt(std::string strDatasetP
 
 	FILE *fid;
 	try {
-		switch(PSN_DETECTION_TYPE)	{
+		switch (PSN_DETECTION_TYPE)	{
 		case 0:	// Head
 			sprintf_s(textfile_path, sizeof(textfile_path), "%s\\detectionResult\\cam%d\\%04d.txt", strDatasetPath.c_str(), camIdx, frameIdx);
 			fopen_s(&fid, textfile_path, "r");
-			if(NULL == fid)	{
-#ifdef PSN_DEBUG_MODE_
-				printf("[WARNING]...[CPSNWhere_Manager](ReadDetectionResultWithTxt) file reading is failed\n");
-#endif
-				return vec_result;
-			}
+			if (NULL == fid)	{ return vec_result; }
 			// read # of detections
 			fscanf_s(fid, "%d\n", &num_detection);
 			vec_result.reserve(num_detection);
@@ -1047,13 +1031,7 @@ std::vector<stDetection> psn::ReadDetectionResultWithTxt(std::string strDatasetP
 				break;
 			}
 			fopen_s(&fid, textfile_path, "r");
-			if(NULL == fid)
-			{
-#ifdef PSN_DEBUG_MODE_
-				printf("[WARNING]...[CPSNWhere_Manager](ReadDetectionResultWithTxt) file reading is failed\n");
-#endif
-				return vec_result;
-			}
+			if (NULL == fid) { return vec_result; }
 
 			switch (PSN_INPUT_TYPE) {
 			case 0: // ETRI testbed

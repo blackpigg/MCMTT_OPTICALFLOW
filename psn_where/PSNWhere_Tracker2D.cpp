@@ -250,15 +250,6 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 {
 	assert(this->m_bInit);
 
-#ifdef PSN_DEBUG_MODE_
-	printf("[CPSNWhere_Tracker2D](Run) start with frame number %d\n", frameIdx);
-
-	//-----------------------------------------------
-	// SPEED TEST
-	clock_t timer_start = clock();
-	//-----------------------------------------------
-#endif
-
 	// insert to buffer
 	cv::Mat grayImage;
 	cv::cvtColor(*curFrame, grayImage, CV_BGR2GRAY);	
@@ -322,18 +313,6 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 	this->m_vecPtGrayFrameBuffer = vecNewPtGrayFrameBuffer;
 	vecNewPtGrayFrameBuffer.clear();
 
-#ifdef PSN_DEBUG_MODE_
-	//-----------------------------------------------
-	// SPEED TEST
-	clock_t timer_end = clock();
-	double elapsedTime;
-	elapsedTime = (double)(timer_end - timer_start) / CLOCKS_PER_SEC;
-	printf("processing time of GRID FAST detector: %f\n", elapsedTime);
-	//-----------------------------------------------
-	
-	// file save
-	//this->FilePrintTracklet();
-
 #ifdef PSN_2D_DEBUG_DISPLAY_
 	//-----------------------
 	// DEBUG
@@ -382,7 +361,6 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 	}	
 	cvWriteFrame(this->m_vwOutputVideo, currentFrame);
 	delete currentFrame;
-#endif
 #endif
 	this->m_matDebugDisplay.release();
 #endif
