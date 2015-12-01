@@ -2,9 +2,11 @@
 
 #include "stdafx.h"
 #include <queue>
-#include <time.h>
 #include <list>
 #include <deque>
+#include <limits>
+#include <time.h>
+#include <math.h>
 
 #include "cv.h"
 #include "opencv2\highgui\highgui.hpp"
@@ -30,7 +32,7 @@
 #define DETECTION_PATH ("/detectionResult/")
 #define TRACKLET_PATH ("/trackletInput/")
 // output
-#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009/")
+#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009_old/")
 #define SNAPSHOT_PATH ("logs/snapshot/")
 #define TRACK_SAVE_PATH ("logs/tracks/")
 
@@ -46,10 +48,10 @@
 	const unsigned int CAM_ID[NUM_CAM] = {0, 1, 2, 3};	
 #else
 	// PETS.S2.L1 setting
-	//#define NUM_CAM (3)
-	//const unsigned int CAM_ID[NUM_CAM] = {1, 5, 7};
-	#define NUM_CAM (1)
-	const unsigned int CAM_ID[NUM_CAM] = {1};
+	#define NUM_CAM (3)
+	const unsigned int CAM_ID[NUM_CAM] = {1, 5, 7};
+	//#define NUM_CAM (1)
+	//const unsigned int CAM_ID[NUM_CAM] = {1};
 #endif
 
 #define NUM_DETECTION_PART (8)

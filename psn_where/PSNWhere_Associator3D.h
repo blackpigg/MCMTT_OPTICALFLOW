@@ -245,9 +245,6 @@ private:
 	// logging related
 	std::string strTime_;
 	std::string strLogFileName_;
-	std::string strTrackLogFileName_;
-	std::string strDefferedResultFileName_;
-	std::string strInstantResultFileName_;
 	
 	//----------------------------------------------------------------
 	// 2D tracklet related

@@ -298,10 +298,7 @@ void CPSNWhere_Associator3D::Initialize(std::string datasetPath, std::vector<stC
 	psn::CreateDirectoryForWindows(std::string(RESULT_SAVE_PATH));
 
 	// file path
-	strLogFileName_ = "logs/PSN_Log_" + strTime_ + ".txt";		
-	strTrackLogFileName_ = std::string(RESULT_SAVE_PATH) + "PSN_tracks_" + strTime_ + "txt";
-	strDefferedResultFileName_ = std::string(RESULT_SAVE_PATH) + "PSN_result_deferred_" + strTime_ + ".txt";
-	strInstantResultFileName_ = std::string(RESULT_SAVE_PATH) + "PSN_result_instance_" + strTime_ + ".txt";
+	strLogFileName_ = "logs/" + strTime_ + "_log.txt";
 
 	// init flag
 	bInit_ = true;
@@ -350,20 +347,24 @@ void CPSNWhere_Associator3D::Finalize(void)
 		queueDeferredTrackingResult_.push_back(queueTrackingResult_[timeIdx]);
 	}
 
-	// print results
-	this->PrintResult(strInstantResultFileName_.c_str(), &queueTrackingResult_);
-	this->PrintResult(strDefferedResultFileName_.c_str(), &queueDeferredTrackingResult_);
-
 	/////////////////////////////////////////////////////////////////////////////
 	// EVALUATION
 	/////////////////////////////////////////////////////////////////////////////
 #ifndef LOAD_SNAPSHOT_
 	std::string curFilePath;
 	char strParameter[128];
-	sprintf_s(strParameter, "K%03d_W%03d", (int)K_BEST_SIZE, (int)PROC_WINDOW_SIZE);
-	std::string strSuffix = "_" + std::string(strParameter) + "_" + strTime_ + ".txt";
 
-	psn::CreateDirectoryForWindows(std::string(RESULT_SAVE_PATH));
+	sprintf_s(strParameter, "K%03d", (int)K_BEST_SIZE);	
+	std::string strResultPath = std::string(RESULT_SAVE_PATH) + std::string(strParameter) + "/";
+	psn::CreateDirectoryForWindows(strResultPath);
+
+	printf("[EVALUATION] instance result\n");
+	this->m_cEvaluator_Instance.Evaluate();
+	this->m_cEvaluator_Instance.PrintResultToConsole();
+	sprintf_s(strParameter, "K%03d_W000", (int)K_BEST_SIZE);
+	curFilePath = strResultPath + strTime_ + "_evaluation_" + strParameter + ".txt";
+	this->m_cEvaluator_Instance.PrintResultToFile(curFilePath.c_str());
+
 	printf("[EVALUATION] deferred result\n");
 	for (unsigned int timeIdx = (unsigned int)std::max(0, (int)nCurrentFrameIdx_ - PROC_WINDOW_SIZE + 2); timeIdx <= nCurrentFrameIdx_; timeIdx++)
 	{
@@ -371,18 +372,11 @@ void CPSNWhere_Associator3D::Finalize(void)
 	}
 	this->m_cEvaluator.Evaluate();
 	this->m_cEvaluator.PrintResultToConsole();
-	curFilePath = std::string(RESULT_SAVE_PATH) + "evaluation_deferred" + strSuffix;
+	sprintf_s(strParameter, "K%03d_W%03d", (int)K_BEST_SIZE, (int)PROC_WINDOW_SIZE);
+	curFilePath = strResultPath + strTime_ + "_evaluation_" + strParameter + ".txt";
 	this->m_cEvaluator.PrintResultToFile(curFilePath.c_str());
-	curFilePath = std::string(RESULT_SAVE_PATH) + "result_matrix_deferred" + strSuffix;
-	this->m_cEvaluator.PrintResultMatrix(curFilePath.c_str());
 
-	printf("[EVALUATION] instance result\n");	
-	this->m_cEvaluator_Instance.Evaluate();
-	this->m_cEvaluator_Instance.PrintResultToConsole();
-	curFilePath = std::string(RESULT_SAVE_PATH) + "evaluation_instance" + strSuffix;
-	this->m_cEvaluator_Instance.PrintResultToFile(curFilePath.c_str());
-	curFilePath = std::string(RESULT_SAVE_PATH) + "result_matrix_instance" + strSuffix;
-	this->m_cEvaluator_Instance.PrintResultMatrix(curFilePath.c_str());
+	
 #endif
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -546,12 +540,8 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 
 #ifdef PSN_PRINT_LOG_
 	// PRINT LOG
-	std::string strLog = "";
-	strLog += std::to_string(nCurrentFrameIdx_) + ",";
-	strLog += std::to_string(nCountTrackInOptimization_) + ",";
-	strLog += std::to_string(nCountUCTrackInOptimization_) + ",";
-	strLog += std::to_string(fCurrentProcessingTime_) + ",";
-	strLog += std::to_string(fCurrentSolvingTime_) + ",";
+	std::string strLog = "";	
+	strLog += std::to_string(fCurrentProcessingTime_);	
 	strLog += "\n";
 	psn::printLog(strLogFileName_.c_str(), strLog);
 	fCurrentSolvingTime_ = 0.0;
