@@ -2850,56 +2850,11 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 	if (NULL == ptQueueHypothesis) { return; }
 	if (0 >= (*ptQueueHypothesis).size()) { return; }
 
+	// DEBUG
+	//PrintHypotheses(*ptQueueHypothesis, "data/hypotheses.txt", nCurrentFrameIdx);
+
+	// track tree branch pruning
 	int nTimeBranchPruning = (int)nCurrentFrameIdx - (int)N;
-	if (nTimeBranchPruning < 0) { return; }
-
-	// N-scan back pruning for ordinary trees
-	for (std::deque<TrackTree*>::iterator treeIter = queuePtActiveTrees_.begin();
-		treeIter != queuePtActiveTrees_.end();
-		treeIter++)
-	{
-		// skip unconfirmed track tree
-		if (!(*treeIter)->bConfirmed){ continue; }
-
-		// find max GTP track
-		Track3D *maxGTPTrack = NULL;
-		double maxGTP = 0.0;
-		for (PSN_TrackSet::iterator trackIter = (*treeIter)->tracks.begin();
-			trackIter != (*treeIter)->tracks.end();
-			trackIter++)
-		{
-			if ((*trackIter)->GTProb > maxGTP)
-			{
-				maxGTPTrack = *trackIter;
-				maxGTP = (*trackIter)->GTProb;
-			}
-			if ((int)(*trackIter)->timeGeneration < nTimeBranchPruning) { continue; }
-			(*trackIter)->bValid = false;
-		}
-		if (NULL == maxGTPTrack)
-		{
-			// prune the entire track tree when there is no track has GTP larget than zero
-			TrackTree::SetValidityFlagInTrackBranch((*treeIter)->tracks[0], false);
-			continue;
-		}
-
-		// find brach seed
-		Track3D *branchSeed = maxGTPTrack;
-		while (true)
-		{
-			if ((int)maxGTPTrack->timeGeneration <= nTimeBranchPruning || NULL == branchSeed->parentTrack) { break; }
-			if ((int)branchSeed->parentTrack->timeGeneration < nTimeBranchPruning) { break; }
-			branchSeed = branchSeed->parentTrack;
-		}
-		TrackTree::SetValidityFlagInTrackBranch(branchSeed, true);
-	}
-	//// [REPLACEMENT OF CODES ABOVE] clear validity flags in all trees
-	//for (std::deque<TrackTree*>::iterator treeIter = queuePtActiveTrees_.begin();
-	//	treeIter != queuePtActiveTrees_.end();
-	//	treeIter++)
-	//{ TrackTree::SetValidityFlagInTrackBranch((*treeIter)->tracks[0], false); }
-	
-	// set tracks in the best solution
 	PSN_TrackSet *tracksInBestSolution = &(*ptQueueHypothesis).front().selectedTracks;
 	Track3D *brachSeedTrack = NULL;
 	for (int trackIdx = 0; trackIdx < tracksInBestSolution->size(); trackIdx++)
@@ -2907,7 +2862,7 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 		(*tracksInBestSolution)[trackIdx]->bCurrentBestSolution = true;
 
 		// left unconfirmed tracks
-		if (!(*tracksInBestSolution)[trackIdx]->tree->bConfirmed){ continue; }
+		if ((*tracksInBestSolution)[trackIdx]->tree->timeGeneration + NUM_FRAME_FOR_CONFIRMATION > nCurrentFrameIdx){ continue; }
 
 		// pruning
 		brachSeedTrack = TrackTree::FindOldestTrackInBranch((*tracksInBestSolution)[trackIdx], nTimeBranchPruning);
@@ -2918,6 +2873,77 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 			TrackTree::SetValidityFlagInTrackBranch(brachSeedTrack->parentTrack->childrenTrack[childIdx], false);
 		}
 	}
+	//if (NULL == ptQueueHypothesis) { return; }
+	//if (0 >= (*ptQueueHypothesis).size()) { return; }
+
+	//int nTimeBranchPruning = (int)nCurrentFrameIdx - (int)N;
+	//if (nTimeBranchPruning < 0) { return; }
+
+	//// N-scan back pruning for ordinary trees
+	//for (std::deque<TrackTree*>::iterator treeIter = queuePtActiveTrees_.begin();
+	//	treeIter != queuePtActiveTrees_.end();
+	//	treeIter++)
+	//{
+	//	// skip unconfirmed track tree
+	//	if (!(*treeIter)->bConfirmed){ continue; }
+
+	//	// find max GTP track
+	//	Track3D *maxGTPTrack = NULL;
+	//	double maxGTP = 0.0;
+	//	for (PSN_TrackSet::iterator trackIter = (*treeIter)->tracks.begin();
+	//		trackIter != (*treeIter)->tracks.end();
+	//		trackIter++)
+	//	{
+	//		if ((*trackIter)->GTProb > maxGTP)
+	//		{
+	//			maxGTPTrack = *trackIter;
+	//			maxGTP = (*trackIter)->GTProb;
+	//		}
+	//		if ((int)(*trackIter)->timeGeneration < nTimeBranchPruning) { continue; }
+	//		(*trackIter)->bValid = false;
+	//	}
+	//	if (NULL == maxGTPTrack)
+	//	{
+	//		// prune the entire track tree when there is no track has GTP larget than zero
+	//		TrackTree::SetValidityFlagInTrackBranch((*treeIter)->tracks[0], false);
+	//		continue;
+	//	}
+
+	//	// find brach seed
+	//	Track3D *branchSeed = maxGTPTrack;
+	//	while (true)
+	//	{
+	//		if ((int)maxGTPTrack->timeGeneration <= nTimeBranchPruning || NULL == branchSeed->parentTrack) { break; }
+	//		if ((int)branchSeed->parentTrack->timeGeneration < nTimeBranchPruning) { break; }
+	//		branchSeed = branchSeed->parentTrack;
+	//	}
+	//	TrackTree::SetValidityFlagInTrackBranch(branchSeed, true);
+	//}
+	////// [REPLACEMENT OF CODES ABOVE] clear validity flags in all trees
+	////for (std::deque<TrackTree*>::iterator treeIter = queuePtActiveTrees_.begin();
+	////	treeIter != queuePtActiveTrees_.end();
+	////	treeIter++)
+	////{ TrackTree::SetValidityFlagInTrackBranch((*treeIter)->tracks[0], false); }
+	//
+	//// set tracks in the best solution
+	//PSN_TrackSet *tracksInBestSolution = &(*ptQueueHypothesis).front().selectedTracks;
+	//Track3D *brachSeedTrack = NULL;
+	//for (int trackIdx = 0; trackIdx < tracksInBestSolution->size(); trackIdx++)
+	//{
+	//	(*tracksInBestSolution)[trackIdx]->bCurrentBestSolution = true;
+
+	//	// left unconfirmed tracks
+	//	if (!(*tracksInBestSolution)[trackIdx]->tree->bConfirmed){ continue; }
+
+	//	// pruning
+	//	brachSeedTrack = TrackTree::FindOldestTrackInBranch((*tracksInBestSolution)[trackIdx], nTimeBranchPruning);
+	//	if (NULL == brachSeedTrack->parentTrack) { continue; }
+	//	for (int childIdx = 0; childIdx < brachSeedTrack->parentTrack->childrenTrack.size(); childIdx++)
+	//	{
+	//		if (brachSeedTrack->parentTrack->childrenTrack[childIdx] == brachSeedTrack) { continue; }
+	//		TrackTree::SetValidityFlagInTrackBranch(brachSeedTrack->parentTrack->childrenTrack[childIdx], false);
+	//	}
+	//}
 }
 
 /************************************************************************
