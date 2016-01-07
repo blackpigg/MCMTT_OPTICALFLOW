@@ -56,7 +56,9 @@
     <ClInclude Include="PSNWhere_Defines.h">
       <Filter>PSNWhere</Filter>
     </ClInclude>
-    <ClInclude Include="PSNWhere_Types.h" />
+    <ClInclude Include="PSNWhere_Types.h">
+      <Filter>PSNWhere</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -88,6 +90,8 @@
     <ClCompile Include="PSNWhere_Utils.cpp">
       <Filter>PSNWhere</Filter>
     </ClCompile>
-    <ClCompile Include="PSNWhere_Types.cpp" />
+    <ClCompile Include="PSNWhere_Types.cpp">
+      <Filter>PSNWhere</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
