@@ -182,6 +182,7 @@
     <ClInclude Include="calibration\cameraModel.h" />
     <ClInclude Include="Evaluator.h" />
     <ClInclude Include="GraphSolver.h" />
+    <ClInclude Include="helpers\ParameterParser.h" />
     <ClInclude Include="Helpers\PSNWhere_Hungarian.h" />
     <ClInclude Include="PSNWhere.h" />
     <ClInclude Include="PSNWhere_Associator3D.h" />
@@ -197,6 +198,7 @@
     <ClCompile Include="calibration\cameraModel.cpp" />
     <ClCompile Include="Evaluator.cpp" />
     <ClCompile Include="GraphSolver.cpp" />
+    <ClCompile Include="helpers\ParameterParser.cpp" />
     <ClCompile Include="Helpers\PSNWhere_Hungarian.cpp" />
     <ClCompile Include="PSNWhere.cpp" />
     <ClCompile Include="main.cpp" />
@@ -206,6 +208,9 @@
     <ClCompile Include="PSNWhere_SGSmooth.cpp" />
     <ClCompile Include="PSNWhere_Tracker2D.cpp" />
     <ClCompile Include="stdafx.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="data\parameters.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

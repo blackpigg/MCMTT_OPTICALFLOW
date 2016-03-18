@@ -20,6 +20,9 @@
     <Filter Include="Graph Solvers">
       <UniqueIdentifier>{565c98fe-1ce8-41c1-8d88-4c4705f95342}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Data">
+      <UniqueIdentifier>{a705b7ff-06f9-4518-bc82-be25500a7c1a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="targetver.h">
@@ -59,6 +62,9 @@
     <ClInclude Include="PSNWhere_Types.h">
       <Filter>PSNWhere</Filter>
     </ClInclude>
+    <ClInclude Include="helpers\ParameterParser.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -93,5 +99,13 @@
     <ClCompile Include="PSNWhere_Types.cpp">
       <Filter>PSNWhere</Filter>
     </ClCompile>
+    <ClCompile Include="helpers\ParameterParser.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="data\parameters.txt">
+      <Filter>Data</Filter>
+    </Text>
   </ItemGroup>
 </Project>

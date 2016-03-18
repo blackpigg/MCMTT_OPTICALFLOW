@@ -76,17 +76,19 @@
 #include "stdafx.h"
 #include <iostream>
 #include "PSNWhere.h"
+#include "helpers\ParameterParser.h"
 
+bool ReadParams(_TCHAR** parameterPath);
 int _tmain(int argc, _TCHAR* argv[])
 {
 	// argument handling
-#ifdef _UNICODE
-	std::wstring wstrDatasetPath(argv[1]);
-	std::string strDatasetPath(wstrDatasetPath.begin(), wstrDatasetPath.end());
-#else
-	std::string strDatasetPath = argv[1];
-#endif
+
+
 	char inputFilePath[300];
+
+	// PETS2009 S2L1
+	int frameIdxStart = 0;
+	int frameIdxEnd = 30;	
 
 	//static const int arr[] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30};
 	static const int arr[] = {100};
@@ -114,12 +116,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			/////////////////////////////////////////////////////////////////	
 			CPSNWhere psnWhere = CPSNWhere();
 			psnWhere.Initialize(strDatasetPath, &curConfig3D);
-			cv::Mat inputFrame[NUM_CAM];
-
-			// PETS2009 S2L1
-			int frameIdxStart = 0;
-			int frameIdxEnd = 30;
-			//int frameIdxEnd = 794;
+			cv::Mat inputFrame[NUM_CAM];			
 	
 			/////////////////////////////////////////////////////////////////
 			// MAIN LOOP
@@ -166,5 +163,38 @@ int _tmain(int argc, _TCHAR* argv[])
 	return 0;
 }
 
+bool ReadParams(_TCHAR** parameterPath, int &startFrame, int &endFrame)
+{
+	#ifdef _UNICODE
+	std::wstring wstrDatasetPath(argv[1]);
+	std::string strDatasetPath(wstrDatasetPath.begin(), wstrDatasetPath.end());
+#else
+	std::string strDatasetPath = argv[1];
+#endif
+	CParameterParser parser;
+	PARAM_SET params;
+	if (!parser.ReadParams(strDatasetPath.c_str(), params))
+	{
+		printf("[ERROR] cannot load parameters!!\n");
+		return 0;
+	}
+
+	for (int paramIdx = 0; paramIdx < params.size(); paramIdx++)
+	{		
+		if      (0 == params[paramIdx].first.compare("DATASET_PATH"))       { strDatasetPath_   = params[paramIdx].second; }
+		else if (0 == params[paramIdx].first.compare("PART_DETECTION_DIR")) { strPartInputPath_ = strDatasetPath_ + "/" + params[paramIdx].second; }
+		else if (0 == params[paramIdx].first.compare("PART_MODEL_FILE"))    { strPartModelPath  = params[paramIdx].second; }
+		else if (0 == params[paramIdx].first.compare("RESULT_DIR"))         { strOutputPath_    = params[paramIdx].second; }
+		else if (0 == params[paramIdx].first.compare("ROOT_MAX_OVERLAP"))   { nmsRootRatio_     = std::stod(params[paramIdx].second); }
+		else if (0 == params[paramIdx].first.compare("HEAD_NMS_RATIO"))     { nmsHeadRatio_     = std::stod(params[paramIdx].second); }
+		else if (0 == params[paramIdx].first.compare("PART_NMS_RATIO"))     { nmsPartRatio_     = std::stod(params[paramIdx].second); }
+		else if (0 == params[paramIdx].first.compare("EVAL_MIN_OVERLAP"))   { nmsEvalRatio_     = std::stod(params[paramIdx].second); }
+		else if (0 == params[paramIdx].first.compare("PART_COVER_RATIO"))   { partCoverRatio_   = std::stod(params[paramIdx].second); }
+		else if (0 == params[paramIdx].first.compare("SOVLER_TIMELIMIT"))   { solverTimelimit_  = std::stod(params[paramIdx].second); }		
+		else if (0 == params[paramIdx].first.compare("DO_RECORD"))          { bRecord_          = 1 == std::stoi(params[paramIdx].second); }
+	}
+}
+
 //()()
 //('')HAANJU.YOO
+
