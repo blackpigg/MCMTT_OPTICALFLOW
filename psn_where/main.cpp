@@ -117,8 +117,9 @@ int _tmain(int argc, _TCHAR* argv[])
 			cv::Mat inputFrame[NUM_CAM];
 
 			// PETS2009 S2L1
-			int frameIdxStart = 0;			
-			int frameIdxEnd = 794;
+			int frameIdxStart = 0;
+			int frameIdxEnd = 30;
+			//int frameIdxEnd = 794;
 	
 			/////////////////////////////////////////////////////////////////
 			// MAIN LOOP

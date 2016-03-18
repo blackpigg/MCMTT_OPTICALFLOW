@@ -2725,10 +2725,10 @@ void CPSNWhere_Associator3D::Hypothesis_BranchHypotheses(PSN_HypothesisSet &outB
 	//---------------------------------------------------------
 	// GRAPH CONSTRUCTION
 	//---------------------------------------------------------	
-	PSN_Graph *curGraph = new PSN_Graph();
-	PSN_VertexSet vertexInGraph;
-	PSN_VertexSet vertexInInitialSolution;
-	std::deque<PSN_VertexSet> initialSolutionSet;
+	hj::Graph *curGraph = new hj::Graph();
+	hj::VertexSet vertexInGraph;
+	hj::VertexSet vertexInInitialSolution;
+	std::deque<hj::VertexSet> initialSolutionSet;
 	std::deque<Track3D*> queueTracksInOptimization;
 
 	for (size_t trackIdx = 0; trackIdx < tracks->size(); trackIdx++)		
@@ -2742,16 +2742,17 @@ void CPSNWhere_Associator3D::Hypothesis_BranchHypotheses(PSN_HypothesisSet &outB
 		if (0.0 < curTrack->costTotal) { continue; }
 
 		// for miss penalty
-		double unpenaltyCost = 0.0;
-		for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
-		{
-			if (NULL == curTrack->curTracklet2Ds.get(camIdx)) { continue; }
-			unpenaltyCost += log(FP_RATE/(1 - FP_RATE));
-		}
+		//double unpenaltyCost = 0.0;
+		//for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
+		//{
+		//	if (NULL == curTrack->curTracklet2Ds.get(camIdx)) { continue; }
+		//	unpenaltyCost += log(FP_RATE/(1 - FP_RATE));
+		//}
 
 		// add vertex
-		curTrack->loglikelihood = -(curTrack->costTotal + unpenaltyCost);
-		PSN_GraphVertex *curVertex = curGraph->AddVertex(curTrack->loglikelihood);
+		//curTrack->loglikelihood = -(curTrack->costTotal + unpenaltyCost);
+		curTrack->loglikelihood = -curTrack->costTotal;
+		hj::GraphVertex *curVertex = curGraph->AddVertex(curTrack->loglikelihood);
 		vertexInGraph.push_back(curVertex);
 		queueTracksInOptimization.push_back(curTrack);
 
@@ -2786,9 +2787,9 @@ void CPSNWhere_Associator3D::Hypothesis_BranchHypotheses(PSN_HypothesisSet &outB
 	//---------------------------------------------------------
 	// GRAPH SOLVING
 	//---------------------------------------------------------
-	cGraphSolver_.SetGraph(curGraph);
-	cGraphSolver_.SetInitialPoints(initialSolutionSet);
-	stGraphSolvingResult *curResult = cGraphSolver_.Solve();
+	cGraphSolver_.Initialize(curGraph, HJ_GRAPH_SOLVER_BLS);
+	cGraphSolver_.SetInitialSolutions(initialSolutionSet);
+	hj::stGraphSolvingResult *curResult = cGraphSolver_.Solve();
 
 	//---------------------------------------------------------
 	// SOLUTION CONVERSION AND DUPLICATION CHECK
@@ -2800,11 +2801,11 @@ void CPSNWhere_Associator3D::Hypothesis_BranchHypotheses(PSN_HypothesisSet &outB
 		newHypothesis.relatedTracks = *tracks;
 		newHypothesis.bValid = true;
 		newHypothesis.logLikelihood = curResult->vecSolutions[solutionIdx].second;		
-		for (PSN_VertexSet::iterator vertexIter = curResult->vecSolutions[solutionIdx].first.begin();
+		for (hj::VertexSet::iterator vertexIter = curResult->vecSolutions[solutionIdx].first.begin();
 			vertexIter != curResult->vecSolutions[solutionIdx].first.end();
 			vertexIter++)
 		{
-			newHypothesis.selectedTracks.push_back(queueTracksInOptimization[(*vertexIter)->id]);
+			newHypothesis.selectedTracks.push_back(queueTracksInOptimization[(*vertexIter)->id_]);
 		}		
 		std::sort(newHypothesis.selectedTracks.begin(), newHypothesis.selectedTracks.end(), psnTrackIDAscendComparator);
 

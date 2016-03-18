@@ -116,7 +116,7 @@ struct stHypothesisSolvingInfo
 	double costInitialSolution;
 	double costAdded;
 	double reviousSolution;
-	stGraphSolvingResult solvingResult;
+	hj::stGraphSolvingResult solvingResult;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -274,7 +274,7 @@ private:
 	std::deque<stTrack3DResult> queueTrackingResult_;
 	
 	// optimization related
-	CGraphSolver cGraphSolver_;
+	hj::CGraphSolver  cGraphSolver_;
 	PSN_HypothesisSet queuePrevGlobalHypotheses_;
 	PSN_HypothesisSet queueCurrGlobalHypotheses_;
 	std::vector<stHypothesisSolvingInfo> vectorSolvingInfo_;
