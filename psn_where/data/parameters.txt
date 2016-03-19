@@ -6,11 +6,14 @@ NUM_EXPERIMENTS=50
 %==========================================
 % INPUT
 %==========================================
-PSN_INPUT_TYPE=1 
-% => 0:ETRI / 1:PETS2009
+START_FRAME_IDX=0
+END_FRAME_IDX=794
 
+% data set type => 0:ETRI / 1:PETS2009
+PSN_INPUT_TYPE=1 
+
+% detection type => 0:Head / 1:Full-body
 PSN_DETECTION_TYPE=1
-% => 0:Head / 1:Full-body
 
 
 %==========================================
@@ -24,26 +27,14 @@ RESULT_SAVE_PATH=D:/Workspace/ExperimentalResult/PETS2009/
 SNAPSHOT_PATH=logs/snapshot/
 TRACK_SAVE_PATH=logs/tracks/
 
+PART_MODEL_FILE=data/dpm_inria.txt
+GROUNDTRUTH_DIR=data/groundTruth
+GROUNDTRUTH_NAME=PETS2009-S2L2.mat
+
 % console related
 PSN_DEBUG_MODE=1
 PSN_MONITOR_MODE=1
 PSN_PRINT_LOG=1
-
-PART_MODEL_FILE=data/dpm_inria.txt
-GROUNDTRUTH_DIR=data/groundTruth
-GROUNDTRUTH_NAME=PETS2009-S2L2.mat
-START_FRAME_IDX=0
-END_FRAME_IDX=794
-
-%==========================================
-% PARAMETERS
-%==========================================
-ROOT_MAX_OVERLAP=0.9
-HEAD_NMS_RATIO=0.5
-PART_NMS_RATIO=0.8
-PART_COVER_RATIO=0.3
-EVAL_MIN_OVERLAP=0.5
-SOVLER_TIMELIMIT=60
 
 %==========================================
 % 2D TRACKING
@@ -52,16 +43,19 @@ SOVLER_TIMELIMIT=60
 %==========================================
 % 3D ASSOCIATION
 %==========================================
+SIZE_OF_KS=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18
+NUM_FRAMES_FOR_CONFIRMATION=3
 
 %==========================================
 % VISUALIZATION
 %==========================================
+DO_RECORD=1
 
 %==========================================
 % OUTPUT
 %==========================================
-RESULT_DIR=D:/Workspace/ExperimentalResult/PAPD/PETS2009-S2L2/CPP
-DO_RECORD=1
+RESULT_DIR=D:/Workspace/ExperimentalResult/PETS2009/
+
 
 %()()
 %('')HAANJU.YOO

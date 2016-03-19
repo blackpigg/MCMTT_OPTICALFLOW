@@ -475,7 +475,24 @@ struct stTreeCluster
 	std::deque<TrackTree*> trees;
 };
 
-struct stConfiguration_Associator3D
+struct stParamsMain
+{
+	std::string strDatasetPath;
+	int startFrameIdx;
+	int endFrameIdx;
+	int numExperiments;
+	std::vector<int> sizeOfKs;
+};
+
+struct stParamsDetection
+{
+};
+
+struct stParamsTracker2D
+{
+};
+
+struct stParamsAssociator3D
 {
 	// all minus values mean that the variable uses default value.
 	// optimization related

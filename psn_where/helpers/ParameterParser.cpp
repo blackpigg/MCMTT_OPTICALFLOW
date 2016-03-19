@@ -5,6 +5,7 @@
 
 const char strCommentStart = '%';
 const char delim = '=';
+const char arrayDelim = ',';
 
 CParameterParser::CParameterParser(void)
 {
@@ -44,12 +45,25 @@ bool CParameterParser::ReadParams(const char *filepath, PARAM_SET &params)
 		{
 			tokens.push_back(item);
 		}
-
 		params.push_back(std::make_pair(tokens[0], tokens[1]));
 	}
 	fstrIn.close();
 
 	return true;
+}
+
+void CParameterParser::ParseArray(const std::string strInput, std::vector<int> &output)
+{
+	output.clear();
+	output.reserve(100);
+	std::stringstream ss(strInput);
+	std::string item;
+	std::vector<std::string> tokens;
+		
+	while (std::getline(ss, item, arrayDelim))
+	{
+		output.push_back(std::stoi(item));		
+	}
 }
 
 //()()

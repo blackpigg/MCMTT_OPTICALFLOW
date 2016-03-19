@@ -211,7 +211,7 @@ CPSNWhere_Associator3D::~CPSNWhere_Associator3D(void)
 ************************************************************************/
 void CPSNWhere_Associator3D::Initialize(std::string datasetPath, 
 										std::vector<stCalibrationInfo*> &vecStCalibInfo, 
-										stConfiguration_Associator3D *stConfig3D)
+										stParamsAssociator3D *stConfig3D)
 {
 	if (bInit_) { return; }
 	bSnapshotReaded_ = false;

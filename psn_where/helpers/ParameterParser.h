@@ -13,6 +13,7 @@ public:
 	~CParameterParser(void);
 
 	bool ReadParams(const char *filepath, PARAM_SET &params);
+	void ParseArray(const std::string strInput, std::vector<int> &output);
 };
 
 //()()
