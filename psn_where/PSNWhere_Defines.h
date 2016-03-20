@@ -41,9 +41,17 @@
 	define NUM_CAM (4)
 	const unsigned int CAM_ID[NUM_CAM] = {0, 1, 2, 3};	
 #else
-	// PETS.S2.L1 setting
+	//// PETS.S2.L1 setting
+	//#define NUM_CAM (3)
+	//const unsigned int CAM_ID[NUM_CAM] = {1, 5, 7};
+
+	// PETS.S2.L2 setting
 	#define NUM_CAM (3)
-	const unsigned int CAM_ID[NUM_CAM] = {1, 5, 7};
+	const unsigned int CAM_ID[NUM_CAM] = {1, 2, 3};
+
+	//// PETS.S2.L3 setting
+	//#define NUM_CAM (3)
+	//const unsigned int CAM_ID[NUM_CAM] = {1, 2, 4};
 #endif
 
 #define NUM_DETECTION_PART (8)

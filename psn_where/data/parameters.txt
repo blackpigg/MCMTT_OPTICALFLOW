@@ -1,13 +1,15 @@
 %==========================================
 % EXPERIMENTS SETTING
 %==========================================
-NUM_EXPERIMENTS=50
+NUM_EXPERIMENTS=1
 
 %==========================================
 % INPUT
 %==========================================
 START_FRAME_IDX=0
-END_FRAME_IDX=794
+%END_FRAME_IDX=794
+END_FRAME_IDX=432
+%END_FRAME_IDX=239
 
 % data set type => 0:ETRI / 1:PETS2009
 PSN_INPUT_TYPE=1 
@@ -19,17 +21,20 @@ PSN_DETECTION_TYPE=1
 %==========================================
 % PATH
 %==========================================
-DATASET_PATH=D:/Workspace/Dataset/PETS2009/S2/L1/Time_12-34
+%DATASET_PATH=D:/Workspace/Dataset/PETS2009/S2/L1/Time_12-34
+DATASET_PATH=D:/Workspace/Dataset/PETS2009/S2/L2/Time_14-55
+%DATASET_PATH=D:/Workspace/Dataset/PETS2009/S2/L3/Time_14-41
+
+%RESULT_SAVE_PATH=D:/Workspace/ExperimentalResult/PETS2009/L1
+RESULT_SAVE_PATH=D:/Workspace/ExperimentalResult/PETS2009/L2
+%RESULT_SAVE_PATH=D:/Workspace/ExperimentalResult/PETS2009/L3
+
 CALIBRATION_PATH=/calibrationInfos/
 DETECTION_PATH=/detectionResult/
 TRACKLET_PATH=/trackletInput/
-RESULT_SAVE_PATH=D:/Workspace/ExperimentalResult/PETS2009/
+
 SNAPSHOT_PATH=logs/snapshot/
 TRACK_SAVE_PATH=logs/tracks/
-
-PART_MODEL_FILE=data/dpm_inria.txt
-GROUNDTRUTH_DIR=data/groundTruth
-GROUNDTRUTH_NAME=PETS2009-S2L2.mat
 
 % console related
 PSN_DEBUG_MODE=1
@@ -43,7 +48,7 @@ PSN_PRINT_LOG=1
 %==========================================
 % 3D ASSOCIATION
 %==========================================
-SIZE_OF_KS=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18
+SIZE_OF_KS=1,5,10,15,20,25,30
 NUM_FRAMES_FOR_CONFIRMATION=3
 
 %==========================================
