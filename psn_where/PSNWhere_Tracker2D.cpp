@@ -7,6 +7,8 @@
 /////////////////////////////////////////////////////////////////////////
 // PARAMETERS
 /////////////////////////////////////////////////////////////////////////
+#define PSN_2D_MAX_TRACKLET_LENGTH (3)
+
 #define PSN_2D_FEATURE_MIN_NUM_TRACK (4)
 #define PSN_2D_FEATURE_MAX_NUM_TRACK (100)
 #define PSN_2D_FEATURE_CLUSTER_RADIUS_RATIO (0.2)
@@ -1070,6 +1072,9 @@ void CPSNWhere_Tracker2D::Track2D_MatchingAndUpdating(std::vector<float> &matchi
 		// height difference
 		if (std::abs(curDetection->height - curTracker->height) > PSN_2D_MAX_HEIGHT_DIFFERENCE) { continue; }
 		double curConfidence = 1.0;
+
+		// maximum length
+		if (curTracker->duration > PSN_2D_MAX_TRACKLET_LENGTH) { continue; }
 
 		//---------------------------------------------------
 		// TRACKER UPDATE

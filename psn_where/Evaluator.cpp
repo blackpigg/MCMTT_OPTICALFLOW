@@ -1110,23 +1110,7 @@ void CEvaluator::PrintResultToFile(const char *strFilepathAndName)
 	try
 	{
 		fopen_s(&fp, strFilepathAndName, "w");
-		fprintf_s(fp, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n", 
-			this->m_stResult.fRecall * 100, 
-			this->m_stResult.fPrecision * 100, 
-			this->m_stResult.fFalseAlarmPerFrame,
-			this->m_stResult.nMostTracked, 
-			this->m_stResult.nPartilalyTracked, 
-			this->m_stResult.nMostLost, 
-			this->m_stResult.fFalseAlarmPerGroundTruth * 100, 
-			this->m_stResult.fMissTargetPerGroundTruth * 100,
-			this->m_stResult.nFalsePositives, 
-			this->m_stResult.nMissed, 
-			this->m_stResult.nIDSwitch, 
-			this->m_stResult.nFragments, 
-			this->m_stResult.nMissed + this->m_stResult.nFalsePositives + this->m_stResult.nIDSwitch, 
-			this->m_stResult.fMOTA * 100, 
-			this->m_stResult.fMOTP * 100, 
-			this->m_stResult.fMOTAL * 100);
+		fprintf_s(fp, "Evaluating PETS on ground plane...\n");
 		fprintf_s(fp, "| Recl Prcn  FAR| MT PT ML|  FPR  FNR  FP  FN  ID  FM  err| MOTA MOTP MOTL\n");
 		fprintf_s(fp, "|%5.1f%5.1f%5.2f|%3i%3i%3i|%5.1f%5.1f%4i%4i%4i%4i%5i|%5.1f %4.1f %4.1f\n", 
 			this->m_stResult.fRecall * 100, 
