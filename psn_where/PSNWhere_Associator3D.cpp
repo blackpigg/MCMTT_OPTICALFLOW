@@ -20,7 +20,7 @@ NOTES:
 // optimization related
 #define PROC_WINDOW_SIZE (10)
 #define K_BEST_SIZE (50)
-#define MAX_TRACK_IN_OPTIMIZATION (2000)
+#define MAX_TRACK_IN_OPTIMIZATION (1000)
 #define MAX_TRACK_IN_UNCONFIRMED_TREE (2)
 #define NUM_FRAME_FOR_CONFIRMATION (3)
 #define DO_BRANCH_CUT (false)
@@ -28,7 +28,7 @@ NOTES:
 // reconstruction related
 #define MIN_TRACKLET_LENGTH (1)
 #define MAX_TRACKLET_LENGTH (15)
-#define MAX_TRACKLET_DISTANCE (2000)
+#define MAX_TRACKLET_DISTANCE (1000)
 #define MAX_TRACKLET_SENSITIVITY_ERROR (20)
 
 #define MAX_HEAD_WIDTH (420)
@@ -61,7 +61,9 @@ NOTES:
 // probability related
 #define MIN_CONSTRUCT_PROBABILITY (0.01)
 #define FP_RATE (0.05)
-#define FN_RATE (0.1)
+//#define FN_RATE (0.1)
+#define FN_RATE (0.3)
+//#define FN_RATE (0.4)
 
 // enter/exit related
 #define ENTER_PENALTY_FREE_LENGTH (2)
@@ -70,7 +72,7 @@ NOTES:
 #define P_EX_MAX (1.0E-6)
 #define P_EN_DECAY (1.0E-3)
 #define P_EX_DECAY_DIST (1.0E-3)
-#define P_EX_DECAY_LENGTH (1.0E-2)
+#define P_EX_DECAY_LENGTH (1.0E-1)
 #define COST_EN_MAX (200.0)
 #define COST_EX_MAX (200.0)
 #define MAX_OUTPOINT (3)
@@ -85,9 +87,9 @@ NOTES:
 #define KALMAN_POSTERROR_COV (0.1)
 #define KALMAN_CONFIDENCE_LEVEN (9)
 #define VELOCITY_LEARNING_RATE (0.9)
-#define DATASET_FRAME_RATE (7.0)
+#define DATASET_FRAME_RATE (6.0)
 //#define MAX_MOVING_SPEED (5000.0 / DATASET_FRAME_RATE)
-#define MAX_MOVING_SPEED (900.0)
+#define MAX_MOVING_SPEED (1000.0)
 #define MIN_MOVING_SPEED (100.0)
 
 // appearance reltaed
@@ -2274,6 +2276,7 @@ double CPSNWhere_Associator3D::ComputeEnterProbability(std::vector<PSN_Point3D> 
 	}
 	if (distanceFromBoundary < 0) { return 1.0; }
 	return distanceFromBoundary <= BOUNDARY_DISTANCE? 1.0 : P_EN_MAX * exp(-(double)(P_EN_DECAY * std::max(0.0, distanceFromBoundary - BOUNDARY_DISTANCE)));
+	return P_EN_MAX;
 }
 
 /************************************************************************

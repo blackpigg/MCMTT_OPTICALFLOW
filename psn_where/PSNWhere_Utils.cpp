@@ -1025,7 +1025,10 @@ std::vector<stDetection> psn::ReadDetectionResultWithTxt(std::string strDatasetP
 				sprintf_s(textfile_path, sizeof(textfile_path), "%s\\detectionResult\\cam%d\\%04d.txt", strDatasetPath.c_str(), camIdx, frameIdx);
 				break;
 			case 1: // PETS.S2.L1					
-				sprintf_s(textfile_path, sizeof(textfile_path), "%s\\View_%03d\\detectionResult\\frame_%04d.txt", strDatasetPath.c_str(), camIdx, frameIdx);		
+				sprintf_s(textfile_path, sizeof(textfile_path), "%s\\detectionResult\\View_%03d\\frame_%04d.txt", strDatasetPath.c_str(), camIdx, frameIdx);		
+				break;
+			case 2: // PILSNU
+				sprintf_s(textfile_path, sizeof(textfile_path), "%s\\detectionResult\\View_%03d\\%04d.txt", strDatasetPath.c_str(), camIdx, frameIdx);		
 				break;
 			default:
 				break;
@@ -1034,20 +1037,6 @@ std::vector<stDetection> psn::ReadDetectionResultWithTxt(std::string strDatasetP
 			if (NULL == fid) { return vec_result; }
 
 			switch (PSN_INPUT_TYPE) {
-			case 0: // ETRI testbed
-				// read # of detections
-				fscanf_s(fid, "%d\n", &num_detection);
-				vec_result.reserve(num_detection);
-
-				// read box infos
-				for (int detect_idx = 0; detect_idx < num_detection; detect_idx++) {
-					fscanf_s(fid, "%f %f %f %f %f %f\n", &temp, &temp, &w, &h, &x, &y);
-					stDetection cur_detection;
-					cur_detection.box = PSN_Rect((double)x, (double)y, (double)w, (double)h);	
-					//curDetection.vecPartBoxes.reserve(8);
-					vec_result.push_back(cur_detection);
-				}
-				break;
 			case 1: // PETS.S2.L1
 				// read # of detections
 				fscanf_s(fid, "numBoxes:%d\n", &num_detection);
@@ -1073,7 +1062,19 @@ std::vector<stDetection> psn::ReadDetectionResultWithTxt(std::string strDatasetP
 					vec_result.push_back(cur_detection);
 				}
 				break;
-			default:
+			default: // ETRI + PILSNU
+				// read # of detections
+				fscanf_s(fid, "%d\n", &num_detection);
+				vec_result.reserve(num_detection);
+
+				// read box infos
+				for (int detect_idx = 0; detect_idx < num_detection; detect_idx++) {
+					fscanf_s(fid, "%f %f %f %f %f %f\n", &temp, &temp, &w, &h, &x, &y);
+					stDetection cur_detection;
+					cur_detection.box = PSN_Rect((double)x, (double)y, (double)w, (double)h);	
+					//curDetection.vecPartBoxes.reserve(8);
+					vec_result.push_back(cur_detection);
+				}
 				break;
 			}
 			fclose(fid);
@@ -1180,7 +1181,7 @@ stTrack2DResult psn::Read2DTrackResultWithTxt(std::string strDataPath, unsigned 
 			////////////////
 			fscanf_s(fp, "\t\tid:%d\n", &readInt1);						curObject.id = (unsigned int)readInt1;
 			fscanf_s(fp, "\t\tbox:(%f,%f,%f,%f)\n", &x, &y, &w, &h);	curObject.box = PSN_Rect((double)x, (double)y, (double)w, (double)h);
-			fscanf_s(fp, "\t\thead:(%f,%f,%f,%f)\n", &x, &y, &w, &h);	curObject.head = PSN_Rect((double)x, (double)y, (double)w, (double)h);			
+			//fscanf_s(fp, "\t\thead:(%f,%f,%f,%f)\n", &x, &y, &w, &h);	curObject.head = PSN_Rect((double)x, (double)y, (double)w, (double)h);			
 			fscanf_s(fp, "\t\tscore:%f\n", &readFloat);					curObject.score = (double)readFloat;
 
 			fscanf_s(fp, "\t\tfeaturePointsPrev:%d,{", &readInt1);		curObject.featurePointsPrev.reserve(readInt1);

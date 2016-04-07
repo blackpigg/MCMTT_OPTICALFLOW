@@ -62,18 +62,18 @@ bool CPSNWhere::Initialize(std::string datasetPath, stParamsAssociator3D *stConf
 		switch(PSN_INPUT_TYPE)
 		{
 		case 1:
-			// PETS2009
-			sprintf_s(strCalibrationFilePath, "%s%sView_%03d.xml", 
-				this->m_strDatasetPath, 
-				CALIBRATION_PATH, 
-				CAM_ID[camIdx]);
-			break;
-		default:
 			// ETRI
 			sprintf_s(strCalibrationFilePath, "%s%scalibInfo_ETRI_TESTBED_cam%d.xml", 
 				this->m_strDatasetPath, 
 				CALIBRATION_PATH,
 				CAM_ID[camIdx]);
+			break;
+		default:			
+			// PETS2009 + PILSNU
+			sprintf_s(strCalibrationFilePath, "%s%sView_%03d.xml", 
+				this->m_strDatasetPath, 
+				CALIBRATION_PATH, 
+				CAM_ID[camIdx]);			
 			break;
 		}
 		
@@ -334,7 +334,7 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 				stObject2DInfo *curTracklet2D = &result2D[camIdx].object2DInfos[trackletIdx];		
 				psn::DrawBoxWithID(m_matResultFrames[camIdx], curTracklet2D->box, curTracklet2D->id, 1, 0, &m_vecColors);
 				cv::rectangle(m_matResultFrames[camIdx], curTracklet2D->box.cv(), cv::Scalar(255, 255, 255), 1); // overlay the white box
-				cv::rectangle(m_matResultFrames[camIdx], curTracklet2D->head.cv(), cv::Scalar(255, 255, 255), 1);
+				//cv::rectangle(m_matResultFrames[camIdx], curTracklet2D->head.cv(), cv::Scalar(255, 255, 255), 1);
 			}
 		}
 	

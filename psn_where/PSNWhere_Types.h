@@ -191,7 +191,7 @@ typedef struct _stObject2DInfo
 {
 	unsigned int id;
 	PSN_Rect box;
-	PSN_Rect head;
+	//PSN_Rect head;
 	double score;
 	std::vector<cv::Point2f> featurePointsPrev;
 	std::vector<cv::Point2f> featurePointsCurr;

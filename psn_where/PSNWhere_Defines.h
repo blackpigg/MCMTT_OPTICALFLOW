@@ -26,14 +26,14 @@
 #define DETECTION_PATH ("/detectionResult/")
 #define TRACKLET_PATH ("/trackletInput/")
 // output
-#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009/")
+#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/TCSVT/ETRI/")
 #define SNAPSHOT_PATH ("logs/snapshot/")
 #define TRACK_SAVE_PATH ("logs/tracks/")
 
 /////////////////////////////////////////////////////////////////////////
 // INPUT PRESETS
 /////////////////////////////////////////////////////////////////////////
-#define PSN_INPUT_TYPE (1)	// 0:ETRI / 1:PETS2009
+#define PSN_INPUT_TYPE (2)	// 0:ETRI / 1:PETS2009 / 2:PILSNU
 #define PSN_DETECTION_TYPE (1)	// 0:Head / 1:Full-body
 
 #if 0 == PSN_INPUT_TYPE
@@ -53,9 +53,9 @@
 	//#define NUM_CAM (3)
 	//const unsigned int CAM_ID[NUM_CAM] = {1, 2, 4};
 
-	// PETS.S2.L3 setting
-	#define NUM_CAM (1)
-	const unsigned int CAM_ID[NUM_CAM] = {1};
+	// PILSNU ETRI_Lab.S1 setting
+	#define NUM_CAM (4)
+	const unsigned int CAM_ID[NUM_CAM] = {1, 2, 3, 4};
 #endif
 
 #define NUM_DETECTION_PART (8)
@@ -79,8 +79,17 @@ const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", 
 /////////////////////////////////////////////////////////////////////////
 // EVALUATION SETTING
 /////////////////////////////////////////////////////////////////////////
-#define CROP_ZONE_X_MIN (-14069.6)
-#define CROP_ZONE_X_MAX (4981.3)
-#define CROP_ZONE_Y_MIN (-14274.0)
-#define CROP_ZONE_Y_MAX (1733.5)
-#define CROP_ZONE_MARGIN (1000.0)
+
+//// PETS
+//#define CROP_ZONE_X_MIN (-14069.6)
+//#define CROP_ZONE_X_MAX (4981.3)
+//#define CROP_ZONE_Y_MIN (-14274.0)
+//#define CROP_ZONE_Y_MAX (1733.5)
+//#define CROP_ZONE_MARGIN (1000.0)
+
+// PILSNU
+#define CROP_ZONE_X_MIN (-3000.0)
+#define CROP_ZONE_X_MAX (4000.0)
+#define CROP_ZONE_Y_MIN (-5000.0)
+#define CROP_ZONE_Y_MAX (2000.0)
+#define CROP_ZONE_MARGIN (500.0)
