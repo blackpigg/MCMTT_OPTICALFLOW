@@ -21,13 +21,14 @@ NOTES:
 #define PROC_WINDOW_SIZE (10)
 #define K_BEST_SIZE (50)
 #define MAX_TRACK_IN_OPTIMIZATION (1000)
-#define MAX_TRACK_IN_UNCONFIRMED_TREE (2)
+#define MAX_TRACK_IN_UNCONFIRMED_TREE (4)
 #define NUM_FRAME_FOR_CONFIRMATION (3)
 #define DO_BRANCH_CUT (false)
 
 // reconstruction related
 #define MIN_TRACKLET_LENGTH (1)
 #define MAX_TRACKLET_LENGTH (15)
+//#define MAX_TRACKLET_DISTANCE (500)
 #define MAX_TRACKLET_DISTANCE (1000)
 #define MAX_TRACKLET_SENSITIVITY_ERROR (20)
 
@@ -49,7 +50,7 @@ NOTES:
 
 // linking related
 #define MIN_LINKING_PROBABILITY (1.0E-6)
-#define MAX_TIME_JUMP (9)
+#define MAX_TIME_JUMP (5)
 
 #define MAX_GROUNDING_HEIGHT (100)
 #define COST_RGB_MIN_DIST (0.2)
@@ -61,20 +62,29 @@ NOTES:
 // probability related
 #define MIN_CONSTRUCT_PROBABILITY (0.01)
 #define FP_RATE (0.05)
-//#define FN_RATE (0.1)
-#define FN_RATE (0.3)
+#define FN_RATE (0.1)
+//#define FN_RATE (0.4)
 //#define FN_RATE (0.4)
 
 // enter/exit related
 #define ENTER_PENALTY_FREE_LENGTH (2)
 #define BOUNDARY_DISTANCE (700.0)
+
 #define P_EN_MAX (1.0E-3)
 #define P_EX_MAX (1.0E-6)
 #define P_EN_DECAY (1.0E-3)
 #define P_EX_DECAY_DIST (1.0E-3)
-#define P_EX_DECAY_LENGTH (1.0E-1)
+#define P_EX_DECAY_LENGTH (1.0E-2)
 #define COST_EN_MAX (200.0)
 #define COST_EX_MAX (200.0)
+
+//#define P_EN_MAX (1.0E-1)
+//#define P_EX_MAX (1.0E-1)
+//#define P_EN_DECAY (1.0E-3)
+//#define P_EX_DECAY_DIST (1.0E-3)
+//#define P_EX_DECAY_LENGTH (1.0E-1)
+//#define COST_EN_MAX (200.0)
+//#define COST_EX_MAX (200.0)
 #define MAX_OUTPOINT (3)
 
 // calibration related
@@ -307,13 +317,20 @@ void CPSNWhere_Associator3D::Initialize(std::string datasetPath,
 		timeStruct.tm_sec);
 	strTime_ = std::string(strTimeChar);
 
+	char strParameter[128];
+	sprintf_s(strParameter, "K%03d", (int)stConfiguration_.nKBestSize);
+	std::string strSuffix = "_" + std::string(strParameter) + "_" + strTime_ + ".txt";
+
 	// create folders
 	psn::CreateDirectoryForWindows("logs/");
 	psn::CreateDirectoryForWindows(std::string(RESULT_SAVE_PATH));
 
 	// file path
-	strLogFileName_ = "logs/" + strTime_ + "_log.txt";		
-	strTrackLogFileName_ = std::string(RESULT_SAVE_PATH) + "PSN_tracks_" + strTime_ + "txt";
+	strLogFileName_ = std::string(RESULT_SAVE_PATH) + "/" + std::string(strParameter) + "/" + strTime_ + "_log.txt";		
+	strTrackLogFileName_ = std::string(RESULT_SAVE_PATH) + "/" + "PSN_tracks_" + strTime_ + "txt";
+
+	// processing time
+	queueProcessingTime_.clear();
 
 	// init flag
 	bInit_ = true;
@@ -361,7 +378,7 @@ void CPSNWhere_Associator3D::Finalize(void)
 	sprintf_s(strParameter, "K%03d", (int)stConfiguration_.nKBestSize);
 	std::string strSuffix = "_" + std::string(strParameter) + "_" + strTime_ + ".txt";
 
-	std::string strResultPath = std::string(RESULT_SAVE_PATH) + std::string(strParameter) + "/";
+	std::string strResultPath = std::string(RESULT_SAVE_PATH) + "/" + std::string(strParameter) + "/";
 	psn::CreateDirectoryForWindows(strResultPath);
 	for (int evalIdx = 0; evalIdx < this->m_vecEvaluator.size(); evalIdx++)
 	{
@@ -373,6 +390,12 @@ void CPSNWhere_Associator3D::Finalize(void)
 		}
 		this->m_vecEvaluator[evalIdx].Evaluate();
 
+		// print to console
+		if (this->m_vecEvaluator.size() - 1 == evalIdx) { printf("[EVALUATION] deferred result\n"); }
+		else if (0 == evalIdx) { printf("[EVALUATION] instance result\n"); }
+		else { continue; }
+		this->m_vecEvaluator[evalIdx].PrintResultToConsole();
+
 		// print to file
 		sprintf_s(strParameter, "K%03d_W%03d", (int)stConfiguration_.nKBestSize, evalIdx);
 		curFilePath = strResultPath + strTime_ + "_evaluation_" + strParameter + ".txt";
@@ -380,13 +403,23 @@ void CPSNWhere_Associator3D::Finalize(void)
 		//curFilePath = std::string(RESULT_SAVE_PATH) + strTime_ + "result_matrix_" + strParameter + ".txt";
 		//this->m_vecEvaluator[evalIdx].PrintResultMatrix(curFilePath.c_str());
 
-		// print to console
-		if (this->m_vecEvaluator.size() - 1 == evalIdx) { printf("[EVALUATION] deferred result\n"); }
-		else if (0 == evalIdx) { printf("[EVALUATION] instance result\n"); }
-		else { continue; }
-		this->m_vecEvaluator[evalIdx].PrintResultToConsole();
+		//// print to console
+		//if (this->m_vecEvaluator.size() - 1 == evalIdx) { printf("[EVALUATION] deferred result\n"); }
+		//else if (0 == evalIdx) { printf("[EVALUATION] instance result\n"); }
+		//else { continue; }
+		//this->m_vecEvaluator[evalIdx].PrintResultToConsole();
 	}
 #endif
+
+	/////////////////////////////////////////////////////////////////////////////
+	// LOGGING
+	/////////////////////////////////////////////////////////////////////////////	
+	std::string strLog = "";
+	for (int fIdx = 0; fIdx < queueProcessingTime_.size(); fIdx++)
+	{
+		strLog += std::to_string(queueProcessingTime_[fIdx]) + "\n";
+	}	
+	psn::printLog(strLogFileName_.c_str(), strLog);
 
 	/////////////////////////////////////////////////////////////////////////////
 	// FINALIZE
@@ -523,12 +556,15 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	queuePrevGlobalHypotheses_ = queueCurrGlobalHypotheses_;
 	queueCurrGlobalHypotheses_.clear();
 
-#ifdef PSN_PRINT_LOG_
-	// PRINT LOG
-	std::string strLog = "";
-	strLog += std::to_string(fCurrentProcessingTime_) + "\n";
-	psn::printLog(strLogFileName_.c_str(), strLog);
+	// processing time
+	queueProcessingTime_.push_back(fCurrentProcessingTime_);
 	fCurrentSolvingTime_ = 0.0;
+
+#ifdef PSN_PRINT_LOG_
+	//// PRINT LOG
+	//std::string strLog = "";
+	//strLog += std::to_string(queueProcessingTime_.back()) + "\n";
+	//psn::printLog(strLogFileName_.c_str(), strLog);
 #endif
 
 	return currentResult;
@@ -840,7 +876,12 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 				stTracklet2D *curTracklet = resultReconstruction.tracklet2Ds.get(camIdx);
 				if (NULL == curTracklet) { continue; }
 
-				curPoint = curTracklet->rects.back().reconstructionPoint();				
+				// 0.8 shrink
+				PSN_Rect curRect = curTracklet->rects.back();
+				curRect.y = curRect.y + 0.1 * curRect.h;
+				curRect.h *= 0.8;
+
+				curPoint = curRect.reconstructionPoint();
 				vecPointInfos.push_back(PSN_Point2D_CamIdx(curPoint, camIdx));
 				maxError += E_DET * matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 				//maxError = std::max(maxError, E_DET * (double)matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x));

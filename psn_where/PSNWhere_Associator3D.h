@@ -244,6 +244,7 @@ private:
 	std::string strTime_;
 	std::string strLogFileName_;
 	std::string strTrackLogFileName_;
+	std::deque<double> queueProcessingTime_;
 	
 	//----------------------------------------------------------------
 	// 2D tracklet related

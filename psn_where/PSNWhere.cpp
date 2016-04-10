@@ -446,7 +446,7 @@ void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2
 		localtime_s(&timeStruct, &curTimer);
 		char resultFileDate[256];
 		char resultOutputFileName[256];
-		sprintf_s(resultFileDate, "%sresult_video_%02d%02d%02d_%02d%02d%02d", 
+		sprintf_s(resultFileDate, "%s/%02d%02d%02d_%02d%02d%02d_result_video", 
 			RESULT_SAVE_PATH,
 			timeStruct.tm_year + 1900, 
 			timeStruct.tm_mon+1, 

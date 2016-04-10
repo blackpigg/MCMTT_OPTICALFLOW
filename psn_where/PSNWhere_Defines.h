@@ -5,7 +5,7 @@
 /////////////////////////////////////////////////////////////////////////
 
 // recording
-//#define DO_RECORD
+#define DO_RECORD
 //#define SHOW_TOPVIEW
 
 // snapshot
@@ -26,6 +26,9 @@
 #define DETECTION_PATH ("/detectionResult/")
 #define TRACKLET_PATH ("/trackletInput/")
 // output
+//#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009/S2L1")
+//#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009/S2L2")
+//#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009/S2L3")
 #define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/TCSVT/ETRI/")
 #define SNAPSHOT_PATH ("logs/snapshot/")
 #define TRACK_SAVE_PATH ("logs/tracks/")
@@ -41,11 +44,15 @@
 	define NUM_CAM (4)
 	const unsigned int CAM_ID[NUM_CAM] = {0, 1, 2, 3};	
 #else
+	//// single camera
+	//#define NUM_CAM (1)
+	//const unsigned int CAM_ID[NUM_CAM] = {1};
+
 	//// PETS.S2.L1 setting
 	//#define NUM_CAM (3)
 	//const unsigned int CAM_ID[NUM_CAM] = {1, 5, 7};
 
-	// PETS.S2.L2 setting
+	//// PETS.S2.L2 setting
 	//#define NUM_CAM (3)
 	//const unsigned int CAM_ID[NUM_CAM] = {1, 2, 3};
 
@@ -93,3 +100,5 @@ const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", 
 #define CROP_ZONE_Y_MIN (-5000.0)
 #define CROP_ZONE_Y_MAX (2000.0)
 #define CROP_ZONE_MARGIN (500.0)
+
+
