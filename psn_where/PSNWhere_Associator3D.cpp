@@ -22,38 +22,23 @@ NOTES:
 #define K_BEST_SIZE (50)
 #define MAX_TRACK_IN_OPTIMIZATION (1000)
 #define MAX_TRACK_IN_UNCONFIRMED_TREE (4)
-#define MAX_TRACK_IN_CONFIRMED_TREE (200)
+#define MAX_TRACK_IN_CONFIRMED_TREE (100)
 #define NUM_FRAME_FOR_CONFIRMATION (3)
 #define DO_BRANCH_CUT (false)
 
 // reconstruction related
 #define MIN_TRACKLET_LENGTH (1)
-#define MAX_TRACKLET_LENGTH (15)
-//#define MAX_TRACKLET_DISTANCE (500)
 #define MAX_TRACKLET_DISTANCE (1000)
-#define MAX_TRACKLET_SENSITIVITY_ERROR (20)
-
-#define MAX_HEAD_WIDTH (420)
-#define MIN_HEAD_WIDTH (120)
-#define MAX_HEAD_HEIGHT (2300)
-#define MIN_HEAD_HEIGHT (0)
-#define HEAD_WIDTH_MEAN (245.7138)
-#define HEAD_WIDTH_STD (25.4697)
-
 #define MAX_BODY_WIDHT (MAX_TRACKLET_DISTANCE)
-#define BODY_WIDTH_MEAN (700)
-#define BODY_WIDTH_STD (100)
-#define MIN_TARGET_PROXIMITY (200)
-
-#define DEFAULT_HEIGHT (1700.00)
-#define WIDTH_DIFF_RATIO_THRESHOLD (0.5)
 #define CONSIDER_SENSITIVITY (false)
+#define MAX_TRACKLET_SENSITIVITY_ERROR (20)
+#define MIN_TARGET_PROXIMITY (500)
+#define DEFAULT_HEIGHT (1700.00)
 
 // linking related
 #define MIN_LINKING_PROBABILITY (1.0E-6)
 #define MAX_TIME_JUMP (5)
 
-#define MAX_GROUNDING_HEIGHT (100)
 #define COST_RGB_MIN_DIST (0.2)
 #define COST_RGB_COEF (100)
 #define COST_RGB_DECAY (0.1)
@@ -61,34 +46,15 @@ NOTES:
 #define COST_TRACKLET_LINK_COEF (0.1)
 
 // probability related
-#define MIN_CONSTRUCT_PROBABILITY (0.01)
-#define FP_RATE (0.05)
-//#define FN_RATE (0.1)
-#define FN_RATE (0.4)
-//#define FN_RATE (0.4)
+#define MIN_CONSTRUCT_PROBABILITY (0.001)
+#define FP_RATE (0.01)
+#define FN_RATE (0.2)
 
 // enter/exit related
 #define ENTER_PENALTY_FREE_LENGTH (2)
 #define BOUNDARY_DISTANCE (1000.0)
-
-//#define P_EN_MAX (1.0E-3)
-//#define P_EX_MAX (1.0E-6)
-//#define P_EN_DECAY (1.0E-3)
-//#define P_EX_DECAY_DIST (1.0E-3)
-//#define P_EX_DECAY_LENGTH (1.0E-2)
-//#define COST_EN_MAX (200.0)
-//#define COST_EX_MAX (200.0)
-
-//#define P_EN_MAX (1.0E-1)
-//#define P_EX_MAX (1.0E-1)
-//#define P_EN_DECAY (1.0E-3)
-//#define P_EX_DECAY_DIST (1.0E-3)
-//#define P_EX_DECAY_LENGTH (1.0E-1)
-//#define COST_EN_MAX (200.0)
-//#define COST_EX_MAX (200.0)
-
 #define P_EN_MAX (1.0E-1)
-#define P_EX_MAX (1.0E-1)
+#define P_EX_MAX (1.0E-2)
 #define P_EN_DECAY (1.0E-3)
 #define P_EX_DECAY_DIST (1.0E-3)
 #define P_EX_DECAY_LENGTH (1.0E-1)
@@ -98,18 +64,13 @@ NOTES:
 #define MAX_OUTPOINT (3)
 
 // calibration related
-#define E_DET (4)
-#define E_CAL (500)
+#define E_DET (10)
+#define E_CAL (300)
 
 // dynamic related
-#define KALMAN_PROCESSNOISE_SIG (1.0E-5)
-#define KALMAN_MEASUREMENTNOISE_SIG (1.0E-5)
-#define KALMAN_POSTERROR_COV (0.1)
-#define KALMAN_CONFIDENCE_LEVEN (9)
-#define VELOCITY_LEARNING_RATE (0.9)
-#define DATASET_FRAME_RATE (7.5)
-//#define MAX_MOVING_SPEED (5000.0 / DATASET_FRAME_RATE)
-#define MAX_MOVING_SPEED (1000.0)
+#define DATASET_FRAME_RATE (6.0)
+#define MAX_MOVING_SPEED (5000.0 / DATASET_FRAME_RATE)
+//#define MAX_MOVING_SPEED (1000.0)
 #define MIN_MOVING_SPEED (100.0)
 
 // appearance reltaed
@@ -796,37 +757,6 @@ bool CPSNWhere_Associator3D::CheckVisibility(PSN_Point3D testPoint, unsigned int
 }
 
 /************************************************************************
- Method Name: CheckHeadWidth
- Description: 
-	- 
- Input Arguments:
-	- 
-	- 
- Return Values:
-	- 
-************************************************************************/
-bool CPSNWhere_Associator3D::CheckHeadWidth(PSN_Point3D midPoint3D, PSN_Rect rect1, PSN_Rect rect2, unsigned int camIdx1, unsigned int camIdx2)
-{
-	PSN_Point2D ptCenter1 = rect1.center();
-	PSN_Point2D ptCenter2 = rect2.center();
-	PSN_Point2D ptL1(rect1.x, ptCenter1.y);
-	PSN_Point2D ptL2(rect2.x, ptCenter2.y);
-	PSN_Point2D ptR1(rect1.x + rect1.w, ptCenter1.y);
-	PSN_Point2D ptR2(rect2.x + rect2.w, ptCenter2.y);
-	PSN_Point3D ptL3D1 = this->ImageToWorld(ptL1, midPoint3D.z, camIdx1);
-	PSN_Point3D ptR3D1 = this->ImageToWorld(ptR1, midPoint3D.z, camIdx1);
-	PSN_Point3D ptL3D2 = this->ImageToWorld(ptL2, midPoint3D.z, camIdx2);
-	PSN_Point3D ptR3D2 = this->ImageToWorld(ptR2, midPoint3D.z, camIdx2);
-	double width3D1 = (ptL3D1 - ptR3D1).norm_L2();
-	double width3D2 = (ptL3D2 - ptR3D2).norm_L2();
-
-	if (MAX_HEAD_WIDTH < width3D1 && MAX_HEAD_WIDTH < width3D1) { return false; }
-	if (MAX_HEAD_WIDTH < width3D1 && WIDTH_DIFF_RATIO_THRESHOLD * width3D1 > width3D2) { return false; }
-	if (MAX_HEAD_WIDTH < width3D1 && WIDTH_DIFF_RATIO_THRESHOLD * width3D2 > width3D1) { return false; }
-	return true;
-}
-
-/************************************************************************
  Method Name: CheckTrackletConnectivity
  Description: 
 	- 
@@ -886,12 +816,12 @@ stReconstruction CPSNWhere_Associator3D::PointReconstruction(CTrackletCombinatio
 				stTracklet2D *curTracklet = resultReconstruction.tracklet2Ds.get(camIdx);
 				if (NULL == curTracklet) { continue; }
 
-				// 0.8 shrink
-				PSN_Rect curRect = curTracklet->rects.back();
-				curRect.y = curRect.y + 0.1 * curRect.h;
-				curRect.h *= 0.8;
+				//// 0.8 shrink
+				//PSN_Rect curRect = curTracklet->rects.back();
+				//curRect.y = curRect.y + 0.1 * curRect.h;
+				//curRect.h *= 0.8;
 
-				curPoint = curRect.reconstructionPoint();
+				curPoint = curTracklet->rects.back().reconstructionPoint();
 				vecPointInfos.push_back(PSN_Point2D_CamIdx(curPoint, camIdx));
 				maxError += E_DET * matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x);
 				//maxError = std::max(maxError, E_DET * (double)matProjectionSensitivity_[camIdx].at<float>((int)curPoint.y, (int)curPoint.x));
@@ -2627,7 +2557,8 @@ double CPSNWhere_Associator3D::GetCost(Track3D *track)
 		track->costReconstruction += track->reconstructions[reconIdx].costSmoothedPoint;
 		track->costLink += track->reconstructions[reconIdx].costLink;
 	}
-	double resultCost = track->costEnter + track->costReconstruction + track->costLink + track->costRGB + track->costExit;
+	//double resultCost = track->costEnter + track->costReconstruction + track->costLink + track->costRGB + track->costExit;
+	double resultCost = track->costEnter + track->costReconstruction + track->costLink + track->costExit;
 	return resultCost;
 }
 
@@ -2928,77 +2859,6 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 			TrackTree::SetValidityFlagInTrackBranch(brachSeedTrack->parentTrack->childrenTrack[childIdx], false);
 		}
 	}
-	//if (NULL == ptQueueHypothesis) { return; }
-	//if (0 >= (*ptQueueHypothesis).size()) { return; }
-
-	//int nTimeBranchPruning = (int)nCurrentFrameIdx - (int)N;
-	//if (nTimeBranchPruning < 0) { return; }
-
-	//// N-scan back pruning for ordinary trees
-	//for (std::deque<TrackTree*>::iterator treeIter = queuePtActiveTrees_.begin();
-	//	treeIter != queuePtActiveTrees_.end();
-	//	treeIter++)
-	//{
-	//	// skip unconfirmed track tree
-	//	if (!(*treeIter)->bConfirmed){ continue; }
-
-	//	// find max GTP track
-	//	Track3D *maxGTPTrack = NULL;
-	//	double maxGTP = 0.0;
-	//	for (PSN_TrackSet::iterator trackIter = (*treeIter)->tracks.begin();
-	//		trackIter != (*treeIter)->tracks.end();
-	//		trackIter++)
-	//	{
-	//		if ((*trackIter)->GTProb > maxGTP)
-	//		{
-	//			maxGTPTrack = *trackIter;
-	//			maxGTP = (*trackIter)->GTProb;
-	//		}
-	//		if ((int)(*trackIter)->timeGeneration < nTimeBranchPruning) { continue; }
-	//		(*trackIter)->bValid = false;
-	//	}
-	//	if (NULL == maxGTPTrack)
-	//	{
-	//		// prune the entire track tree when there is no track has GTP larget than zero
-	//		TrackTree::SetValidityFlagInTrackBranch((*treeIter)->tracks[0], false);
-	//		continue;
-	//	}
-
-	//	// find brach seed
-	//	Track3D *branchSeed = maxGTPTrack;
-	//	while (true)
-	//	{
-	//		if ((int)maxGTPTrack->timeGeneration <= nTimeBranchPruning || NULL == branchSeed->parentTrack) { break; }
-	//		if ((int)branchSeed->parentTrack->timeGeneration < nTimeBranchPruning) { break; }
-	//		branchSeed = branchSeed->parentTrack;
-	//	}
-	//	TrackTree::SetValidityFlagInTrackBranch(branchSeed, true);
-	//}
-	////// [REPLACEMENT OF CODES ABOVE] clear validity flags in all trees
-	////for (std::deque<TrackTree*>::iterator treeIter = queuePtActiveTrees_.begin();
-	////	treeIter != queuePtActiveTrees_.end();
-	////	treeIter++)
-	////{ TrackTree::SetValidityFlagInTrackBranch((*treeIter)->tracks[0], false); }
-	//
-	//// set tracks in the best solution
-	//PSN_TrackSet *tracksInBestSolution = &(*ptQueueHypothesis).front().selectedTracks;
-	//Track3D *brachSeedTrack = NULL;
-	//for (int trackIdx = 0; trackIdx < tracksInBestSolution->size(); trackIdx++)
-	//{
-	//	(*tracksInBestSolution)[trackIdx]->bCurrentBestSolution = true;
-
-	//	// left unconfirmed tracks
-	//	if (!(*tracksInBestSolution)[trackIdx]->tree->bConfirmed){ continue; }
-
-	//	// pruning
-	//	brachSeedTrack = TrackTree::FindOldestTrackInBranch((*tracksInBestSolution)[trackIdx], nTimeBranchPruning);
-	//	if (NULL == brachSeedTrack->parentTrack) { continue; }
-	//	for (int childIdx = 0; childIdx < brachSeedTrack->parentTrack->childrenTrack.size(); childIdx++)
-	//	{
-	//		if (brachSeedTrack->parentTrack->childrenTrack[childIdx] == brachSeedTrack) { continue; }
-	//		TrackTree::SetValidityFlagInTrackBranch(brachSeedTrack->parentTrack->childrenTrack[childIdx], false);
-	//	}
-	//}
 }
 
 /************************************************************************
@@ -4951,3 +4811,4 @@ std::deque<std::vector<unsigned int>> CPSNWhere_Associator3D::IndexCombination(s
 
 //()()
 //('')HAANJU.YOO
+
