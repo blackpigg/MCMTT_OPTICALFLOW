@@ -64,8 +64,8 @@ NOTES:
 #define MAX_OUTPOINT (3)
 
 // calibration related
-#define E_DET (10)
-#define E_CAL (300)
+#define E_DET (4)
+#define E_CAL (500)
 
 // dynamic related
 #define DATASET_FRAME_RATE (6.0)
@@ -2557,8 +2557,8 @@ double CPSNWhere_Associator3D::GetCost(Track3D *track)
 		track->costReconstruction += track->reconstructions[reconIdx].costSmoothedPoint;
 		track->costLink += track->reconstructions[reconIdx].costLink;
 	}
-	//double resultCost = track->costEnter + track->costReconstruction + track->costLink + track->costRGB + track->costExit;
-	double resultCost = track->costEnter + track->costReconstruction + track->costLink + track->costExit;
+	double resultCost = track->costEnter + track->costReconstruction + track->costLink + track->costRGB + track->costExit;
+	//double resultCost = track->costEnter + track->costReconstruction + track->costLink + track->costExit;
 	return resultCost;
 }
 

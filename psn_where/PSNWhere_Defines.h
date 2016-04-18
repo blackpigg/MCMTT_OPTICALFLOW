@@ -61,8 +61,8 @@
 	//const unsigned int CAM_ID[NUM_CAM] = {1, 2, 4};
 
 	// PILSNU ETRI_Lab.S1 setting
-	#define NUM_CAM (4)
-	const unsigned int CAM_ID[NUM_CAM] = {1, 2, 3, 4};
+	#define NUM_CAM (2)
+	const unsigned int CAM_ID[NUM_CAM] = {1, 2};
 #endif
 
 #define NUM_DETECTION_PART (8)

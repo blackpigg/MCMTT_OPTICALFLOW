@@ -714,6 +714,13 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 		curHeight = this->EstimateDetectionHeight(bottomCenter, topCenter, &curLocation);
 		if (PSN_2D_MAX_HEIGHT < curHeight || PSN_2D_MIN_HEIGHT > curHeight) { continue; }
 
+		cv::Rect rectEvaluationZone;
+		rectEvaluationZone.x = CROP_ZONE_X_MIN - CROP_ZONE_MARGIN;
+		rectEvaluationZone.y = CROP_ZONE_Y_MIN - CROP_ZONE_MARGIN;
+		rectEvaluationZone.width = CROP_ZONE_X_MAX - CROP_ZONE_X_MIN + 1 + 2 * CROP_ZONE_MARGIN;
+		rectEvaluationZone.height = CROP_ZONE_Y_MAX - CROP_ZONE_Y_MIN + 1 + 2 * CROP_ZONE_MARGIN;
+		if (!rectEvaluationZone.contains(cv::Point2d(curLocation.x, curLocation.y))) { continue; }
+
 		// generate detection information
 		stDetectedObject curDetection;
 		curDetection.id = (unsigned int)detectionID++;
