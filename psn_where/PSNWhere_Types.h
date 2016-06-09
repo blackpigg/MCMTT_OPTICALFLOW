@@ -494,8 +494,8 @@ public:
 	ParamsTracker2D();
 	~ParamsTracker2D();
 
-	int nBackTrackingInterval;
-	float fFeatureClusterRadiusRatio;
+	int nBackTrackingInterval_;
+	float fFeatureClusterRadiusRatio_;
 };
 
 class ParamsAssociator3D

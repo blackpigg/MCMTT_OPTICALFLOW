@@ -65,6 +65,9 @@
     <ClInclude Include="helpers\ParameterParser.h">
       <Filter>Helpers</Filter>
     </ClInclude>
+    <ClInclude Include="ParameterOptimizer.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -100,6 +103,9 @@
       <Filter>PSNWhere</Filter>
     </ClCompile>
     <ClCompile Include="helpers\ParameterParser.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="ParameterOptimizer.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
   </ItemGroup>

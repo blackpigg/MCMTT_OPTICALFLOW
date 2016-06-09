@@ -809,6 +809,16 @@ Track3D* TrackTree::FindOldestTrackInBranch(Track3D *trackInBranch, int nMostPre
 }
 
 
+ParamsTracker2D::ParamsTracker2D()
+{
+	nBackTrackingInterval_ = 4;
+	fFeatureClusterRadiusRatio_ = 0.2;
+}
+
+ParamsTracker2D::~ParamsTracker2D()
+{
+}
+
 ParamsAssociator3D::ParamsAssociator3D()
 {
 	nProcWindowSize_ = 10;

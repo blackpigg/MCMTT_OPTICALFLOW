@@ -184,6 +184,7 @@
     <ClInclude Include="GraphSolver.h" />
     <ClInclude Include="helpers\ParameterParser.h" />
     <ClInclude Include="Helpers\PSNWhere_Hungarian.h" />
+    <ClInclude Include="ParameterOptimizer.h" />
     <ClInclude Include="PSNWhere.h" />
     <ClInclude Include="PSNWhere_Associator3D.h" />
     <ClInclude Include="PSNWhere_Defines.h" />
@@ -200,6 +201,7 @@
     <ClCompile Include="GraphSolver.cpp" />
     <ClCompile Include="helpers\ParameterParser.cpp" />
     <ClCompile Include="Helpers\PSNWhere_Hungarian.cpp" />
+    <ClCompile Include="ParameterOptimizer.cpp" />
     <ClCompile Include="PSNWhere.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="PSNWhere_Associator3D.cpp" />
