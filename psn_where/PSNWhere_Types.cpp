@@ -807,3 +807,29 @@ Track3D* TrackTree::FindOldestTrackInBranch(Track3D *trackInBranch, int nMostPre
 	}
 	return oldestTrack;
 }
+
+
+ParamsAssociator3D::ParamsAssociator3D()
+{
+	nProcWindowSize_ = 10;
+	nKBestSize_ = 1;
+	nMaxTrackInOptimization_ = 1000;
+	nMaxTrackInConfirmedTrackTree_ = 100;
+	nMaxTrackInUnconfirmedTrackTree_ = 4;
+	nNumFrameForConfirmation_ = 3;
+	nMaxTimeJump_ = 9;
+	fMaxMovingSpeed_ = 900.0;
+
+	fProbEnterMax_ = 1.0E-1;
+	fProbEnterDecayCoef_ = 1.0E-3;
+	fCostEnterMax_ = 1000.0;
+
+	fProbExitMax_ = 1.0E-2;
+	fProbExitDecayCoef_dist_ = 1.0E-3;
+	fProbExitDecayCoef_length_ = 1.0E-1;
+	fCostExitMax_ = 1000.0;
+}
+
+ParamsAssociator3D::~ParamsAssociator3D()
+{
+}

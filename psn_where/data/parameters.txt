@@ -1,8 +1,8 @@
 %==========================================
 % EXPERIMENTS SETTING
 %==========================================
-NUM_EXPERIMENTS=5
-SIZE_OF_KS=10
+NUM_EXPERIMENTS=3
+SIZE_OF_KS=20
 NUM_FRAMES_FOR_CONFIRMATION=3
 
 %==========================================

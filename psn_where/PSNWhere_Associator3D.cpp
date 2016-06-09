@@ -69,8 +69,8 @@ NOTES:
 
 // dynamic related
 #define DATASET_FRAME_RATE (6.0)
-#define MAX_MOVING_SPEED (5000.0 / DATASET_FRAME_RATE)
-//#define MAX_MOVING_SPEED (1000.0)
+//#define MAX_MOVING_SPEED (5000.0 / DATASET_FRAME_RATE)
+#define MAX_MOVING_SPEED (1000.0)
 #define MIN_MOVING_SPEED (100.0)
 
 // appearance reltaed

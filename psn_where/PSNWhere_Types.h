@@ -488,19 +488,47 @@ struct stParamsDetection
 {
 };
 
-struct stParamsTracker2D
+class ParamsTracker2D
 {
+public:
+	ParamsTracker2D();
+	~ParamsTracker2D();
+
+	int nBackTrackingInterval;
+	float fFeatureClusterRadiusRatio;
 };
 
-struct stParamsAssociator3D
+class ParamsAssociator3D
 {
+public:
+	ParamsAssociator3D();
+	~ParamsAssociator3D();
+
 	// all minus values mean that the variable uses default value.
 	// optimization related
-	int nProcWindowSize;
-	int nKBestSize;
-	int nMaxTrackInOptimization;
-	int nMaxTrackInUnconfirmedTrackTree;
-	int nNumFrameForConfirmation;
+	int nProcWindowSize_;
+	int nKBestSize_;
+	int nMaxTrackInOptimization_;
+	int nMaxTrackInConfirmedTrackTree_;
+	int nMaxTrackInUnconfirmedTrackTree_;
+	
+	int nNumFrameForConfirmation_;
+	int nMaxTimeJump_;
+
+	float fMaxMovingSpeed_;
+
+	// Enter/Exit cost related
+	float fProbEnterMax_;
+	float fProbEnterDecayCoef_;
+	float fCostEnterMax_;
+	float fProbExitMax_;	
+	float fProbExitDecayCoef_dist_;
+	float fProbExitDecayCoef_length_;
+	float fCostExitMax_;
+
+	//// detection related
+	//float fErrorDetection;
+	//float fErrorCalibration;
 };
 
 
