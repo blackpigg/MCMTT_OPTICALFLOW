@@ -91,8 +91,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	stParamsMain         params;
 	stParamsDetection    paramsDetection;
-	stParamsTracker2D    paramsTracker2D;
-	stParamsAssociator3D paramsAssociator3D;
+	ParamsTracker2D    paramsTracker2D;
+	ParamsAssociator3D paramsAssociator3D;
 
 	if (!ReadParams(argv, params, paramsDetection, paramsTracker2D, paramsAssociator3D))
 	{ 
@@ -102,13 +102,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	
 	for (int configIdx = 0; configIdx < params.sizeOfKs.size(); configIdx++)
 	{		
-		paramsAssociator3D.nKBestSize = params.sizeOfKs[configIdx];
+		paramsAssociator3D.nKBestSize_ = params.sizeOfKs[configIdx];
 		for (int expIdx = 0; expIdx < params.numExperiments; expIdx++)
 		{
 			// show experiment label
 			cv::Mat expLabel = cv::Mat::zeros(40, 200, CV_8UC1);
 			cv::putText(expLabel, 
-				        "K:" + std::to_string(paramsAssociator3D.nKBestSize) + "/" + std::to_string(expIdx),
+				        "K:" + std::to_string(paramsAssociator3D.nKBestSize_) + "/" + std::to_string(expIdx),
 						cv::Point(0, 30), 
 						cv::FONT_HERSHEY_SIMPLEX, 
 						1.0, 

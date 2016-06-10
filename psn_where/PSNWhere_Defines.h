@@ -18,20 +18,53 @@
 #define PSN_PRINT_LOG_
 
 /////////////////////////////////////////////////////////////////////////
-// PATH
+// DATASET
 /////////////////////////////////////////////////////////////////////////
-// input
-//#define DATASET_PATH ("D:\\Workspace\\Dataset\\ETRI\\P5\\")
+
+// dataset base path
+typedef enum { 
+	DATASET_ETRI = 0,
+	DATASET_PETS2009_S2L1,
+	DATASET_PETS2009_S2L2,
+	DATASET_PETS2009_S2L3,
+	DATASET_NUM
+} DATASET_TYPE;
+
+const std::string DATASET_NAME[DATASET_NUM] = {
+	"ETRI_LABS1",
+	"PETS2009_S2L1",
+	"PETS2009_S2L2",
+	"PETS2009_S2L3"
+};
+
+const std::string DATASET_PATH[DATASET_NUM] = {
+	"D:/Workspace/Dataset/PILSNU/ETRI_Lab.S1",			// ETRI
+	"D:/Workspace/Dataset/PETS2009/S2/L1/Time_12-34",	// PETS2009 S2.L1
+	"D:/Workspace/Dataset/PETS2009/S2/L2/Time_14-55",	// PETS2009 S2.L2
+	"D:/Workspace/Dataset/PETS2009/S2/L3/Time_14-41"	// PETS2009 S2.L3
+};
+
+const int DATASET_START_FRAME_IDX[DATASET_NUM] = {0, 0, 3, 0};
+const int DATASET_END_FRAME_IDX[DATASET_NUM] = {332, 794, 432, 239};
+const int DATASET_NUM_CAM[DATASET_NUM] = {4, 3, 3, 3};
+const int DATASET_CAM_ID[DATASET_NUM][4] = { // '-1' for dummy index
+	{1, 2, 3, 4},
+	{1, 5, 7, -1},
+	{1, 2, 3, -1},
+	{1, 2, 4, -1}
+};
+
+// other input paths
 #define CALIBRATION_PATH ("/calibrationInfos/")
 #define DETECTION_PATH ("/detectionResult/")
-#define TRACKLET_PATH ("/trackletInput/")
-// output
-//#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009/S2L1")
-//#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009/S2L2")
-//#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/PETS2009/S2L3")
-#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/TCSVT/ETRI/")
-#define SNAPSHOT_PATH ("logs/snapshot/")
-#define TRACK_SAVE_PATH ("logs/tracks/")
+
+/////////////////////////////////////////////////////////////////////////
+// OUTPUT
+/////////////////////////////////////////////////////////////////////////
+
+// output path
+#define RESULT_SAVE_PATH ("D:/Workspace/ExperimentalResult/THESIS/")
+
 
 /////////////////////////////////////////////////////////////////////////
 // INPUT PRESETS
@@ -66,7 +99,9 @@
 #endif
 
 #define NUM_DETECTION_PART (8)
-const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", "GR", "S2", "A1", "A2", "F2"};
+const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {
+	"HEAD", "F1", "S1", "GR", "S2", "A1", "A2", "F2"
+};
 
 /////////////////////////////////////////////////////////////////////////
 // PREDEFINED VALUES
@@ -87,18 +122,11 @@ const std::string DETCTION_PART_NAME[NUM_DETECTION_PART] = {"HEAD", "F1", "S1", 
 // EVALUATION SETTING
 /////////////////////////////////////////////////////////////////////////
 
-//// PETS
-//#define CROP_ZONE_X_MIN (-14069.6)
-//#define CROP_ZONE_X_MAX (4981.3)
-//#define CROP_ZONE_Y_MIN (-14274.0)
-//#define CROP_ZONE_Y_MAX (1733.5)
-//#define CROP_ZONE_MARGIN (1000.0)
-
-// PILSNU
-#define CROP_ZONE_X_MIN (-3000.0)
-#define CROP_ZONE_X_MAX (4000.0)
-#define CROP_ZONE_Y_MIN (-5000.0)
-#define CROP_ZONE_Y_MAX (2000.0)
-#define CROP_ZONE_MARGIN (500.0)
-
+const double CROP_ZONE[DATASET_NUM][5] = {
+//  {X_MIN,    X_MAX,  Y_MIN,    Y_MAX,  MARGIN}
+	{-3000.0,  4000.0, -5000.0,  2000.0, 500.0},
+	{-14069.6, 4981.3, -14274.0, 1733.5, 1000.0},
+	{-14069.6, 4981.3, -14274.0, 1733.5, 1000.0},
+	{-14069.6, 4981.3, -14274.0, 1733.5, 1000.0},
+};
 

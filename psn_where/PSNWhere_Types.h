@@ -484,8 +484,22 @@ struct stParamsMain
 	std::vector<int> sizeOfKs;
 };
 
-struct stParamsDetection
+class AlgorithmParams
 {
+public:
+	AlgorithmParams() {};
+	~AlgorithmParams() {};
+
+	ParamsDetection    paramsDet;
+	ParamsTracker2D    params2DT;
+	ParamsAssociator3D params3DA;
+};
+
+class ParamsDetection
+{
+public:
+	ParamsDetection() {};
+	~ParamsDetection() {};
 };
 
 class ParamsTracker2D
@@ -495,7 +509,7 @@ public:
 	~ParamsTracker2D();
 
 	int nBackTrackingInterval_;
-	float fFeatureClusterRadiusRatio_;
+	double fFeatureClusterRadiusRatio_;
 };
 
 class ParamsAssociator3D
@@ -515,16 +529,16 @@ public:
 	int nNumFrameForConfirmation_;
 	int nMaxTimeJump_;
 
-	float fMaxMovingSpeed_;
+	double fMaxMovingSpeed_;
 
 	// Enter/Exit cost related
-	float fProbEnterMax_;
-	float fProbEnterDecayCoef_;
-	float fCostEnterMax_;
-	float fProbExitMax_;	
-	float fProbExitDecayCoef_dist_;
-	float fProbExitDecayCoef_length_;
-	float fCostExitMax_;
+	double fProbEnterMax_;
+	double fProbEnterDecayCoef_;
+	double fCostEnterMax_;
+	double fProbExitMax_;	
+	double fProbExitDecayCoef_dist_;
+	double fProbExitDecayCoef_length_;
+	double fCostExitMax_;
 
 	//// detection related
 	//float fErrorDetection;
