@@ -18,12 +18,12 @@ NOTES:
 #define PSN_PRINT_TRACKS (0) // 0: no print / 1: print
 
 // optimization related
-#define PROC_WINDOW_SIZE (10)
-#define K_BEST_SIZE (50)
-#define MAX_TRACK_IN_OPTIMIZATION (1000)
-#define MAX_TRACK_IN_UNCONFIRMED_TREE (4)
-#define MAX_TRACK_IN_CONFIRMED_TREE (100)
-#define NUM_FRAME_FOR_CONFIRMATION (3)
+//#define PROC_WINDOW_SIZE (10)
+//#define K_BEST_SIZE (50)
+//#define MAX_TRACK_IN_OPTIMIZATION (1000)
+//#define MAX_TRACK_IN_UNCONFIRMED_TREE (4)
+//#define MAX_TRACK_IN_CONFIRMED_TREE (100)
+//#define NUM_FRAME_FOR_CONFIRMATION (3)
 #define DO_BRANCH_CUT (false)
 
 // reconstruction related
@@ -37,7 +37,7 @@ NOTES:
 
 // linking related
 #define MIN_LINKING_PROBABILITY (1.0E-6)
-#define MAX_TIME_JUMP (5)
+//#define MAX_TIME_JUMP (5)
 
 #define COST_RGB_MIN_DIST (0.2)
 #define COST_RGB_COEF (100)
@@ -53,13 +53,13 @@ NOTES:
 // enter/exit related
 #define ENTER_PENALTY_FREE_LENGTH (2)
 #define BOUNDARY_DISTANCE (1000.0)
-#define P_EN_MAX (1.0E-1)
-#define P_EX_MAX (1.0E-2)
-#define P_EN_DECAY (1.0E-3)
-#define P_EX_DECAY_DIST (1.0E-3)
-#define P_EX_DECAY_LENGTH (1.0E-1)
-#define COST_EN_MAX (1000.0)
-#define COST_EX_MAX (1000.0)
+//#define P_EN_MAX (1.0E-1)
+//#define P_EX_MAX (1.0E-2)
+//#define P_EN_DECAY (1.0E-3)
+//#define P_EX_DECAY_DIST (1.0E-3)
+//#define P_EX_DECAY_LENGTH (1.0E-1)
+//#define COST_EN_MAX (1000.0)
+//#define COST_EX_MAX (1000.0)
 
 #define MAX_OUTPOINT (3)
 
@@ -70,7 +70,7 @@ NOTES:
 // dynamic related
 #define DATASET_FRAME_RATE (6.0)
 //#define MAX_MOVING_SPEED (5000.0 / DATASET_FRAME_RATE)
-#define MAX_MOVING_SPEED (1000.0)
+//#define MAX_MOVING_SPEED (1000.0)
 #define MIN_MOVING_SPEED (100.0)
 
 // appearance reltaed
@@ -194,25 +194,16 @@ CPSNWhere_Associator3D::~CPSNWhere_Associator3D(void)
 ************************************************************************/
 void CPSNWhere_Associator3D::Initialize(std::string datasetPath, 
 										std::vector<stCalibrationInfo*> &vecStCalibInfo, 
-										stParamsAssociator3D *stConfig3D)
+										ParamsAssociator3D *parameters,
+										std::vector<std::pair<CEvaluator, int>> *vecEvaluator,
+										std::string strTime)
 {
 	if (bInit_) { return; }
 	bSnapshotReaded_ = false;
 
-	// configuration set
-	stConfiguration_.nProcWindowSize = PROC_WINDOW_SIZE;
-	stConfiguration_.nKBestSize = K_BEST_SIZE;
-	stConfiguration_.nMaxTrackInOptimization = MAX_TRACK_IN_OPTIMIZATION;
-	stConfiguration_.nMaxTrackInUnconfirmedTrackTree = MAX_TRACK_IN_UNCONFIRMED_TREE;
-	stConfiguration_.nNumFrameForConfirmation = NUM_FRAME_FOR_CONFIRMATION;
-	if (NULL != stConfig3D)
-	{
-		if (0 <= stConfig3D->nProcWindowSize)				  { stConfiguration_.nProcWindowSize = stConfig3D->nProcWindowSize; }
-		if (0 <= stConfig3D->nKBestSize)					  { stConfiguration_.nKBestSize = stConfig3D->nKBestSize; }
-		if (0 <= stConfig3D->nMaxTrackInOptimization)		  { stConfiguration_.nMaxTrackInOptimization = stConfig3D->nMaxTrackInOptimization; }
-		if (0 <= stConfig3D->nMaxTrackInUnconfirmedTrackTree) { stConfiguration_.nMaxTrackInUnconfirmedTrackTree = stConfig3D->nMaxTrackInUnconfirmedTrackTree; }
-		if (0 <= stConfig3D->nNumFrameForConfirmation)		  { stConfiguration_.nNumFrameForConfirmation = stConfig3D->nNumFrameForConfirmation; }
-	}
+	// parameter and evaluators
+	parameters_ = *parameters;
+	vecEvaluator_ = vecEvaluator;
 
 	sprintf_s(strDatasetPath_, "%s", datasetPath.c_str());
 	nCurrentFrameIdx_ = 0;
@@ -261,13 +252,6 @@ void CPSNWhere_Associator3D::Initialize(std::string datasetPath,
 		pFieldOfView[camIdx][3] = this->ImageToWorld(PSN_Point2D(0.0, (double)cCamModel_[camIdx].height()-1), 0.0, camIdx);
 	}
 	
-	// evaluation
-	this->m_vecEvaluator.resize(PROC_WINDOW_SIZE+1);
-	for (int evalIdx = 0; evalIdx < this->m_vecEvaluator.size(); evalIdx++)
-	{
-		m_vecEvaluator[evalIdx].Initialize(datasetPath);
-	}	
-
 	// smoothing related
 	for (int windowSize = 1; windowSize <= SGS_DEFAULT_SPAN; windowSize++)
 	{
@@ -275,26 +259,16 @@ void CPSNWhere_Associator3D::Initialize(std::string datasetPath,
 	}
 
 	// time and date record
-	time_t curTimer = time(NULL);
-	struct tm timeStruct;
-	localtime_s(&timeStruct, &curTimer);
-	char strTimeChar[128];
-	sprintf_s(strTimeChar, "%02d%02d%02d_%02d%02d%02d", 
-		timeStruct.tm_year + 1900, 
-		timeStruct.tm_mon+1, 
-		timeStruct.tm_mday, 
-		timeStruct.tm_hour, 
-		timeStruct.tm_min, 
-		timeStruct.tm_sec);
-	strTime_ = std::string(strTimeChar);
+	strTime_ = strTime;	
 
 	char strParameter[128];
-	sprintf_s(strParameter, "K%03d", (int)stConfiguration_.nKBestSize);
+	sprintf_s(strParameter, "K%03d", (int)parameters_.nKBestSize_);
 	std::string strSuffix = "_" + std::string(strParameter) + "_" + strTime_ + ".txt";
 
 	// create folders
 	psn::CreateDirectoryForWindows("logs/");
 	psn::CreateDirectoryForWindows(std::string(RESULT_SAVE_PATH));
+	psn::CreateDirectoryForWindows(std::string(RESULT_SAVE_PATH) + "/" + std::string(strParameter));
 
 	// file path
 	strLogFileName_ = std::string(RESULT_SAVE_PATH) + "/" + std::string(strParameter) + "/" + strTime_ + "_log.txt";		
@@ -343,42 +317,16 @@ void CPSNWhere_Associator3D::Finalize(void)
 	/////////////////////////////////////////////////////////////////////////////
 	// EVALUATION
 	/////////////////////////////////////////////////////////////////////////////
-#ifndef LOAD_SNAPSHOT_
-	std::string curFilePath;
-	char strParameter[128];
-	sprintf_s(strParameter, "K%03d", (int)stConfiguration_.nKBestSize);
-	std::string strSuffix = "_" + std::string(strParameter) + "_" + strTime_ + ".txt";
-
-	std::string strResultPath = std::string(RESULT_SAVE_PATH) + "/" + std::string(strParameter) + "/";
-	psn::CreateDirectoryForWindows(strResultPath);
-	for (int evalIdx = 0; evalIdx < this->m_vecEvaluator.size(); evalIdx++)
+#ifndef LOAD_SNAPSHOT_	
+	for (int evalIdx = 0; evalIdx < vecEvaluator_->size(); evalIdx++)
 	{
 		// fill the result
-		for (unsigned int timeIdx = (unsigned int)std::max(0, (int)nCurrentFrameIdx_ - evalIdx + 1); 
-			timeIdx <= nCurrentFrameIdx_; timeIdx++)
+		for (unsigned int timeIdx = (unsigned int)std::max(0, (int)nCurrentFrameIdx_ - (*vecEvaluator_)[evalIdx].second + 1); 
+			timeIdx <= nCurrentFrameIdx_; 
+			timeIdx++)
 		{
-			this->m_vecEvaluator[evalIdx].SetResult(queueTracksInBestSolution_, timeIdx);
+			(*vecEvaluator_)[evalIdx].first.SetResult(queueTracksInBestSolution_, timeIdx);
 		}
-		this->m_vecEvaluator[evalIdx].Evaluate();
-
-		// print to console
-		if (this->m_vecEvaluator.size() - 1 == evalIdx) { printf("[EVALUATION] deferred result\n"); }
-		else if (0 == evalIdx) { printf("[EVALUATION] instance result\n"); }
-		else { continue; }
-		this->m_vecEvaluator[evalIdx].PrintResultToConsole();
-
-		// print to file
-		sprintf_s(strParameter, "K%03d_W%03d", (int)stConfiguration_.nKBestSize, evalIdx);
-		curFilePath = strResultPath + strTime_ + "_evaluation_" + strParameter + ".txt";
-		this->m_vecEvaluator[evalIdx].PrintResultToFile(curFilePath.c_str());
-		//curFilePath = std::string(RESULT_SAVE_PATH) + strTime_ + "result_matrix_" + strParameter + ".txt";
-		//this->m_vecEvaluator[evalIdx].PrintResultMatrix(curFilePath.c_str());
-
-		//// print to console
-		//if (this->m_vecEvaluator.size() - 1 == evalIdx) { printf("[EVALUATION] deferred result\n"); }
-		//else if (0 == evalIdx) { printf("[EVALUATION] instance result\n"); }
-		//else { continue; }
-		//this->m_vecEvaluator[evalIdx].PrintResultToConsole();
 	}
 #endif
 
@@ -435,7 +383,7 @@ void CPSNWhere_Associator3D::Finalize(void)
 	- stTrack3DResult: 3D tracking result from the processing
 ************************************************************************/
 stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTrack2DResult, 
-											cv::Mat *curFrame, 
+											std::vector<cv::Mat> curFrames,
 											int frameIdx)
 {
 	assert(bInit_);
@@ -458,7 +406,7 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	// PRE-PROCESSING
 	/////////////////////////////////////////////////////////////////////////////
 	// get frames	
-	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) { ptMatCurrentFrames_[camIdx] = &curFrame[camIdx]; }
+	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) { ptMatCurrentFrames_[camIdx] = &curFrames[camIdx]; }
 	nCurrentFrameIdx_ = frameIdx;
 	nNumFramesForProc_++;
 	// enterance/exit penalty
@@ -481,8 +429,8 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	this->Hypothesis_UpdateHypotheses(queuePrevGlobalHypotheses_, &queueNewSeedTracks_);
 	this->Hypothesis_Formation(queueCurrGlobalHypotheses_, &queuePrevGlobalHypotheses_);	
 	// post-pruning
-	this->Hypothesis_PruningNScanBack(nCurrentFrameIdx_, stConfiguration_.nProcWindowSize, &queueTracksInWindow_, &queueCurrGlobalHypotheses_);
-	this->Hypothesis_PruningTrackWithGTP(nCurrentFrameIdx_, stConfiguration_.nMaxTrackInOptimization, &queueTracksInWindow_, &queuePtActiveTrees_);
+	this->Hypothesis_PruningNScanBack(nCurrentFrameIdx_, parameters_.nProcWindowSize_, &queueTracksInWindow_, &queueCurrGlobalHypotheses_);
+	this->Hypothesis_PruningTrackWithGTP(nCurrentFrameIdx_, parameters_.nMaxTrackInOptimization_, &queueTracksInWindow_, &queuePtActiveTrees_);
 	this->Hypothesis_RefreshHypotheses(queueCurrGlobalHypotheses_);
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -510,11 +458,11 @@ stTrack3DResult CPSNWhere_Associator3D::Run(std::vector<stTrack2DResult> &curTra
 	/////////////////////////////////////////////////////////////////////////////
 	// EVALUATION
 	/////////////////////////////////////////////////////////////////////////////
-	for (int evalIdx = 0; evalIdx < this->m_vecEvaluator.size(); evalIdx++)
+	for (int evalIdx = 0; evalIdx < (*vecEvaluator_).size(); evalIdx++)
 	{
-		int timeDeferred = (int)nCurrentFrameIdx_ - evalIdx;
+		int timeDeferred = (int)nCurrentFrameIdx_ - (*vecEvaluator_)[evalIdx].second;
 		if (0 > timeDeferred) { continue; }
-		this->m_vecEvaluator[evalIdx].SetResult(queueTracksInBestSolution_, timeDeferred);
+		(*vecEvaluator_)[evalIdx].first.SetResult(queueTracksInBestSolution_, timeDeferred);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -1414,8 +1362,8 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 				if (NULL == lastReconstruction.tracklet2Ds.get(camIdx)) { continue; }
 				pointsIn3D.push_back(curTrack->lastTrackletLocation3D[camIdx]);
 			}
-			curTrack->costExit = std::min(COST_EX_MAX, -std::log(this->ComputeExitProbability(pointsIn3D, (int)curTrack->duration)));
-			curTrack->costTotal = GetCost(curTrack);
+			curTrack->costExit = std::min(parameters_.fCostExitMax_, -std::log(this->ComputeExitProbability(pointsIn3D, (int)curTrack->duration)));
+			curTrack->costTotal = GetCost(curTrack);		
 
 			// move to time jump track list
 			queuePausedTrack_.push_back(curTrack);
@@ -1517,7 +1465,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		if (!(*trackIter)->bValid) { continue; }
 
 		// handling expired track
-		if ((*trackIter)->timeEnd + MAX_TIME_JUMP < nCurrentFrameIdx_)
+		if ((*trackIter)->timeEnd + parameters_.nMaxTimeJump_ < nCurrentFrameIdx_)
 		{
 			// remove track instance for memory efficiency
 			if (0.0 <= (*trackIter)->costTotal)
@@ -1574,7 +1522,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		trackIter++)
 	{
 		if (!(*trackIter)->bValid
-			|| (*trackIter)->timeEnd + stConfiguration_.nProcWindowSize <= nCurrentFrameIdx_)
+			|| (*trackIter)->timeEnd + parameters_.nProcWindowSize_ <= nCurrentFrameIdx_)
 		{ continue; }
 
 		queueNewTracks.push_back(*trackIter);
@@ -1608,12 +1556,12 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 			(*trackIter)->GTProb = 0.0;
 			(*trackIter)->bCurrentBestSolution = false;
 
-			//if (!(*trackIter)->bValid && (*trackIter)->timeGeneration + stConfiguration_.nProcWindowSize > nCurrentFrameIdx_) { continue; }
+			//if (!(*trackIter)->bValid && (*trackIter)->timeGeneration + parameters_.nProcWindowSize > nCurrentFrameIdx_) { continue; }
 			if (!(*trackIter)->bValid) { continue; }
 			queueUpdated.push_back(*trackIter);
 		}
 		(*treeIter)->tracks = queueUpdated;
-		//if (0 == (*treeIter)->tracks.size() || (0 == GTPSum && (*treeIter)->timeGeneration + stConfiguration_.nNumFrameForConfirmation <= nCurrentFrameIdx_))
+		//if (0 == (*treeIter)->tracks.size() || (0 == GTPSum && (*treeIter)->timeGeneration + parameters_.nNumFrameForConfirmation <= nCurrentFrameIdx_))
 		if (0 == (*treeIter)->tracks.size())
 		{
 			(*treeIter)->bValid = false;
@@ -1631,7 +1579,7 @@ void CPSNWhere_Associator3D::Track3D_UpdateTracks(void)
 		treeIter++)
 	{
 		if (!(*treeIter)->bValid || (*treeIter)->bConfirmed) { continue; }
-		if ((*treeIter)->timeGeneration + stConfiguration_.nNumFrameForConfirmation <= nCurrentFrameIdx_)
+		if ((*treeIter)->timeGeneration + parameters_.nNumFrameForConfirmation_ <= nCurrentFrameIdx_)
 		{
 			(*treeIter)->bConfirmed = true;
 			continue;
@@ -1771,7 +1719,7 @@ void CPSNWhere_Associator3D::Track3D_GenerateSeedTracks(PSN_TrackSet &outputSeed
 
 		// initiation cost
 		//newTrack.costEnter = bInitiationPenaltyFree_? -log(P_EN_MAX) : std::min(COST_EN_MAX, -std::log(this->ComputeEnterProbability(pointsIn3D)));
-		newTrack.costEnter = bInitiationPenaltyFree_? 0 : std::min(COST_EN_MAX, -std::log(this->ComputeEnterProbability(pointsIn3D)));
+		newTrack.costEnter = bInitiationPenaltyFree_? 0 : std::min(parameters_.fCostEnterMax_, -std::log(this->ComputeEnterProbability(pointsIn3D)));
 		pointsIn3D.clear();
 
 		// point reconstruction
@@ -1828,7 +1776,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 		trackIter != queueActiveTrack_.end();
 		trackIter++)
 	{		
-		if(DO_BRANCH_CUT && stConfiguration_.nMaxTrackInOptimization <= queueBranchTracks.size()) { break; }
+		if(DO_BRANCH_CUT && parameters_.nMaxTrackInOptimization_ <= queueBranchTracks.size()) { break; }
 
 		//---------------------------------------------------------
 		// FIND SPATIAL ASSOCIATION
@@ -2043,7 +1991,7 @@ void CPSNWhere_Associator3D::Track3D_BranchTracks(PSN_TrackSet *seedTracks)
 		trackIter != queuePausedTrack_.end();
 		trackIter++)
 	{
-		if (DO_BRANCH_CUT && stConfiguration_.nMaxTrackInOptimization <= numTemporalBranch) { break; }
+		if (DO_BRANCH_CUT && parameters_.nMaxTrackInOptimization_ <= numTemporalBranch) { break; }
 		Track3D *curTrack = *trackIter;
 
 		for (std::deque<Track3D*>::iterator seedTrackIter = seedTracks->begin();
@@ -2256,8 +2204,8 @@ double CPSNWhere_Associator3D::ComputeEnterProbability(std::vector<PSN_Point3D> 
 		if (distanceFromBoundary < curDistance) { distanceFromBoundary = curDistance; }
 	}
 	if (distanceFromBoundary < 0) { return 1.0; }
-	return distanceFromBoundary <= BOUNDARY_DISTANCE? 1.0 : P_EN_MAX * exp(-(double)(P_EN_DECAY * std::max(0.0, distanceFromBoundary - BOUNDARY_DISTANCE)));
-	return P_EN_MAX;
+	return distanceFromBoundary <= BOUNDARY_DISTANCE? 1.0 : parameters_.fProbEnterMax_ * exp(-(double)(parameters_.fProbEnterDecayCoef_ * std::max(0.0, distanceFromBoundary - BOUNDARY_DISTANCE)));
+	return parameters_.fProbEnterMax_;
 }
 
 /************************************************************************
@@ -2278,11 +2226,11 @@ double CPSNWhere_Associator3D::ComputeExitProbability(std::vector<PSN_Point3D> &
 		if (distanceFromBoundary < curDistance) { distanceFromBoundary = curDistance; }
 	}
 	if (distanceFromBoundary < 0) { return 1.0; }
-	if (distanceFromBoundary < BOUNDARY_DISTANCE) { return P_EX_MAX; }
+	if (distanceFromBoundary < BOUNDARY_DISTANCE) { return parameters_.fProbExitMax_; }
 
-	double probability = P_EX_MAX;
-	probability *= exp(-(double)(P_EX_DECAY_DIST * std::max(0.0, distanceFromBoundary - (double)BOUNDARY_DISTANCE)));	// decaying with distance
-	probability *= exp(-(double)P_EX_DECAY_LENGTH * std::max(0.0, (double)tracklength - (double)stConfiguration_.nNumFrameForConfirmation));
+	double probability = parameters_.fProbExitMax_;
+	probability *= exp(-(double)(parameters_.fProbExitDecayCoef_dist_ * std::max(0.0, distanceFromBoundary - (double)BOUNDARY_DISTANCE)));	// decaying with distance
+	probability *= exp(-(double)parameters_.fProbExitDecayCoef_length_ * std::max(0.0, (double)tracklength - (double)parameters_.nNumFrameForConfirmation_));
 	return probability;
 }
 
@@ -2298,7 +2246,7 @@ double CPSNWhere_Associator3D::ComputeExitProbability(std::vector<PSN_Point3D> &
 double CPSNWhere_Associator3D::ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, unsigned int timeGap)
 {
 	double distance = (prePoint - curPoint).norm_L2();
-	double maxDistance = MAX_MOVING_SPEED * timeGap;
+	double maxDistance = parameters_.fMaxMovingSpeed_ * timeGap;
 	return 0.5 * psn::erfc(4.0 * distance / maxDistance - 2.0);
 }
 
@@ -2473,7 +2421,7 @@ bool CPSNWhere_Associator3D::CheckIncompatibility(Track3D *track1, Track3D *trac
 			track2ReconIdx++;
 			// proximity
 			distanceBetweenTracks = (*reconLocation1 - *reconLocation2).norm_L2();
-			if (distanceBetweenTracks > MAX_MOVING_SPEED * 2) { continue; }
+			if (distanceBetweenTracks > parameters_.fMaxMovingSpeed_ * 2) { continue; }
 			if (distanceBetweenTracks < MIN_TARGET_PROXIMITY) { return true; }
 			if (reconIdx < overlapLength - 1)
 			{
@@ -2584,10 +2532,10 @@ void CPSNWhere_Associator3D::Hypothesis_UpdateHypotheses(PSN_HypothesisSet &inou
 	//---------------------------------------------------------
 	PSN_HypothesisSet newHypothesesSet;	
 	for (PSN_HypothesisSet::iterator hypothesisIter = inoutUpdatedHypotheses.begin();
-		hypothesisIter != inoutUpdatedHypotheses.end() && newHypothesesSet.size() < stConfiguration_.nKBestSize;
+		hypothesisIter != inoutUpdatedHypotheses.end() && newHypothesesSet.size() < parameters_.nKBestSize_;
 		hypothesisIter++)
 	{
-		if (stConfiguration_.nKBestSize <= newHypothesesSet.size()) { break; }
+		if (parameters_.nKBestSize_ <= newHypothesesSet.size()) { break; }
 		//if (!(*hypothesisIter).bValid){ continue; }
 		stGlobalHypothesis newGlobalHypothesis = (*hypothesisIter);
 		stHypothesisSolvingInfo newInfo;
@@ -2609,13 +2557,13 @@ void CPSNWhere_Associator3D::Hypothesis_UpdateHypotheses(PSN_HypothesisSet &inou
 			}
 		}
 		std::sort(newRelatedTracks.begin(), newRelatedTracks.end(), psnTrackGTPandLLDescend);
-		if (newRelatedTracks.size() <= stConfiguration_.nMaxTrackInOptimization)
+		if (newRelatedTracks.size() <= parameters_.nMaxTrackInOptimization_)
 		{
 			newGlobalHypothesis.relatedTracks = newRelatedTracks;
 		}
 		else
 		{
-			newGlobalHypothesis.relatedTracks.insert(newGlobalHypothesis.relatedTracks.end(), newRelatedTracks.begin(), newRelatedTracks.begin() + stConfiguration_.nMaxTrackInOptimization);
+			newGlobalHypothesis.relatedTracks.insert(newGlobalHypothesis.relatedTracks.end(), newRelatedTracks.begin(), newRelatedTracks.begin() + parameters_.nMaxTrackInOptimization_);
 		}
 		
 		// add new seed tracks
@@ -2848,7 +2796,7 @@ void CPSNWhere_Associator3D::Hypothesis_PruningNScanBack(
 		(*tracksInBestSolution)[trackIdx]->bCurrentBestSolution = true;
 
 		// left unconfirmed tracks
-		if ((*tracksInBestSolution)[trackIdx]->tree->timeGeneration + NUM_FRAME_FOR_CONFIRMATION > nCurrentFrameIdx){ continue; }
+		if ((*tracksInBestSolution)[trackIdx]->tree->timeGeneration + parameters_.nNumFrameForConfirmation_ > nCurrentFrameIdx){ continue; }
 
 		// pruning
 		brachSeedTrack = TrackTree::FindOldestTrackInBranch((*tracksInBestSolution)[trackIdx], nTimeBranchPruning);
@@ -2880,7 +2828,7 @@ void CPSNWhere_Associator3D::Hypothesis_PruningTrackWithGTP(unsigned int nCurren
 	{
 		PSN_TrackSet sortedTrackQueue = queuePtActiveTrees_[treeIdx]->tracks;
 		std::sort(sortedTrackQueue.begin(), sortedTrackQueue.end(), psnTrackGTPandLLDescend);
-		for (int trackIdx = MAX_TRACK_IN_CONFIRMED_TREE; trackIdx < sortedTrackQueue.size(); trackIdx++)
+		for (int trackIdx = parameters_.nNumFrameForConfirmation_; trackIdx < sortedTrackQueue.size(); trackIdx++)
 		{
 			sortedTrackQueue[trackIdx]->bValid = false;
 		}
@@ -2898,7 +2846,7 @@ void CPSNWhere_Associator3D::Hypothesis_PruningTrackWithGTP(unsigned int nCurren
 			numUCTrackLeft++;
 			continue; 
 		}
-		if (numTrackLeft < stConfiguration_.nMaxTrackInOptimization && (*trackIter)->GTProb > 0.0) 
+		if (numTrackLeft < parameters_.nMaxTrackInOptimization_ && (*trackIter)->GTProb > 0.0) 
 		{ 	
 			numTrackLeft++;
 			continue;
@@ -2911,7 +2859,7 @@ void CPSNWhere_Associator3D::Hypothesis_PruningTrackWithGTP(unsigned int nCurren
 	{
 		PSN_TrackSet sortedTrackQueue = queuePtUnconfirmedTrees_[treeIdx]->tracks;
 		std::sort(sortedTrackQueue.begin(), sortedTrackQueue.end(), psnTrackGTPandLLDescend);
-		for (int trackIdx = stConfiguration_.nMaxTrackInUnconfirmedTrackTree; trackIdx < sortedTrackQueue.size(); trackIdx++)
+		for (int trackIdx = parameters_.nMaxTrackInUnconfirmedTrackTree_; trackIdx < sortedTrackQueue.size(); trackIdx++)
 		{
 			sortedTrackQueue[trackIdx]->bValid = false;
 		}

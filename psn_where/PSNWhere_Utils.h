@@ -75,6 +75,18 @@ cv::Mat histogram(cv::Mat singleChannelImage, int numBin);
 bool IsLineSegmentIntersect(PSN_Line &line1, PSN_Line &line2);
 double Triangulation(PSN_Line &line1, PSN_Line &line2, PSN_Point3D &midPoint3D);
 
+template<typename T>T Median(std::vector<T> vector)
+{
+	assert(0 < vector.size());
+	std::sort(vector.begin(), vector.end());
+	size_t medianIndex = vector.size() >> 1;
+	if (0 == vector.size() % 2)
+	{
+		return (vector[medianIndex - 1] + vector[medianIndex]) / 2.0;
+	}
+	return vector[medianIndex];
+}
+
 // display related
 std::vector<cv::Scalar> GenerateColors(unsigned int numColor);
 cv::Scalar hsv2rgb(double h, double s, double v);
@@ -95,4 +107,8 @@ stTrack2DResult Read2DTrackResultWithTxt(std::string strDataPath, unsigned int c
 bool CreateDirectoryForWindows(const std::string &dirName);
 void printLog(const char *filename, std::string strLog);
 std::string MakeTrackIDList(PSN_TrackSet *tracks);
+
+template<typename T, int sz>
+int size(T(&)[sz]) { return sz; }
+
 }

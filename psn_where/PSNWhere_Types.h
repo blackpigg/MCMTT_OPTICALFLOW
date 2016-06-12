@@ -484,22 +484,13 @@ struct stParamsMain
 	std::vector<int> sizeOfKs;
 };
 
-class AlgorithmParams
-{
-public:
-	AlgorithmParams() {};
-	~AlgorithmParams() {};
-
-	ParamsDetection    paramsDet;
-	ParamsTracker2D    params2DT;
-	ParamsAssociator3D params3DA;
-};
-
 class ParamsDetection
 {
 public:
 	ParamsDetection() {};
 	~ParamsDetection() {};
+
+	bool operator==(const ParamsDetection &a) const;
 };
 
 class ParamsTracker2D
@@ -508,8 +499,12 @@ public:
 	ParamsTracker2D();
 	~ParamsTracker2D();
 
-	int nBackTrackingInterval_;
-	double fFeatureClusterRadiusRatio_;
+	bool operator==(const ParamsTracker2D &a) const;
+
+	int    nBackTrackingInterval_;
+	double fFeatureWindowSizeRatio_;
+	double cropZoneMargin_;
+	cv::Rect_<double> cropZone_;	
 };
 
 class ParamsAssociator3D
@@ -517,6 +512,10 @@ class ParamsAssociator3D
 public:
 	ParamsAssociator3D();
 	~ParamsAssociator3D();
+
+	bool operator==(const ParamsAssociator3D &a) const;
+	void SetParameter(int index, double value);
+	double GetParameter(int index);
 
 	// all minus values mean that the variable uses default value.
 	// optimization related
@@ -543,6 +542,22 @@ public:
 	//// detection related
 	//float fErrorDetection;
 	//float fErrorCalibration;
+
+	DATASET_TYPE datasetType_;
+};
+
+class AlgorithmParams
+{
+public:
+	AlgorithmParams() {};
+	~AlgorithmParams() {};
+
+	bool operator==(const AlgorithmParams &a) const;
+	std::string GetParameterString(void);
+
+	ParamsDetection    paramsDet;
+	ParamsTracker2D    params2DT;
+	ParamsAssociator3D params3DA;
 };
 
 

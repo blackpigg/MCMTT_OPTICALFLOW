@@ -29,7 +29,7 @@ public:
 	CEvaluator(void);
 	~CEvaluator(void);
 
-	void Initialize(std::string strFilepath);
+	void Initialize(DATASET_TYPE datasetType);
 	void Finalize(void);
 
 	void SetResult(PSN_TrackSet &trackSet, unsigned int timeIdx);
@@ -37,9 +37,11 @@ public:
 	void Evaluate(void);
 	//stEvaluationResult EvaluateWithCrop(double cropMargin);
 
-	void PrintResultToConsole();
-	void PrintResultToFile(const char *strFilepathAndName);
+	stEvaluationResult* GetEvaluationResult(void) { return &m_stResult; }
+	void PrintResultToConsole(AlgorithmParams *parameters = NULL);
+	void PrintResultToFile(const char *strFilepathAndName, AlgorithmParams *parameters = NULL);
 	void PrintResultMatrix(const char *strFilepathAndName);
+	std::string PrintResultToString(AlgorithmParams *parameters = NULL);
 
 private:
 	bool bInit;
@@ -54,25 +56,15 @@ private:
 
 	PSN_Rect m_rectCropZone;
 	PSN_Rect m_rectCropZoneMargin;
+	PSN_Rect m_rectInnerCropZone;
 
 	std::deque<unsigned int> m_queueID;
 	std::vector<pointInfoSet> m_queueSavedResult;
 
 	stEvaluationResult m_stResult;
-	//double m_fMOTA;
-	//double m_fMOTP;	
-	//double m_fMOTAL;
-	//double m_fRecall;
-	//double m_fPrecision;
-	//double m_fMissTargetPerGroundTruth;
-	//double m_fFalseAlarmPerGroundTruth;
-	//double m_fFalseAlarmPerFrame;
-	//int m_nMissed;
-	//int m_nFalsePositives;
-	//int m_nIDSwitch;
-	//int m_nMostTracked;
-	//int m_nPartilalyTracked;
-	//int m_nMostLost;	
-	//int m_nFragments;
 };
+
+//()()
+//('')HAANJU.YOO
+
 

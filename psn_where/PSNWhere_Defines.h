@@ -45,7 +45,8 @@ const std::string DATASET_PATH[DATASET_NUM] = {
 };
 
 const int DATASET_START_FRAME_IDX[DATASET_NUM] = {0, 0, 3, 0};
-const int DATASET_END_FRAME_IDX[DATASET_NUM] = {332, 794, 432, 239};
+//const int DATASET_END_FRAME_IDX[DATASET_NUM] = {332, 794, 432, 239};
+const int DATASET_END_FRAME_IDX[DATASET_NUM] = {30, 794, 432, 239};
 const int DATASET_NUM_CAM[DATASET_NUM] = {4, 3, 3, 3};
 const int DATASET_CAM_ID[DATASET_NUM][4] = { // '-1' for dummy index
 	{1, 2, 3, 4},
@@ -57,6 +58,7 @@ const int DATASET_CAM_ID[DATASET_NUM][4] = { // '-1' for dummy index
 // other input paths
 #define CALIBRATION_PATH ("/calibrationInfos/")
 #define DETECTION_PATH ("/detectionResult/")
+#define GROUNDTRUTH_PATH ("/groundTruth/cropped.txt")
 
 /////////////////////////////////////////////////////////////////////////
 // OUTPUT

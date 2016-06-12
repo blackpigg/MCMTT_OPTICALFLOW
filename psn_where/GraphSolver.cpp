@@ -4,7 +4,7 @@
 
 // TODO: 티끌이라도 더 빠르게 하려면, delete(v) -> insert(u) 연계 시, OM 진입하는 OC는 u의 neighbor만 있음을 이용
 //#define HJ_GRAPH_TYPE_MWISP
-#define HJ_GRAPH_SOLVE_MONITORING
+//#define HJ_GRAPH_SOLVE_MONITORING
 
 // comparator
 bool HJGraphComparatorVertexWeightDescend(const hj::GraphVertex *vertex1, const hj::GraphVertex *vertex2)

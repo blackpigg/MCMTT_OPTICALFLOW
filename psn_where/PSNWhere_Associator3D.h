@@ -127,9 +127,9 @@ class CPSNWhere_Associator3D
 public:
 	CPSNWhere_Associator3D(void);
 	~CPSNWhere_Associator3D(void);
-	void Initialize(std::string datasetPath, std::vector<stCalibrationInfo*> &vecStCalibInfo, stParamsAssociator3D *stConfig3D = NULL);
+	void Initialize(std::string datasetPath, std::vector<stCalibrationInfo*> &vecStCalibInfo, ParamsAssociator3D *parameters, std::vector<std::pair<CEvaluator, int>> *vecEvaluator, std::string strTime);
 	void Finalize(void);
-	stTrack3DResult Run(std::vector<stTrack2DResult> &curTrack2DResult, cv::Mat *curFrame, int frameIdx);
+	stTrack3DResult Run(std::vector<stTrack2DResult> &curTrack2DResult, std::vector<cv::Mat> curFrames, int frameIdx);
 
 	// Visualization related
 	std::vector<PSN_Point2D> GetHuman3DBox(PSN_Point3D ptHeadCenter, double bodyWidth, unsigned int camIdx);
@@ -179,14 +179,14 @@ private:
 	// cost calculation
 	double ComputeEnterProbability(std::vector<PSN_Point3D> &points);
 	double ComputeExitProbability(std::vector<PSN_Point3D> &points, int trackLength);
-	static double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, unsigned int timeGap = 1);
+	double ComputeLinkProbability(PSN_Point3D &prePoint, PSN_Point3D &curPoint, unsigned int timeGap = 1);
 	double ComputeRGBCost(const cv::Mat *feature1, const cv::Mat *feature2, unsigned int timeGap);
 	double ComputeTrackletLinkCost(PSN_Point3D preLocation, PSN_Point3D curLocation, int timeGap);
 	double ComputeReconstructionProbability(PSN_Point3D point, std::vector<PSN_Point3D> *rawPoints, CTrackletCombination *trackletCombination, double maxError = 0.0);
 
 	// miscellaneous
-	static bool CheckIncompatibility(Track3D *track1, Track3D *track2);
-	static bool CheckIncompatibility(CTrackletCombination &combi1, CTrackletCombination &combi2);	
+	bool CheckIncompatibility(Track3D *track1, Track3D *track2);
+	bool CheckIncompatibility(CTrackletCombination &combi1, CTrackletCombination &combi2);	
 	cv::Mat GetRGBFeature(const cv::Mat *patch, int numBins);
 	double GetCost(Track3D *track);
 	
@@ -219,7 +219,7 @@ private:
 	//////////////////////////////////////////////////////////////////////////
 	// VARIABLES
 	//////////////////////////////////////////////////////////////////////////
-	stParamsAssociator3D stConfiguration_;
+	ParamsAssociator3D parameters_;
 	bool bInit_;
 	bool bSnapshotReaded_;
 	Etiseo::CameraModel cCamModel_[NUM_CAM];
@@ -284,8 +284,7 @@ private:
 	std::deque<PAIR_UINT> queuePairTreeIDToVisualizationID_;	
 
 	// evaluation
-	std::vector<CEvaluator> m_vecEvaluator;
-	
+	std::vector<std::pair<CEvaluator, int>> *vecEvaluator_;
 
 	// for debugging
 	int nCountTrackInOptimization_;

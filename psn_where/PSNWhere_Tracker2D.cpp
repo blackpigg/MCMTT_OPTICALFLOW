@@ -11,9 +11,6 @@
 
 #define PSN_2D_FEATURE_MIN_NUM_TRACK (4)
 #define PSN_2D_FEATURE_MAX_NUM_TRACK (100)
-#define PSN_2D_FEATURE_CLUSTER_RADIUS_RATIO (0.2)
-#define PSN_2D_FEATURE_WIN_SIZE_RATIO (1.0)
-#define PSN_2D_BACKTRACKING_INTERVAL (4)
 //#define PSN_2D_OPTICALFLOW_SCALE (0.5)
 #define PSN_2D_OPTICALFLOW_SCALE (0.5)
 
@@ -61,13 +58,14 @@ const double PSN_2D_OPTICALFLOW_SCALE_RECOVER = 1 / PSN_2D_OPTICALFLOW_SCALE;
 	- class instance
 ************************************************************************/
 CPSNWhere_Tracker2D::CPSNWhere_Tracker2D(void)
-	: m_bInit(false)
+	: m_bSetParameter_(false)
+	, m_bInit(false)
 	, m_nCamID(0)
 {
 #ifdef  PSN_2D_DEBUG_DISPLAY_
 	this->m_bOutputVideoInit = false;
 #endif
-	this->m_vecPtGrayFrameBuffer.resize(PSN_2D_BACKTRACKING_INTERVAL, NULL);
+	this->m_vecPtGrayFrameBuffer.resize(parameters_.nBackTrackingInterval_, NULL);
 }
 
 
@@ -96,12 +94,22 @@ CPSNWhere_Tracker2D::~CPSNWhere_Tracker2D(void)
  Return Values:
 	- class instance
 ************************************************************************/
-void CPSNWhere_Tracker2D::Initialize(unsigned int nCamID, stCalibrationInfo *stCalibInfo)
+void CPSNWhere_Tracker2D::Initialize(unsigned int nCamID, stCalibrationInfo *stCalibInfo, ParamsTracker2D *parameter)
 {
 	if(this->m_bInit)
 	{
 		printf("[WARNING] class \"CPSNWhere_Tracker2D\" is already initialized\n");
 		return;
+	}
+
+	if (NULL != parameter)
+	{
+		parameters_ = *parameter;
+		m_bSetParameter_ = true;
+		rectEvaluationZone_.x = parameters_.cropZone_.x - parameters_.cropZoneMargin_;
+		rectEvaluationZone_.y = parameters_.cropZone_.y - parameters_.cropZoneMargin_;
+		rectEvaluationZone_.width = parameters_.cropZone_.width + 2 * parameters_.cropZoneMargin_;
+		rectEvaluationZone_.height = parameters_.cropZone_.height + 2 * parameters_.cropZoneMargin_;
 	}
 	
 	this->m_bSnapshotLoaded = false;
@@ -136,7 +144,7 @@ void CPSNWhere_Tracker2D::Initialize(unsigned int nCamID, stCalibrationInfo *stC
 		*bufferIter = NULL;
 	}
 	this->m_vecPtGrayFrameBuffer.clear();
-	this->m_vecPtGrayFrameBuffer.resize(PSN_2D_BACKTRACKING_INTERVAL, NULL);
+	this->m_vecPtGrayFrameBuffer.resize(parameters_.nBackTrackingInterval_, NULL);
 
 	// feature tracking related
 	this->m_detector = cv::FeatureDetector::create("GridFAST");
@@ -248,18 +256,18 @@ void CPSNWhere_Tracker2D::Finalize(void)
  Return Values:
 	- stTrack2DResult: 
 ************************************************************************/
-stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionResult, cv::Mat *curFrame, unsigned int frameIdx)
+stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionResult, cv::Mat curFrame, unsigned int frameIdx)
 {
 	assert(this->m_bInit);
 
 	// insert to buffer
 	cv::Mat grayImage;
-	cv::cvtColor(*curFrame, grayImage, CV_BGR2GRAY);	
+	cv::cvtColor(curFrame, grayImage, CV_BGR2GRAY);	
 	if(NULL == this->m_vecPtGrayFrameBuffer.back())
 	{
-		this->m_vecPtGrayFrameBuffer.back() = new cv::Mat((int)((double)curFrame->rows * PSN_2D_OPTICALFLOW_SCALE), (int)((double)curFrame->cols * PSN_2D_OPTICALFLOW_SCALE), CV_8UC1);
+		this->m_vecPtGrayFrameBuffer.back() = new cv::Mat((int)((double)curFrame.rows * PSN_2D_OPTICALFLOW_SCALE), (int)((double)curFrame.cols * PSN_2D_OPTICALFLOW_SCALE), CV_8UC1);
 	}
-	cv::resize(grayImage, *this->m_vecPtGrayFrameBuffer.back(), cv::Size((int)((double)curFrame->cols * PSN_2D_OPTICALFLOW_SCALE), (int)((double)curFrame->rows * PSN_2D_OPTICALFLOW_SCALE)));	
+	cv::resize(grayImage, *this->m_vecPtGrayFrameBuffer.back(), cv::Size((int)((double)curFrame.cols * PSN_2D_OPTICALFLOW_SCALE), (int)((double)curFrame.rows * PSN_2D_OPTICALFLOW_SCALE)));	
 	grayImage.release();
 
 #ifdef LOAD_SNAPSHOT_
@@ -268,7 +276,7 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 	{
 		// buffer circulation
 		std::vector<cv::Mat*> vecNewPtGrayFrameBuffer;	
-		vecNewPtGrayFrameBuffer.reserve(PSN_2D_BACKTRACKING_INTERVAL);
+		vecNewPtGrayFrameBuffer.reserve(parameters_.nBackTrackingInterval_);
 		vecNewPtGrayFrameBuffer.assign(this->m_vecPtGrayFrameBuffer.begin() + 1, this->m_vecPtGrayFrameBuffer.end());
 		vecNewPtGrayFrameBuffer.push_back(*this->m_vecPtGrayFrameBuffer.begin());
 		this->m_vecPtGrayFrameBuffer = vecNewPtGrayFrameBuffer;
@@ -309,7 +317,7 @@ stTrack2DResult& CPSNWhere_Tracker2D::Run(std::vector<stDetection> curDetectionR
 
 	// buffer circulation
 	std::vector<cv::Mat*> vecNewPtGrayFrameBuffer;	
-	vecNewPtGrayFrameBuffer.reserve(PSN_2D_BACKTRACKING_INTERVAL);
+	vecNewPtGrayFrameBuffer.reserve(parameters_.nBackTrackingInterval_);
 	vecNewPtGrayFrameBuffer.assign(this->m_vecPtGrayFrameBuffer.begin() + 1, this->m_vecPtGrayFrameBuffer.end());
 	vecNewPtGrayFrameBuffer.push_back(*this->m_vecPtGrayFrameBuffer.begin());
 	this->m_vecPtGrayFrameBuffer = vecNewPtGrayFrameBuffer;
@@ -670,8 +678,6 @@ PSN_Point2D CPSNWhere_Tracker2D::MotionEstimation(stTracker2D &tracker)
 {
 	PSN_Point2D estimatedPosition(0.0, 0.0);
 
-
-
 	return estimatedPosition;
 }
 
@@ -714,12 +720,7 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 		curHeight = this->EstimateDetectionHeight(bottomCenter, topCenter, &curLocation);
 		if (PSN_2D_MAX_HEIGHT < curHeight || PSN_2D_MIN_HEIGHT > curHeight) { continue; }
 
-		cv::Rect rectEvaluationZone;
-		rectEvaluationZone.x = CROP_ZONE_X_MIN - CROP_ZONE_MARGIN;
-		rectEvaluationZone.y = CROP_ZONE_Y_MIN - CROP_ZONE_MARGIN;
-		rectEvaluationZone.width = CROP_ZONE_X_MAX - CROP_ZONE_X_MIN + 1 + 2 * CROP_ZONE_MARGIN;
-		rectEvaluationZone.height = CROP_ZONE_Y_MAX - CROP_ZONE_Y_MIN + 1 + 2 * CROP_ZONE_MARGIN;
-		if (!rectEvaluationZone.contains(cv::Point2d(curLocation.x, curLocation.y))) { continue; }
+		if (m_bSetParameter_ && !rectEvaluationZone_.contains(cv::Point2d(curLocation.x, curLocation.y))) { continue; }
 
 		// generate detection information
 		stDetectedObject curDetection;
@@ -727,8 +728,8 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 		curDetection.detection = curDetectionResult[detectionIdx];
 		curDetection.bMatchedWithTracker = false;
 		curDetection.bOverlapWithOtherDetection = false;
-		curDetection.vecvecTrackedFeatures.reserve(PSN_2D_BACKTRACKING_INTERVAL);
-		curDetection.boxes.reserve(PSN_2D_BACKTRACKING_INTERVAL);
+		curDetection.vecvecTrackedFeatures.reserve(parameters_.nBackTrackingInterval_);
+		curDetection.boxes.reserve(parameters_.nBackTrackingInterval_);
 		curDetection.boxes.push_back(curDetection.detection.box);
 		curDetection.location = curLocation;
 		curDetection.height = curHeight;
@@ -786,7 +787,7 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 									prevFeatures, 
 									featureStatus, 
 									featureErrors,
-									cv::Size((int)(rectRescaledDetectionBox.w * PSN_2D_FEATURE_WIN_SIZE_RATIO), (int)(rectRescaledDetectionBox.w * PSN_2D_FEATURE_WIN_SIZE_RATIO)));
+									cv::Size((int)(rectRescaledDetectionBox.w * parameters_.fFeatureWindowSizeRatio_), (int)(rectRescaledDetectionBox.w * parameters_.fFeatureWindowSizeRatio_)));
 
 
 			// position estimation
@@ -881,7 +882,7 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 								curTracker->trackedPoints, 
 								pointStatus, 
 								pointError,
-								cv::Size((int)(curRect.w * PSN_2D_FEATURE_WIN_SIZE_RATIO), (int)(curRect.h * PSN_2D_FEATURE_WIN_SIZE_RATIO)));
+								cv::Size((int)(curRect.w * parameters_.fFeatureWindowSizeRatio_), (int)(curRect.h * parameters_.fFeatureWindowSizeRatio_)));
 
 		// extract tracked feature points
 		std::vector<cv::Point2f> vecPrevFeatures, vecCurrFeatures;
@@ -951,7 +952,7 @@ std::vector<float> CPSNWhere_Tracker2D::Track2D_ForwardTrackingAndGetMatchingSco
 			}
 
 			double boxCost = 0.0;			
-			size_t lengthForCompare = std::min((size_t)PSN_2D_BACKTRACKING_INTERVAL, std::min(curTracker->boxes.size(), curDetection->boxes.size()));
+			size_t lengthForCompare = std::min((size_t)parameters_.nBackTrackingInterval_, std::min(curTracker->boxes.size(), curDetection->boxes.size()));
 			size_t trackerBoxIdx = (size_t)curTracker->duration; // duration = # of box - 1
 			PSN_Rect detectionBox, trackerBox;
 			for (size_t boxIdx = 0; boxIdx < lengthForCompare; boxIdx++, trackerBoxIdx--)

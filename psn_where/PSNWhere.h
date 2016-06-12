@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PSNWhere_Utils.h"
+#include "Evaluator.h"
 
 class CPSNWhere_Tracker2D;
 class CPSNWhere_Associator3D;
@@ -9,15 +10,37 @@ class CPSNWhere_Associator3D;
 // API CLASS
 /////////////////////////////////////////////////////////////////////
 class CPSNWhere
-{
+{	
+	///////////////////////////////////////////
+	// METHODS
+	///////////////////////////////////////////
+public:
+	// constructor and destructor
+	CPSNWhere(void);
+	~CPSNWhere(void);
+
+	// init & destroy
+	bool Initialize(DATASET_TYPE datasetType, AlgorithmParams *parameters = NULL);
+	void Finalize();
+
+	// tracking
+	TrackInfoArray* TrackPeople(std::vector<cv::Mat> inputFrames, int frameIdx);
+
+	// display
+	void Visualize(std::vector<cv::Mat> inputFrames, int frameIdx, std::vector<stTrack2DResult> &result2D, stTrack3DResult &result3D, int nDispMode);
+
+	// calibration
+	bool ReadProjectionSensitivity(cv::Mat &matSensitivity, unsigned int camIdx);
+	bool ReadDistanceFromBoundary(cv::Mat &matDistance, unsigned int camIdx);
+
 	///////////////////////////////////////////
 	// VARIABLES
 	///////////////////////////////////////////
-public:
-
 private:
 	bool m_bInit;
 	char m_strDatasetPath[128];
+	std::string m_strTime;
+	AlgorithmParams m_parameters;
 	CPSNWhere_Tracker2D *m_cTracker2D[NUM_CAM];
 	CPSNWhere_Associator3D *m_cAssociator3D;
 
@@ -32,28 +55,8 @@ private:
 	bool m_bOutputVideoInit;
 	double m_fProcessingTime;
 
-	///////////////////////////////////////////
-	// METHODS
-	///////////////////////////////////////////
-public:
-	// constructor and destructor
-	CPSNWhere(void);
-	~CPSNWhere(void);
-
-	// init & destroy
-	bool Initialize(std::string datasetPath, stParamsAssociator3D *stConfig3D = NULL);
-	void Finalize();
-
-	// tracking
-	TrackInfoArray* TrackPeople(cv::Mat *pDibArray, int frameIdx);
-
-	// display
-	void Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2DResult> &result2D, stTrack3DResult &result3D, int nDispMode);
-
-	// calibration
-	bool ReadProjectionSensitivity(cv::Mat &matSensitivity, unsigned int camIdx);
-	bool ReadDistanceFromBoundary(cv::Mat &matDistance, unsigned int camIdx);
-private:
+	// evaluation
+	std::vector<std::pair<CEvaluator, int>> m_vecEvaluator;
 };
 
 

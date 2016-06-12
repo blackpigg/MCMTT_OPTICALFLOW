@@ -809,14 +809,30 @@ Track3D* TrackTree::FindOldestTrackInBranch(Track3D *trackInBranch, int nMostPre
 }
 
 
+bool ParamsDetection::operator==(const ParamsDetection &a) const
+{
+	return true;
+}
+
 ParamsTracker2D::ParamsTracker2D()
 {
 	nBackTrackingInterval_ = 4;
-	fFeatureClusterRadiusRatio_ = 0.2;
+	fFeatureWindowSizeRatio_ = 0.2;
+	cropZoneMargin_ = 0.0;
+	cropZone_ = cv::Rect_<double>(0.0, 0.0, 0.0, 0.0);
 }
 
 ParamsTracker2D::~ParamsTracker2D()
 {
+}
+
+bool ParamsTracker2D::operator==(const ParamsTracker2D &a) const
+{
+	if (nBackTrackingInterval_ != a.nBackTrackingInterval_)     { return false; }
+	if (fFeatureWindowSizeRatio_ != a.fFeatureWindowSizeRatio_) { return false; }
+	if (cropZoneMargin_ != a.cropZoneMargin_)                   { return false; }
+	if (cropZone_ != a.cropZone_)                               { return false; }
+	return true;
 }
 
 ParamsAssociator3D::ParamsAssociator3D()
@@ -838,8 +854,172 @@ ParamsAssociator3D::ParamsAssociator3D()
 	fProbExitDecayCoef_dist_ = 1.0E-3;
 	fProbExitDecayCoef_length_ = 1.0E-1;
 	fCostExitMax_ = 1000.0;
+
+	datasetType_ = DATASET_ETRI;
 }
 
 ParamsAssociator3D::~ParamsAssociator3D()
 {
 }
+
+bool ParamsAssociator3D::operator==(const ParamsAssociator3D &a) const
+{
+	if (nProcWindowSize_ != a.nProcWindowSize_) { return false; }
+	if (nKBestSize_ != a.nKBestSize_)           { return false; }
+	if (nMaxTrackInOptimization_ != a.nMaxTrackInOptimization_)                 { return false; }
+	if (nMaxTrackInConfirmedTrackTree_ != a.nMaxTrackInConfirmedTrackTree_)     { return false; }
+	if (nMaxTrackInUnconfirmedTrackTree_ != a.nMaxTrackInUnconfirmedTrackTree_) { return false; }
+	if (nNumFrameForConfirmation_ != a.nNumFrameForConfirmation_)               { return false; }
+	if (nMaxTimeJump_ != a.nMaxTimeJump_)       { return false; }
+	if (fMaxMovingSpeed_ != a.fMaxMovingSpeed_) { return false; }
+	if (fProbEnterMax_ != a.fProbEnterMax_)     { return false; }
+	if (fProbEnterDecayCoef_ != a.fProbEnterDecayCoef_) { return false; }
+	if (fCostEnterMax_ != a.fCostEnterMax_)     { return false; }
+	if (fProbExitMax_ != a.fProbExitMax_)       { return false; }
+	if (fProbExitDecayCoef_dist_ != a.fProbExitDecayCoef_dist_)     { return false; }
+	if (fProbExitDecayCoef_length_ != a.fProbExitDecayCoef_length_) { return false; }
+	if (fCostExitMax_ != a.fCostExitMax_)       { return false; }
+	return true;
+}
+
+void ParamsAssociator3D::SetParameter(int index, double value)
+{
+	switch (index)
+	{
+	case 0:
+		nProcWindowSize_ = (int)value;
+		break;
+	case 1:
+		nKBestSize_ = (int)value;
+		break;
+	case 2:
+		nMaxTrackInOptimization_ = (int)value;
+		break;
+	case 3:
+		nMaxTrackInConfirmedTrackTree_ = (int)value;
+		break;
+	case 4:
+		nMaxTrackInUnconfirmedTrackTree_ = (int)value;
+		break;
+	case 5:
+		nNumFrameForConfirmation_ = (int)value;
+		break;
+	case 6:
+		nMaxTimeJump_ = (int)value;
+		break;
+	case 7:
+		fMaxMovingSpeed_ = value;
+		break;
+	case 8:
+		fProbEnterMax_ = value;
+		break;
+	case 9:
+		fProbEnterDecayCoef_ = value;
+		break;
+	case 10:
+		fCostEnterMax_ = value;
+		break;
+	case 11:
+		fProbExitMax_ = value;
+		break;
+	case 12:
+		fProbExitDecayCoef_dist_ = value;
+		break;
+	case 13:
+		fProbExitDecayCoef_length_ = value;
+		break;
+	case 14:
+		fCostExitMax_ = value;
+		break;
+	default:
+		break;
+	}
+}
+
+double ParamsAssociator3D::GetParameter(int index)
+{
+	double value = 0.0;
+	switch (index)
+	{
+	case 0:
+		value = (double)nProcWindowSize_;
+		break;
+	case 1:
+		value = (double)nKBestSize_;
+		break;
+	case 2:
+		value = (double)nMaxTrackInOptimization_;
+		break;
+	case 3:
+		value = (double)nMaxTrackInConfirmedTrackTree_;
+		break;
+	case 4:
+		value =(double) nMaxTrackInUnconfirmedTrackTree_;
+		break;
+	case 5:
+		value = (double)nNumFrameForConfirmation_;
+		break;
+	case 6:
+		value = (double)nMaxTimeJump_;
+		break;
+	case 7:
+		value = fMaxMovingSpeed_;
+		break;
+	case 8:
+		value = fProbEnterMax_;
+		break;
+	case 9:
+		value = fProbEnterDecayCoef_;
+		break;
+	case 10:
+		value = fCostEnterMax_;
+		break;
+	case 11:
+		value = fProbExitMax_;
+		break;
+	case 12:
+		value = fProbExitDecayCoef_dist_;
+		break;
+	case 13:
+		value = fProbExitDecayCoef_length_;
+		break;
+	case 14:
+		value = fCostExitMax_;
+		break;
+	default:
+		break;
+	}
+	return value;
+}
+
+bool AlgorithmParams::operator==(const AlgorithmParams &a) const
+{
+	if (paramsDet == a.paramsDet && params2DT == a.params2DT && params3DA == a.params3DA) { return true; }
+	return false;
+}
+
+std::string AlgorithmParams::GetParameterString(void)
+{
+	std::string strParameters = "(";
+	strParameters += std::to_string(params2DT.nBackTrackingInterval_) + ",";
+	strParameters += std::to_string(params2DT.fFeatureWindowSizeRatio_) + ",";
+	strParameters += std::to_string(params3DA.nProcWindowSize_) + ",";
+	strParameters += std::to_string(params3DA.nKBestSize_) + ",";
+	strParameters += std::to_string(params3DA.nMaxTrackInOptimization_) + ",";
+	strParameters += std::to_string(params3DA.nMaxTrackInConfirmedTrackTree_) + ",";
+	strParameters += std::to_string(params3DA.nMaxTrackInUnconfirmedTrackTree_) + ",";
+	strParameters += std::to_string(params3DA.nNumFrameForConfirmation_) + ",";
+	strParameters += std::to_string(params3DA.nMaxTimeJump_) + ",";
+	strParameters += std::to_string(params3DA.fMaxMovingSpeed_) + ",";
+	strParameters += std::to_string(params3DA.fProbEnterMax_) + ",";
+	strParameters += std::to_string(params3DA.fProbEnterDecayCoef_) + ",";
+	strParameters += std::to_string(params3DA.fCostEnterMax_) + ",";
+	strParameters += std::to_string(params3DA.fProbExitMax_) + ",";
+	strParameters += std::to_string(params3DA.fProbExitDecayCoef_dist_) + ",";
+	strParameters += std::to_string(params3DA.fProbExitDecayCoef_length_) + ",";
+	strParameters += std::to_string(params3DA.fCostExitMax_) + ")";
+
+	return strParameters;
+}
+
+

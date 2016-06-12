@@ -135,9 +135,9 @@ public:
 	CPSNWhere_Tracker2D(void);
 	~CPSNWhere_Tracker2D(void);
 
-	void Initialize(unsigned int nCamID, stCalibrationInfo *stCalibInfo = NULL);
+	void Initialize(unsigned int nCamID, stCalibrationInfo *stCalibInfo = NULL, ParamsTracker2D *parameter = NULL);
 	void Finalize(void);
-	stTrack2DResult& Run(std::vector<stDetection> curDetectionResult, cv::Mat *curFrame, unsigned int frameIdx);
+	stTrack2DResult& Run(std::vector<stDetection> curDetectionResult, cv::Mat curFrame, unsigned int frameIdx);
 
 private:
 	//----------------------------------------------------------------
@@ -172,6 +172,8 @@ private:
 	/////////////////////////////////////////////////////////////////////
 	// VARIABLES
 	/////////////////////////////////////////////////////////////////////
+	ParamsTracker2D parameters_;
+	bool m_bSetParameter_;
 	bool m_bInit;
 	bool m_bSnapshotLoaded;
 	unsigned int m_nCamID;
@@ -199,6 +201,7 @@ private:
 	// tracker related
 	unsigned int m_nNewTrackerID;
 	//cv::Mat m_matMaskForPatch;
+	cv::Rect_<double> rectEvaluationZone_;
 
 	// DEBUG
 	cv::Mat m_matDebugDisplay;

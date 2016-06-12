@@ -31,14 +31,27 @@ CPSNWhere::~CPSNWhere(void)
 	- 변수 초기화
 	- 기하 정보 입력
 *******************************************************************/
-bool CPSNWhere::Initialize(std::string datasetPath, stParamsAssociator3D *stConfig3D)
+bool CPSNWhere::Initialize(DATASET_TYPE datasetType, AlgorithmParams *parameters)
 {
 	if(this->m_bInit)
 	{
 		return false;
 	}
-	sprintf_s(this->m_strDatasetPath, "%s", datasetPath.c_str());
+	sprintf_s(this->m_strDatasetPath, "%s", DATASET_PATH[datasetType].c_str());
+	if (NULL != parameters) { m_parameters = *parameters; }
 
+	time_t curTimer = time(NULL);
+	struct tm timeStruct;
+	localtime_s(&timeStruct, &curTimer);
+	char strTimeChar[128];
+	sprintf_s(strTimeChar, "%02d%02d%02d_%02d%02d%02d", 
+		timeStruct.tm_year + 1900, 
+		timeStruct.tm_mon+1, 
+		timeStruct.tm_mday, 
+		timeStruct.tm_hour, 
+		timeStruct.tm_min, 
+		timeStruct.tm_sec);
+	m_strTime = std::string(strTimeChar);
 
 	///////////////////////////////////////////////////////////
 	// CAMERA MODEL INITIALIZATION
@@ -143,7 +156,8 @@ bool CPSNWhere::Initialize(std::string datasetPath, stParamsAssociator3D *stConf
 	for(unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{
 		if (NULL == this->m_cTracker2D[camIdx]) { this->m_cTracker2D[camIdx] = new CPSNWhere_Tracker2D; }
-		this->m_cTracker2D[camIdx]->Initialize(camIdx, &this->m_stCalibrationInfos[camIdx]);
+		ParamsTracker2D *parameter2DT = parameters == NULL? NULL : &parameters->params2DT;
+		this->m_cTracker2D[camIdx]->Initialize(camIdx, &this->m_stCalibrationInfos[camIdx], parameter2DT);
 	}
 
 	// CPSWhere_Associator3D
@@ -151,7 +165,8 @@ bool CPSNWhere::Initialize(std::string datasetPath, stParamsAssociator3D *stConf
 	{ 
 		this->m_cAssociator3D = new CPSNWhere_Associator3D; 
 	}
-	this->m_cAssociator3D->Initialize(datasetPath, vecCalibInfos, stConfig3D);
+	ParamsAssociator3D *parameter3DA = parameters == NULL? NULL : &parameters->params3DA;
+	this->m_cAssociator3D->Initialize(DATASET_PATH[datasetType], vecCalibInfos, parameter3DA, &m_vecEvaluator, m_strTime);
 
 
 	///////////////////////////////////////////////////////////
@@ -169,6 +184,11 @@ bool CPSNWhere::Initialize(std::string datasetPath, stParamsAssociator3D *stConf
 	this->m_matTopViewBase = cv::imread(strTopViewPath, cv::IMREAD_COLOR);
 	cv::namedWindow("topView", cv::WINDOW_AUTOSIZE);
 #endif
+
+	// evaluation
+	this->m_vecEvaluator.resize(2);
+	m_vecEvaluator[0].first.Initialize(datasetType); m_vecEvaluator[0].second = 0; 
+	m_vecEvaluator[1].first.Initialize(datasetType); m_vecEvaluator[0].second = parameters->params3DA.nProcWindowSize_;
 
 	this->m_bInit = true;
 
@@ -188,6 +208,9 @@ void CPSNWhere::Finalize()
 {
 	if (!this->m_bInit) { return; }
 
+	///////////////////////////////////////////////////////////
+	// MODULE TERMINATION
+	///////////////////////////////////////////////////////////
 	for (unsigned int camIdx = 0; camIdx < NUM_CAM; camIdx++)
 	{
 		if (NULL != this->m_cTracker2D[camIdx])
@@ -208,7 +231,9 @@ void CPSNWhere::Finalize()
 		this->m_cAssociator3D = NULL;
 	}
 
-	// display related
+	///////////////////////////////////////////////////////////
+	// VISUALIZATION RELATED
+	///////////////////////////////////////////////////////////
 	//cv::destroyWindow("result");
 	this->m_vecColors.clear();
 
@@ -227,6 +252,37 @@ void CPSNWhere::Finalize()
 	}
 #endif
 
+	///////////////////////////////////////////////////////////
+	// EVALUATION
+	///////////////////////////////////////////////////////////
+	char strParameter[128];
+	sprintf_s(strParameter, "K%03d", (int)m_parameters.params3DA.nKBestSize_);
+	std::string strSuffix = "_" + std::string(strParameter) + "_" + m_strTime + ".txt";
+
+	std::string strResultPath = std::string(RESULT_SAVE_PATH) + "/" + std::string(strParameter) + "/";
+	psn::CreateDirectoryForWindows(strResultPath);
+
+	for (int evalIdx = 0; evalIdx < m_vecEvaluator.size(); evalIdx++)
+	{
+		m_vecEvaluator[evalIdx].first.Evaluate();
+
+		// print to console
+		if (m_vecEvaluator[evalIdx].second == 0)
+		{
+			printf("[EVALUATION] instance result\n");
+		}
+		else
+		{ 
+			printf("[EVALUATION] deferred result\n"); 
+		}
+		m_vecEvaluator[evalIdx].first.PrintResultToConsole();
+
+		// print to file
+		sprintf_s(strParameter, "K%03d_W%03d", (int)m_parameters.params3DA.nKBestSize_, m_vecEvaluator[evalIdx].second);
+		std::string curFilePath = strResultPath + m_strTime + "_evaluation_" + strParameter + ".txt";
+		m_vecEvaluator[evalIdx].first.PrintResultToFile(curFilePath.c_str(), &m_parameters);
+	}
+
 	this->m_bInit = false;
 }
 
@@ -240,10 +296,10 @@ void CPSNWhere::Finalize()
 	- 입력 영상에서 물체 탐지
 	- 기 소유한 트래킹 모델 업데이트
 *******************************************************************/
-TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
+TrackInfoArray* CPSNWhere::TrackPeople(std::vector<cv::Mat> inputFrames, int frameIdx)
 {
 #ifdef PSN_DEBUG_MODE_
-	printf("frame %04d...", frameIdx);
+	//printf("frame %04d...", frameIdx);
 #endif
 	clock_t timer_start;
 	clock_t timer_end;
@@ -261,22 +317,22 @@ TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
 		detectionResult = psn::ReadDetectionResultWithTxt(this->m_strDatasetPath, CAM_ID[camIdx], frameIdx);
 		
 		// 2D tracklet
-		result2D.push_back(this->m_cTracker2D[camIdx]->Run(detectionResult, &pDibArray[camIdx], frameIdx));
+		result2D.push_back(this->m_cTracker2D[camIdx]->Run(detectionResult, inputFrames[camIdx], frameIdx));
 		//result2D.push_back(psn::Read2DTrackResultWithTxt(this->m_strDatasetPath + std::string(TRACKLET_PATH), camIdx, frameIdx));
 	}
 	
 	// 3D association
-	result3D = m_cAssociator3D->Run(result2D, pDibArray, frameIdx);
+	result3D = m_cAssociator3D->Run(result2D, inputFrames, frameIdx);
 
 	// measuring processing time
 	timer_end = clock();
 	this->m_fProcessingTime += (double)(timer_end - timer_start)/CLOCKS_PER_SEC;
 
 	// visualize tracking result
-	this->Visualize(pDibArray, frameIdx, result2D, result3D, 1);
+	this->Visualize(inputFrames, frameIdx, result2D, result3D, 1);
 
 #ifdef PSN_DEBUG_MODE_
-	printf("%02d targets, %f sec elapsed\n", (int)result3D.object3DInfo.size(), this->m_fProcessingTime);
+	//printf("%02d targets, %f sec elapsed\n", (int)result3D.object3DInfo.size(), this->m_fProcessingTime);
 #endif
 
 	return (TrackInfoArray *)0;
@@ -298,14 +354,14 @@ TrackInfoArray* CPSNWhere::TrackPeople(cv::Mat *pDibArray, int frameIdx)
  Function:
 	- Visualize the result of 3D tracking
 *******************************************************************/
-void CPSNWhere::Visualize(cv::Mat *pDibArray, int frameIdx, std::vector<stTrack2DResult> &result2D, stTrack3DResult &result3D, int nDispMode)
+void CPSNWhere::Visualize(std::vector<cv::Mat> inputFrames, int frameIdx, std::vector<stTrack2DResult> &result2D, stTrack3DResult &result3D, int nDispMode)
 {
 	//---------------------------------------------------
 	// DISPLAY ON INPUT IMAGE
 	//---------------------------------------------------
 	std::vector<cv::Mat> tileInputArray;
 	for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) {	
-		this->m_matResultFrames[camIdx] = pDibArray[camIdx].clone();
+		this->m_matResultFrames[camIdx] = inputFrames[camIdx].clone();
 
 		// display KLT tracking result
 		if (3 <= nDispMode) {
