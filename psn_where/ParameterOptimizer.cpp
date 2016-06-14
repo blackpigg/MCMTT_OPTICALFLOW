@@ -1,6 +1,6 @@
 #include "ParameterOptimizer.h"
 
-#define NUM_PARAMS (16)
+#define NUM_PARAMS (17)
 #define MIN_NUM_EVALUATION (1)
 
 // 2D tracking parameter domains
@@ -14,6 +14,7 @@ const double nMaxTrackInOptimization[] = {100, 500, 1000, 1500, 2000, 2500, 3000
 const double nMaxTrackInConfirmedTrackTree[] = {10, 50, 100, 200, 300};
 const double nMaxTrackInUnconfirmedTrackTree[] = {2, 3, 4, 5, 10};
 const double nNumFrameForConfirmation[] = {1, 2, 3, 4, 5};
+const double nMaxTimeJump[] = {5, 9, 15, 20};
 
 const double fMaxMovingSpeed[] = {500, 900, 1000, 2000};
 
@@ -26,7 +27,7 @@ const double fProbExitDecayCoef_dist[] = {1.0, 1.0E-1, 1.0E-2, 1.0E-3, 1.0E-4, 1
 const double fProbExitDecayCoef_length[] = {1.0, 1.0E-1, 1.0E-2, 1.0E-3, 1.0E-4, 1.0E-5, 1.0E-6};
 const double fCostExitMax[] = {100, 200, 500, 1000, 1500};
 
-const int fixedParameter[] = {2, 3};
+const int fixedParameter[] = {1, 2, 3};
 
 const double* paramDomain[] = {
 	nBackTrackingInterval,
@@ -37,6 +38,7 @@ const double* paramDomain[] = {
 	nMaxTrackInConfirmedTrackTree,
 	nMaxTrackInUnconfirmedTrackTree,
 	nNumFrameForConfirmation,
+	nMaxTimeJump,
 	fMaxMovingSpeed,
 	fProbEnterMax,
 	fProbEnterDecayCoef,
@@ -59,16 +61,17 @@ CParameterOptimizer::CParameterOptimizer(void)
 	vecBestParamIndicator_[5].position = 2;
 	vecBestParamIndicator_[6].position = 2;
 	vecBestParamIndicator_[7].position = 2;
-	vecBestParamIndicator_[8].position = 1;
-
+	vecBestParamIndicator_[8].position = 2;
 	vecBestParamIndicator_[9].position = 1;
-	vecBestParamIndicator_[10].position = 3;
-	vecBestParamIndicator_[11].position = 4;
 
-	vecBestParamIndicator_[12].position = 2;
-	vecBestParamIndicator_[13].position = 3;
-	vecBestParamIndicator_[14].position = 1;
-	vecBestParamIndicator_[15].position = 4;
+	vecBestParamIndicator_[10].position = 1;
+	vecBestParamIndicator_[11].position = 3;
+	vecBestParamIndicator_[12].position = 4;
+
+	vecBestParamIndicator_[13].position = 2;
+	vecBestParamIndicator_[14].position = 3;
+	vecBestParamIndicator_[15].position = 1;
+	vecBestParamIndicator_[16].position = 4;
 	
 	vecBestParamIndicator_[0].size = psn::size(nBackTrackingInterval);
 	vecBestParamIndicator_[1].size = psn::size(fFeatureWindowSizeRatio);
@@ -78,14 +81,15 @@ CParameterOptimizer::CParameterOptimizer(void)
 	vecBestParamIndicator_[5].size = psn::size(nMaxTrackInConfirmedTrackTree);
 	vecBestParamIndicator_[6].size = psn::size(nMaxTrackInUnconfirmedTrackTree);
 	vecBestParamIndicator_[7].size = psn::size(nNumFrameForConfirmation);
-	vecBestParamIndicator_[8].size = psn::size(fMaxMovingSpeed);
-	vecBestParamIndicator_[9].size = psn::size(fProbEnterMax);
-	vecBestParamIndicator_[10].size = psn::size(fProbEnterDecayCoef);
-	vecBestParamIndicator_[11].size = psn::size(fCostEnterMax);
-	vecBestParamIndicator_[12].size = psn::size(fProbExitMax);
-	vecBestParamIndicator_[13].size = psn::size(fProbExitDecayCoef_dist);
-	vecBestParamIndicator_[14].size = psn::size(fProbExitDecayCoef_length);
-	vecBestParamIndicator_[15].size = psn::size(fCostExitMax);
+	vecBestParamIndicator_[8].size = psn::size(nMaxTimeJump);
+	vecBestParamIndicator_[9].size = psn::size(fMaxMovingSpeed);
+	vecBestParamIndicator_[10].size = psn::size(fProbEnterMax);
+	vecBestParamIndicator_[11].size = psn::size(fProbEnterDecayCoef);
+	vecBestParamIndicator_[12].size = psn::size(fCostEnterMax);
+	vecBestParamIndicator_[13].size = psn::size(fProbExitMax);
+	vecBestParamIndicator_[14].size = psn::size(fProbExitDecayCoef_dist);
+	vecBestParamIndicator_[15].size = psn::size(fProbExitDecayCoef_length);
+	vecBestParamIndicator_[16].size = psn::size(fCostExitMax);
 
 	nTargetDataSet_ = DATASET_ETRI;
 	rectCropZone_.x      = CROP_ZONE[nTargetDataSet_][0];
@@ -120,59 +124,6 @@ AlgorithmParams CParameterOptimizer::Run()
 	LocalSearch(&vecSearchCache_.back(), MIN_NUM_EVALUATION);
 
 	return bestParams_;
-}
-
-bool CParameterOptimizer::RunAlgorithm(stParamRunInput runInput, AlgorithmParams params, stEvaluationResult &evaluationResult)
-{
-	char strInputFilePath[128];
-	DATASET_TYPE dataset = runInput.datasetType;
-	std::vector<cv::Mat> inputFrame(DATASET_NUM_CAM[dataset]);
-
-	/////////////////////////////////////////////////////////////////
-	// INITIALIZATION
-	/////////////////////////////////////////////////////////////////		
-	std::srand(runInput.seedValue);
-	CPSNWhere psnWhere = CPSNWhere();
-	psnWhere.Initialize(dataset, &params);
-
-	/////////////////////////////////////////////////////////////////
-	// MAIN LOOP
-	/////////////////////////////////////////////////////////////////
-	for (int frameIdx = DATASET_START_FRAME_IDX[dataset]; frameIdx <= DATASET_END_FRAME_IDX[dataset]; frameIdx++)
-	{
-		//---------------------------------------------------
-		// FRAME GRABBING
-		//---------------------------------------------------		
-		for (int camIdx = 0; camIdx < DATASET_NUM_CAM[dataset]; camIdx++) 
-		{
-			unsigned int curCamID = DATASET_CAM_ID[dataset][camIdx];
-			sprintf_s(strInputFilePath, sizeof(strInputFilePath), "%s\\View_%03d\\frame_%04d.jpg", DATASET_PATH[dataset].c_str(), curCamID, frameIdx);
-			inputFrame[camIdx] = cv::imread(strInputFilePath, cv::IMREAD_COLOR);
-			if (!inputFrame[camIdx].data)
-			{
-				std::cout << "Can't open the input frame" << std::endl;
-				inputFrame[camIdx].release();
-				return false;
-			}
-		}
-
-		//---------------------------------------------------
-		// TRACKING
-		//---------------------------------------------------
-		psnWhere.TrackPeople(inputFrame, frameIdx);
-
-		//---------------------------------------------------
-		// MEMORY CLEARING
-		//---------------------------------------------------
-		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) { inputFrame[camIdx].release(); }
-	}
-
-	/////////////////////////////////////////////////////////////////
-	// TERMINATION
-	/////////////////////////////////////////////////////////////////
-	psnWhere.Finalize();
-
-	return true;
 }
 
 AlgorithmParams CParameterOptimizer::LocalSearch(paramSearchRecord *startingParam, int minNumExecution)
@@ -253,7 +204,7 @@ AlgorithmParams CParameterOptimizer::LocalSearch(paramSearchRecord *startingPara
 			{
 				stParamRunInput    curRunInput = {nTargetDataSet_, (int)ptVecParamSearchRecord[nIdx]->second.size()};
 				stParamOutputInfo  curOutputInfo;
-				stEvaluationResult curEvalResult;
+				stEvaluationResult curEvalResult;				
 				RunAlgorithm(curRunInput, ptVecParamSearchRecord[nIdx]->first, curEvalResult);
 				curOutputInfo.score = GetPerformance(curEvalResult);
 				ptVecParamSearchRecord[nIdx]->second.push_back(std::make_pair(curRunInput, curOutputInfo));
@@ -283,6 +234,60 @@ AlgorithmParams CParameterOptimizer::LocalSearch(paramSearchRecord *startingPara
 //{
 //
 //}
+
+bool CParameterOptimizer::RunAlgorithm(stParamRunInput runInput, AlgorithmParams params, stEvaluationResult &evaluationResult)
+{
+	char strInputFilePath[128];
+	DATASET_TYPE dataset = runInput.datasetType;
+	std::vector<cv::Mat> inputFrame(DATASET_NUM_CAM[dataset]);
+
+	/////////////////////////////////////////////////////////////////
+	// INITIALIZATION
+	/////////////////////////////////////////////////////////////////		
+	std::srand(runInput.seedValue);
+	CPSNWhere psnWhere = CPSNWhere();
+	psnWhere.Initialize(dataset, &params);
+
+	/////////////////////////////////////////////////////////////////
+	// MAIN LOOP
+	/////////////////////////////////////////////////////////////////
+	for (int frameIdx = DATASET_START_FRAME_IDX[dataset]; frameIdx <= DATASET_END_FRAME_IDX[dataset]; frameIdx++)
+	{
+		//---------------------------------------------------
+		// FRAME GRABBING
+		//---------------------------------------------------		
+		for (int camIdx = 0; camIdx < DATASET_NUM_CAM[dataset]; camIdx++) 
+		{
+			unsigned int curCamID = DATASET_CAM_ID[dataset][camIdx];
+			sprintf_s(strInputFilePath, sizeof(strInputFilePath), "%s\\View_%03d\\frame_%04d.jpg", DATASET_PATH[dataset].c_str(), curCamID, frameIdx);
+			inputFrame[camIdx] = cv::imread(strInputFilePath, cv::IMREAD_COLOR);
+			if (!inputFrame[camIdx].data)
+			{
+				std::cout << "Can't open the input frame" << std::endl;
+				inputFrame[camIdx].release();
+				return false;
+			}
+		}
+
+		//---------------------------------------------------
+		// TRACKING
+		//---------------------------------------------------
+		psnWhere.TrackPeople(inputFrame, frameIdx);
+
+		//---------------------------------------------------
+		// MEMORY CLEARING
+		//---------------------------------------------------
+		for (int camIdx = 0; camIdx < NUM_CAM; camIdx++) { inputFrame[camIdx].release(); }
+	}
+
+	/////////////////////////////////////////////////////////////////
+	// TERMINATION
+	/////////////////////////////////////////////////////////////////
+	psnWhere.Finalize();
+
+	return true;
+}
+
 
 double CParameterOptimizer::GetPerformance(stEvaluationResult &result)
 {
@@ -341,25 +346,27 @@ ParameterIndicatorSet CParameterOptimizer::GetParameterIndicator(AlgorithmParams
 	assert(p6 != nMaxTrackInUnconfirmedTrackTree + psn::size(nMaxTrackInUnconfirmedTrackTree));
 	const double *p7 = std::find(std::begin(nNumFrameForConfirmation), std::end(nNumFrameForConfirmation), parameter->params3DA.nNumFrameForConfirmation_);
 	assert(p7 != nNumFrameForConfirmation + psn::size(nNumFrameForConfirmation));
+	const double *p8 = std::find(std::begin(nMaxTimeJump), std::end(nMaxTimeJump), parameter->params3DA.nMaxTimeJump_);
+	assert(p8 != nMaxTimeJump + psn::size(nMaxTimeJump));
 
-	const double *p8 = std::find(std::begin(fMaxMovingSpeed), std::end(fMaxMovingSpeed), parameter->params3DA.fMaxMovingSpeed_);
-	assert(p8 != fMaxMovingSpeed + psn::size(fMaxMovingSpeed));
+	const double *p9 = std::find(std::begin(fMaxMovingSpeed), std::end(fMaxMovingSpeed), parameter->params3DA.fMaxMovingSpeed_);
+	assert(p9 != fMaxMovingSpeed + psn::size(fMaxMovingSpeed));
 
-	const double *p9 = std::find(std::begin(fProbEnterMax), std::end(fProbEnterMax), parameter->params3DA.fProbEnterMax_);
-	assert(p9 != fProbEnterMax + psn::size(fProbEnterMax));
-	const double *p10 = std::find(std::begin(fProbEnterDecayCoef), std::end(fProbEnterDecayCoef), parameter->params3DA.fProbEnterDecayCoef_);
-	assert(p10 != fProbEnterDecayCoef + psn::size(fProbEnterDecayCoef));
-	const double *p11 = std::find(std::begin(fCostEnterMax), std::end(fCostEnterMax), parameter->params3DA.fCostEnterMax_);
-	assert(p11 != fCostEnterMax + psn::size(fCostEnterMax));
+	const double *p10 = std::find(std::begin(fProbEnterMax), std::end(fProbEnterMax), parameter->params3DA.fProbEnterMax_);
+	assert(p10 != fProbEnterMax + psn::size(fProbEnterMax));
+	const double *p11 = std::find(std::begin(fProbEnterDecayCoef), std::end(fProbEnterDecayCoef), parameter->params3DA.fProbEnterDecayCoef_);
+	assert(p11 != fProbEnterDecayCoef + psn::size(fProbEnterDecayCoef));
+	const double *p12 = std::find(std::begin(fCostEnterMax), std::end(fCostEnterMax), parameter->params3DA.fCostEnterMax_);
+	assert(p12 != fCostEnterMax + psn::size(fCostEnterMax));
 
-	const double *p12 = std::find(std::begin(fProbExitMax), std::end(fProbExitMax), parameter->params3DA.fProbExitMax_);
-	assert(p12 != fProbExitMax + psn::size(fProbExitMax));
-	const double *p13 = std::find(std::begin(fProbExitDecayCoef_dist), std::end(fProbExitDecayCoef_dist), parameter->params3DA.fProbExitDecayCoef_dist_);
-	assert(p13 != fProbExitDecayCoef_dist + psn::size(fProbExitDecayCoef_dist));
-	const double *p14 = std::find(std::begin(fProbExitDecayCoef_length), std::end(fProbExitDecayCoef_length), parameter->params3DA.fProbExitDecayCoef_length_);
-	assert(p14 != fProbExitDecayCoef_length + psn::size(fProbExitDecayCoef_length));
-	const double *p15 = std::find(std::begin(fCostExitMax), std::end(fCostExitMax), parameter->params3DA.fCostExitMax_);
-	assert(p15 != fCostExitMax + psn::size(fCostExitMax));
+	const double *p13 = std::find(std::begin(fProbExitMax), std::end(fProbExitMax), parameter->params3DA.fProbExitMax_);
+	assert(p13 != fProbExitMax + psn::size(fProbExitMax));
+	const double *p14 = std::find(std::begin(fProbExitDecayCoef_dist), std::end(fProbExitDecayCoef_dist), parameter->params3DA.fProbExitDecayCoef_dist_);
+	assert(p14 != fProbExitDecayCoef_dist + psn::size(fProbExitDecayCoef_dist));
+	const double *p15 = std::find(std::begin(fProbExitDecayCoef_length), std::end(fProbExitDecayCoef_length), parameter->params3DA.fProbExitDecayCoef_length_);
+	assert(p15 != fProbExitDecayCoef_length + psn::size(fProbExitDecayCoef_length));
+	const double *p16 = std::find(std::begin(fCostExitMax), std::end(fCostExitMax), parameter->params3DA.fCostExitMax_);
+	assert(p16 != fCostExitMax + psn::size(fCostExitMax));
 
 	std::vector<stParameterIndicator> curIndicator(NUM_PARAMS);
 	curIndicator[0].position = (int)(p0 - nBackTrackingInterval);
@@ -379,25 +386,27 @@ ParameterIndicatorSet CParameterOptimizer::GetParameterIndicator(AlgorithmParams
 	curIndicator[6].size     = psn::size(nMaxTrackInUnconfirmedTrackTree);
 	curIndicator[7].position = (int)(p7 - nNumFrameForConfirmation);
 	curIndicator[7].size     = psn::size(nNumFrameForConfirmation);
+	curIndicator[8].position = (int)(p8 - nMaxTimeJump);
+	curIndicator[8].size     = psn::size(nMaxTimeJump);
 
-	curIndicator[8].position = (int)(p8 - fMaxMovingSpeed);
-	curIndicator[8].size     = psn::size(fMaxMovingSpeed);
+	curIndicator[9].position = (int)(p9 - fMaxMovingSpeed);
+	curIndicator[9].size     = psn::size(fMaxMovingSpeed);
 
-	curIndicator[9].position = (int)(p9 - fProbEnterMax);
-	curIndicator[9].size     = psn::size(fProbEnterMax);
-	curIndicator[10].position = (int)(p10 - fProbEnterDecayCoef);
-	curIndicator[10].size     = psn::size(fProbEnterDecayCoef);
-	curIndicator[11].position = (int)(p11 - fCostEnterMax);
-	curIndicator[11].size     = psn::size(fCostEnterMax);
+	curIndicator[10].position = (int)(p10 - fProbEnterMax);
+	curIndicator[10].size     = psn::size(fProbEnterMax);
+	curIndicator[11].position = (int)(p11 - fProbEnterDecayCoef);
+	curIndicator[11].size     = psn::size(fProbEnterDecayCoef);
+	curIndicator[12].position = (int)(p12 - fCostEnterMax);
+	curIndicator[12].size     = psn::size(fCostEnterMax);
 
-	curIndicator[12].position = (int)(p12 - fProbExitMax);
-	curIndicator[12].size     = psn::size(fProbExitMax);
-	curIndicator[13].position = (int)(p13 - fProbExitDecayCoef_dist);
-	curIndicator[13].size     = psn::size(fProbExitDecayCoef_dist);
-	curIndicator[14].position = (int)(p14 - fProbExitDecayCoef_length);
-	curIndicator[14].size     = psn::size(fProbExitDecayCoef_length);
-	curIndicator[15].position = (int)(p15 - fCostExitMax);
-	curIndicator[15].size     = psn::size(fCostExitMax);
+	curIndicator[13].position = (int)(p13 - fProbExitMax);
+	curIndicator[13].size     = psn::size(fProbExitMax);
+	curIndicator[14].position = (int)(p14 - fProbExitDecayCoef_dist);
+	curIndicator[14].size     = psn::size(fProbExitDecayCoef_dist);
+	curIndicator[15].position = (int)(p15 - fProbExitDecayCoef_length);
+	curIndicator[15].size     = psn::size(fProbExitDecayCoef_length);
+	curIndicator[16].position = (int)(p16 - fCostExitMax);
+	curIndicator[16].size     = psn::size(fCostExitMax);
 
 	return curIndicator;
 }

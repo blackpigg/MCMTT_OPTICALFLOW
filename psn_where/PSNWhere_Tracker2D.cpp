@@ -787,7 +787,7 @@ size_t CPSNWhere_Tracker2D::Track2D_BackwardFeatureTracking(std::vector<stDetect
 									prevFeatures, 
 									featureStatus, 
 									featureErrors,
-									cv::Size((int)(rectRescaledDetectionBox.w * parameters_.fFeatureWindowSizeRatio_), (int)(rectRescaledDetectionBox.w * parameters_.fFeatureWindowSizeRatio_)));
+									cv::Size((int)std::max((rectRescaledDetectionBox.w * parameters_.fFeatureWindowSizeRatio_), 2.1), (int)std::max(rectRescaledDetectionBox.w * parameters_.fFeatureWindowSizeRatio_, 2.1)));
 
 
 			// position estimation

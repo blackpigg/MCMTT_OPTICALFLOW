@@ -34,10 +34,11 @@ public:
 	CParameterOptimizer(void);
 	~CParameterOptimizer(void);
 
-	AlgorithmParams Run(void);
-	bool RunAlgorithm(stParamRunInput runInput, AlgorithmParams params, stEvaluationResult &evaluationResult);
+	AlgorithmParams Run(void);	
 	AlgorithmParams LocalSearch(paramSearchRecord *startingParam, int minNumExecution);
 	//AlgorithmParams Perturbation(void);
+	bool RunAlgorithm(stParamRunInput runInput, AlgorithmParams params, stEvaluationResult &evaluationResult);
+	
 
 private:
 	double GetPerformance(stEvaluationResult &result);
@@ -48,10 +49,10 @@ private:
 
 private:
 	AlgorithmParams bestParams_;	
-	DATASET_TYPE nTargetDataSet_;
+	DATASET_TYPE    nTargetDataSet_;
 	std::list<paramSearchRecord> vecSearchCache_;
-	ParameterIndicatorSet vecBestParamIndicator_;
-	cv::Rect rectCropZone_;
+	ParameterIndicatorSet        vecBestParamIndicator_;
+	cv::Rect_<double> rectCropZone_;
 	double fCropZoneMargin_;
 };
 
